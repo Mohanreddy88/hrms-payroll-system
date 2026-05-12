@@ -9,6 +9,30 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Railway Environment Variables Override ──────────────
+// Railway provides DATABASE_URL directly as environment variable
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    builder.Configuration["ConnectionStrings:DefaultConnection"] = databaseUrl;
+    builder.Configuration["UsePostgreSQL"] = "true";
+}
+
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+if (!string.IsNullOrEmpty(jwtSecretKey))
+{
+    builder.Configuration["Jwt:Key"] = jwtSecretKey;
+}
+
+var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
+var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+if (!string.IsNullOrEmpty(smtpUser))
+{
+    builder.Configuration["Email:SmtpUser"] = smtpUser;
+    builder.Configuration["Email:SmtpPassword"] = smtpPassword;
+    builder.Configuration["Email:FromEmail"] = smtpUser;
+}
+
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var usePostgres = builder.Configuration.GetValue<bool>("UsePostgreSQL");
