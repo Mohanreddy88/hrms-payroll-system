@@ -1,0 +1,40 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+.vs/
+*.dll
+*.exe
+*.pdb
+
+# Node/Angular
+node_modules/
+dist/
+npm-debug.log
+.angular/
+
+# Environment
+.env
+appsettings.Development.json
+appsettings.Local.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# Temp files
+*.tmp
+*.bak
