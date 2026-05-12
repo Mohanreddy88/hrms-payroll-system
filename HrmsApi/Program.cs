@@ -101,11 +101,9 @@ var app = builder.Build();
 // ── Middleware Pipeline ───────────────────────────────────
 app.UseGlobalExceptionHandler();   // Custom exception middleware
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "HRMS API v1"));
-}
+// Enable Swagger for both Development and Production
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "HRMS API v1"));
 
 // app.UseHttpsRedirection(); // Disabled — use HTTP for local dev to avoid cert issues
 
