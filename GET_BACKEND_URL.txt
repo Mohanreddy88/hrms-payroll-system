@@ -1,0 +1,257 @@
+================================================================================
+                   🌐 HOW TO GET YOUR BACKEND URL
+================================================================================
+
+Your backend is deployed on Railway. Here's how to get the URL:
+
+================================================================================
+                        METHOD 1: FROM RAILWAY UI
+================================================================================
+
+STEP 1: Go to Railway Dashboard
+---------------------------------
+Open: https://railway.com/dashboard
+
+STEP 2: Find Your Backend Service
+----------------------------------
+You should see your project with services listed.
+Click on the service that has "HrmsApi" or your backend.
+
+STEP 3: Get the URL
+-------------------
+Look at the TOP of the service page. You should see:
+
+   ┌─────────────────────────────────────────────────┐
+   │  hrms-payroll-system                            │
+   │  ✅ Active                                       │
+   │  🌐 https://hrms-xxxxx.up.railway.app          │ ← YOUR URL
+   └─────────────────────────────────────────────────┘
+
+Or:
+
+1. Click "Settings" tab (left sidebar)
+2. Scroll to "Networking" section
+3. You'll see:
+   - Public Networking: ✅ Enabled
+   - Domain: https://your-app.up.railway.app ← COPY THIS
+
+STEP 4: Copy the URL
+--------------------
+Copy the full URL (e.g., https://hrms-production-abc123.up.railway.app)
+
+================================================================================
+                    METHOD 2: GENERATE NEW DOMAIN
+================================================================================
+
+If you don't see a domain/URL:
+
+1. Go to Settings → Networking
+2. Click "Generate Domain" button
+3. Railway will create a URL like:
+   https://hrms-production-abc123.up.railway.app
+4. Copy this URL
+
+================================================================================
+                    HOW TO TEST YOUR BACKEND URL
+================================================================================
+
+METHOD 1: Test with Swagger (Recommended)
+------------------------------------------
+
+1. Copy your backend URL
+2. Add /swagger to the end
+3. Open in browser:
+   https://YOUR-BACKEND-URL.up.railway.app/swagger
+
+Example:
+   https://hrms-production-abc123.up.railway.app/swagger
+
+You should see:
+   ✅ Swagger UI with all API endpoints
+   ✅ List of controllers: Auth, Employees, Timesheets, etc.
+   ✅ You can test endpoints directly from Swagger
+
+METHOD 2: Test Login API
+-------------------------
+
+1. In Swagger, find "Auth" section
+2. Click on "POST /api/auth/login"
+3. Click "Try it out"
+4. Enter request body:
+   {
+     "username": "mohanreddy77.n@gmail.com",
+     "password": "Mohan@123"
+   }
+5. Click "Execute"
+
+Expected response:
+   {
+     "token": "eyJhbGciOiJIUzI1NiIs...",
+     "username": "mohanreddy77.n@gmail.com",
+     "role": "Admin"
+   }
+
+✅ If you get a token → Backend is working perfectly!
+
+METHOD 3: Test in Browser (Simple Check)
+-----------------------------------------
+
+Open: https://YOUR-BACKEND-URL.up.railway.app
+
+You might see:
+- A blank page (normal - API doesn't have a homepage)
+- Or 404 error (normal - root path not configured)
+
+Both are OK! The API is running.
+
+To verify it's working, add /swagger to the URL.
+
+METHOD 4: Test with Postman
+----------------------------
+
+1. Open Postman (or any API client)
+2. Create POST request:
+   URL: https://YOUR-BACKEND-URL.up.railway.app/api/auth/login
+   Headers: Content-Type: application/json
+   Body (raw JSON):
+   {
+     "username": "mohanreddy77.n@gmail.com",
+     "password": "Mohan@123"
+   }
+3. Send
+
+Response should have a token if successful.
+
+================================================================================
+                    COMMON BACKEND URL FORMATS
+================================================================================
+
+Railway generates URLs in this format:
+
+https://[service-name]-production-[random].up.railway.app
+
+Examples:
+- https://hrms-production-abc123.up.railway.app
+- https://hrms-payroll-system-production-xyz789.up.railway.app
+- https://web-production-def456.up.railway.app
+
+Your URL will be unique to your deployment.
+
+================================================================================
+                    WHAT TO DO WITH THE URL
+================================================================================
+
+OPTION 1: Test Immediately (Do This Now)
+-----------------------------------------
+1. Get your backend URL from Railway
+2. Add /swagger to the end
+3. Open in browser
+4. Test the login endpoint
+5. Verify you get a token back
+
+OPTION 2: Use with Local Frontend
+----------------------------------
+1. Get backend URL
+2. Open: C:\Users\HP\source\repos\walnut\hrms-ui\src\environments\environment.ts
+3. Update:
+   export const environment = {
+     production: false,
+     apiUrl: 'https://YOUR-BACKEND-URL.up.railway.app/api'
+   };
+4. Run local frontend: ng serve
+5. Your local app will use Railway backend!
+
+OPTION 3: Deploy Frontend (Recommended)
+----------------------------------------
+Follow the guide in DEPLOY_FRONTEND.txt
+
+================================================================================
+                    TROUBLESHOOTING
+================================================================================
+
+❌ "I don't see any URL in Railway"
+   → Go to Settings → Networking → Click "Generate Domain"
+
+❌ "URL shows 502 Bad Gateway"
+   → Check Deployments tab - make sure status is "Active"
+   → If status is "Crashed", check logs for errors
+
+❌ "URL shows 404 Not Found"
+   → That's OK! Add /swagger to see the API docs
+   → The root path (/) is not configured, but API works
+
+❌ "Swagger page won't load"
+   → Check if HTTPS is in the URL (not HTTP)
+   → Make sure deployment is "Active" in Railway
+   → Check browser console (F12) for errors
+
+❌ "Login API returns 401 Unauthorized"
+   → Check username/password spelling
+   → Make sure database migrations ran successfully
+   → Check Railway logs for authentication errors
+
+================================================================================
+                    STEP-BY-STEP: GET URL NOW
+================================================================================
+
+Let me walk you through:
+
+1. Open new browser tab
+
+2. Go to: https://railway.com/dashboard
+
+3. You should see your project (might be named "hrms-payroll-system")
+
+4. Click on the PROJECT (not individual service yet)
+
+5. You'll see services listed:
+   - One service (your backend with HrmsApi)
+   - One PostgreSQL database
+
+6. Click on the SERVICE (not the database)
+
+7. Look at the top of the page - you'll see the URL
+
+8. OR click "Settings" → "Networking" → see the domain
+
+9. Copy the full URL
+
+10. Open new tab and paste: URL + /swagger
+
+Example: https://your-app.up.railway.app/swagger
+
+================================================================================
+                    QUICK VERIFICATION
+================================================================================
+
+After you get the URL, verify it works:
+
+✅ Step 1: Open https://YOUR-URL/swagger
+   → Should see Swagger UI
+
+✅ Step 2: Click "Auth" → "POST /api/auth/login"
+   → Click "Try it out"
+
+✅ Step 3: Enter credentials:
+   {
+     "username": "mohanreddy77.n@gmail.com",
+     "password": "Mohan@123"
+   }
+
+✅ Step 4: Click "Execute"
+   → Should get token in response
+
+✅ If all steps pass → Your backend is FULLY WORKING! 🎉
+
+================================================================================
+
+Your Backend URL: _______________________________________________
+
+(Write it here after you get it from Railway)
+
+================================================================================
+
+Need help finding it? Share a screenshot of your Railway dashboard and I'll 
+point you to exactly where the URL is!
+
+================================================================================
