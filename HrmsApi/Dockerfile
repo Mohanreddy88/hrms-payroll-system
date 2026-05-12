@@ -10,6 +10,11 @@ RUN dotnet restore
 COPY . ./
 RUN dotnet publish -c Release -o /app/publish
 
+# Build migrations in build stage
+RUN dotnet tool install --global dotnet-ef --version 8.0.0
+ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN dotnet ef migrations bundle --self-contained -r linux-x64 -o /app/efbundle
+
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0
 WORKDIR /app
@@ -17,15 +22,8 @@ WORKDIR /app
 # Copy published files
 COPY --from=build /app/publish .
 
-# Copy source files needed for migrations
-COPY --from=build /src/*.csproj ./
-COPY --from=build /src/Migrations ./Migrations
-COPY --from=build /src/Data ./Data
-COPY --from=build /src/Models ./Models
-
-# Install EF tools for migrations
-RUN dotnet tool install --global dotnet-ef --version 8.0.0
-ENV PATH="${PATH}:/root/.dotnet/tools"
+# Copy EF migration bundle
+COPY --from=build /app/efbundle ./efbundle
 
 # Environment
 ENV ASPNETCORE_URLS=http://+:8080
@@ -37,7 +35,7 @@ set -e\n\
 echo "Starting HRMS API..."\n\
 sleep 3\n\
 echo "Running migrations..."\n\
-dotnet ef database update --no-build --verbose || echo "Migration warning (continuing anyway)"\n\
+./efbundle --connection "$ConnectionStrings__DefaultConnection" || echo "Migration failed, app will handle this"\n\
 echo "Starting app..."\n\
 exec dotnet HrmsApi.dll' > start.sh && chmod +x start.sh
 
