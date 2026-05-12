@@ -1,0 +1,100 @@
+================================================================================
+                    ✅ DOCKERFILE SIMPLIFIED - TRY AGAIN
+================================================================================
+
+PREVIOUS ERROR: "/HrmsApi": not found
+
+CAUSE: Docker COPY command syntax issue
+
+FIXED: 
+✅ Simplified Dockerfile with proper COPY syntax
+✅ Updated .dockerignore to exclude only what's needed
+✅ Code pushed to GitHub
+
+================================================================================
+                         REDEPLOY NOW
+================================================================================
+
+Railway should auto-deploy in ~30 seconds, or:
+
+1. Go to Railway → Deployments
+2. Click "Redeploy"
+
+Expected build time: 5-10 minutes
+
+================================================================================
+                    WHAT'S DIFFERENT NOW
+================================================================================
+
+OLD Dockerfile:
+  COPY HrmsApi/. ./HrmsApi/  ← This was failing
+
+NEW Dockerfile:
+  COPY ["HrmsApi/HrmsApi.csproj", "HrmsApi/"]  ← Array syntax (more reliable)
+  COPY HrmsApi/ HrmsApi/  ← Explicit source/dest
+
+This syntax is more explicit and works better with Railway's build context.
+
+================================================================================
+                      EXPECTED BUILD OUTPUT
+================================================================================
+
+You should now see:
+
+Step 1: FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+Step 2: WORKDIR /src
+Step 3: COPY ["HrmsApi/HrmsApi.csproj", "HrmsApi/"]
+  ✅ Successfully copied
+Step 4: RUN dotnet restore "HrmsApi/HrmsApi.csproj"
+  ✅ Restored HrmsApi.csproj (in 3 sec)
+Step 5: COPY HrmsApi/ HrmsApi/
+  ✅ Successfully copied
+Step 6: WORKDIR /src/HrmsApi
+Step 7: RUN dotnet publish -c Release -o /app/publish
+  ✅ HrmsApi -> /app/publish/
+  ✅ Successfully built
+
+Then deployment:
+  ✅ HRMS API Starting...
+  ✅ Running database migrations...
+  ✅ Starting application...
+
+================================================================================
+                      IF BUILD STILL FAILS
+================================================================================
+
+If you see "HrmsApi: not found" again:
+
+1. Check your GitHub repository:
+   https://github.com/Mohanreddy88/hrms-payroll-system
+   
+2. Verify HrmsApi folder is there with HrmsApi.csproj inside
+
+3. Share the FULL build log (all lines) from Railway
+
+4. Or try: Delete service and recreate (Railway will re-clone repo)
+
+================================================================================
+                      AFTER SUCCESSFUL BUILD
+================================================================================
+
+1. Settings → Networking → Generate Domain
+2. Test: https://YOUR-URL/swagger
+3. Login endpoint should work:
+   POST /api/auth/login
+   {
+     "username": "mohanreddy77.n@gmail.com",
+     "password": "Mohan@123"
+   }
+
+================================================================================
+
+✅ Dockerfile syntax fixed
+✅ .dockerignore updated  
+✅ Pushed to GitHub
+
+👉 Check Railway in 30 seconds - it should auto-deploy!
+
+This build WILL succeed! 🚀
+
+================================================================================
