@@ -35,7 +35,12 @@ set -e\n\
 echo "Starting HRMS API..."\n\
 sleep 3\n\
 echo "Running migrations..."\n\
-./efbundle --connection "$ConnectionStrings__DefaultConnection" || echo "Migration failed, app will handle this"\n\
+if [ -n "$DATABASE_URL" ]; then\n\
+  echo "Using PostgreSQL connection from DATABASE_URL"\n\
+  ./efbundle --connection "$DATABASE_URL" || echo "Migration failed, continuing..."\n\
+else\n\
+  echo "No DATABASE_URL found, skipping migrations"\n\
+fi\n\
 echo "Starting app..."\n\
 exec dotnet HrmsApi.dll' > start.sh && chmod +x start.sh
 
