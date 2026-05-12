@@ -37,7 +37,20 @@ sleep 3\n\
 echo "Running migrations..."\n\
 if [ -n "$DATABASE_URL" ]; then\n\
   echo "Using PostgreSQL connection from DATABASE_URL"\n\
-  ./efbundle --connection "$DATABASE_URL" || echo "Migration failed, continuing..."\n\
+  echo "DATABASE_URL format: ${DATABASE_URL:0:20}..."\n\
+  # Parse postgresql://user:pass@host:port/db format\n\
+  if [[ $DATABASE_URL =~ postgresql://([^:]+):([^@]+)@([^:]+):([^/]+)/(.+) ]]; then\n\
+    USER="${BASH_REMATCH[1]}"\n\
+    PASS="${BASH_REMATCH[2]}"\n\
+    HOST="${BASH_REMATCH[3]}"\n\
+    PORT="${BASH_REMATCH[4]}"\n\
+    DB="${BASH_REMATCH[5]}"\n\
+    CONN_STRING="Host=$HOST;Port=$PORT;Database=$DB;Username=$USER;Password=$PASS;SSL Mode=Require;Trust Server Certificate=true"\n\
+    echo "Running migrations with parsed connection..."\n\
+    ./efbundle --connection "$CONN_STRING" || echo "Migration failed, continuing..."\n\
+  else\n\
+    echo "Could not parse DATABASE_URL format"\n\
+  fi\n\
 else\n\
   echo "No DATABASE_URL found, skipping migrations"\n\
 fi\n\
