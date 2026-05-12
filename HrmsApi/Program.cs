@@ -14,8 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    builder.Configuration["ConnectionStrings:DefaultConnection"] = databaseUrl;
-    builder.Configuration["UsePostgreSQL"] = "true";
+    // Parse postgresql://user:pass@host:port/db to .NET connection string format
+    var match = System.Text.RegularExpressions.Regex.Match(
+        databaseUrl, 
+        @"postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)"
+    );
+    
+    if (match.Success)
+    {
+        var connString = $"Host={match.Groups[3].Value};Port={match.Groups[4].Value};Database={match.Groups[5].Value};Username={match.Groups[1].Value};Password={match.Groups[2].Value};SSL Mode=Require;Trust Server Certificate=true";
+        builder.Configuration["ConnectionStrings:DefaultConnection"] = connString;
+        builder.Configuration["UsePostgreSQL"] = "true";
+    }
 }
 
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
