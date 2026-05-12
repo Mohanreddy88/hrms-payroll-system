@@ -10,8 +10,20 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Database ────────────────────────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var usePostgres = builder.Configuration.GetValue<bool>("UsePostgreSQL");
+
 builder.Services.AddDbContext<HrmsDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    if (usePostgres || connectionString?.Contains("postgres") == true)
+    {
+        options.UseNpgsql(connectionString);
+    }
+    else
+    {
+        options.UseSqlServer(connectionString);
+    }
+});
 
 // ── JWT Authentication ──────────────────────────────────
 var jwtConfig = builder.Configuration.GetSection("Jwt");
