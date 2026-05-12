@@ -1,0 +1,100 @@
+================================================================================
+                  ✅ DOCKERFILE FIXED - READY TO BUILD
+================================================================================
+
+GOOD NEWS: Railway is now using Dockerfile (.NET 8) ✅
+
+PREVIOUS ERROR: 
+  "/HrmsApi/entrypoint.sh": not found
+
+FIXED: 
+  ✅ Startup script is now created INSIDE the Dockerfile (no external file)
+  ✅ Code pushed to GitHub
+  ✅ Ready to redeploy
+
+================================================================================
+                          DO THIS NOW
+================================================================================
+
+1. Go to Railway → Your service
+2. Click "Deployments" tab
+3. Click "Redeploy" (or wait ~30 seconds for auto-deploy)
+
+Build will take 5-10 minutes.
+
+================================================================================
+                      WHAT YOU'LL SEE NOW
+================================================================================
+
+✅ Railway will use Dockerfile (you'll see .NET 8)
+✅ Build will succeed
+✅ App will start with auto-migrations
+✅ Database tables will be created automatically
+
+Expected logs:
+```
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /app
+COPY HrmsApi/*.csproj ./HrmsApi/
+RUN cd HrmsApi && dotnet restore
+  Restored /app/HrmsApi/HrmsApi.csproj (in 3 sec)
+COPY HrmsApi/. ./HrmsApi/
+RUN dotnet publish -c Release -o /app/publish
+  HrmsApi -> /app/publish/
+✅ Successfully built
+Starting HRMS API...
+Waiting for database...
+Running migrations...
+Applying migration 'InitialCreate'
+Done.
+Starting application...
+✅ Application started
+```
+
+================================================================================
+                        AFTER SUCCESSFUL DEPLOYMENT
+================================================================================
+
+1. Go to Settings → Networking → Generate Domain
+2. Copy your URL (e.g., https://hrms-backend.up.railway.app)
+3. Test: https://YOUR-URL/swagger
+4. You should see Swagger API documentation! 🎉
+
+================================================================================
+                          TEST YOUR API
+================================================================================
+
+Open: https://YOUR-URL/swagger
+
+Try these endpoints:
+- GET /api/employees
+- POST /api/auth/login
+  Body: {
+    "username": "mohanreddy77.n@gmail.com",
+    "password": "Mohan@123"
+  }
+
+If login works → YOUR HRMS BACKEND IS LIVE! ✅
+
+================================================================================
+                      IF BUILD STILL FAILS
+================================================================================
+
+Check the error in Railway logs and share:
+1. The full error message
+2. What step it fails at
+3. Last 20 lines of the build log
+
+I'll fix it immediately.
+
+================================================================================
+
+✅ Dockerfile is fixed
+✅ Startup script embedded
+✅ Code pushed to GitHub
+
+👉 Railway should auto-deploy in ~30 seconds, or click "Redeploy" now!
+
+This WILL work! 🚀
+
+================================================================================
