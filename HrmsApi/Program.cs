@@ -142,7 +142,7 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // ── Auto-run Database Migration on Startup (Railway) ─────
-// FORCE COMPLETE DATABASE RECREATION - This will drop and recreate everything
+// Apply migrations and seed data automatically
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -152,19 +152,16 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<HrmsDbContext>();
         
-        logger.LogWarning("🔥 FORCING COMPLETE DATABASE RECREATION...");
+        logger.LogInformation("🔄 Applying database migrations...");
         
-        // Drop entire database and recreate from scratch
-        context.Database.EnsureDeleted();
-        logger.LogInformation("✅ Database dropped");
-        
-        // Create fresh database with proper schema
+        // Simply run migrations - they will create/update tables as needed
         context.Database.Migrate();
-        logger.LogInformation("✅ Database recreated with all tables!");
+        logger.LogInformation("✅ Database migrations applied!");
         
-        // Seed leave types
+        // Seed leave types if they don't exist
         if (!context.LeaveTypes.Any())
         {
+            logger.LogInformation("🌱 Seeding leave types...");
             context.LeaveTypes.AddRange(new[]
             {
                 new HrmsApi.Models.LeaveType { Name = "Annual Leave", Code = "AL", DefaultDaysPerYear = 14, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
@@ -182,12 +179,12 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("✅ Leave types seeded (10 types)");
         }
         
-        logger.LogInformation("🎉 Database ready! All tables created with correct schema!");
+        logger.LogInformation("🎉 Database ready!");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Database setup failed");
-        throw; // Stop app if database setup fails
+        logger.LogError(ex, "❌ Database setup error - continuing anyway");
+        // Don't throw - let app start
     }
 }
 
