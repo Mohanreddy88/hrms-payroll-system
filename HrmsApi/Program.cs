@@ -152,9 +152,26 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<HrmsDbContext>();
         
-        logger.LogInformation("🔄 Applying database migrations...");
+        logger.LogInformation("🔄 Checking database state...");
         
-        // Simply run migrations - they will create/update tables as needed
+        // Check if migrations history exists but is empty - this causes issues
+        var historyExists = context.Database.ExecuteSqlRaw(@"
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = '__EFMigrationsHistory'") > -1;
+            
+        if (historyExists)
+        {
+            var migrationsCount = context.Database.SqlQueryRaw<int>(
+                @"SELECT COUNT(*)::int FROM ""__EFMigrationsHistory""").FirstOrDefault();
+                
+            if (migrationsCount == 0)
+            {
+                logger.LogWarning("⚠️ Found empty migrations history table - dropping it to force recreation");
+                context.Database.ExecuteSqlRaw(@"DROP TABLE IF EXISTS ""__EFMigrationsHistory"" CASCADE");
+            }
+        }
+        
+        logger.LogInformation("🔄 Applying database migrations...");
         context.Database.Migrate();
         logger.LogInformation("✅ Database migrations applied!");
         
