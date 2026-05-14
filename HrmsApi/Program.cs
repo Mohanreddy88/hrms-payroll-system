@@ -151,14 +151,40 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<HrmsDbContext>();
         var logger = services.GetRequiredService<ILogger<Program>>();
         
-        logger.LogInformation("🔄 Applying database migrations...");
-        context.Database.Migrate();
-        logger.LogInformation("✅ Database migrations applied successfully!");
+        logger.LogInformation("🔄 Checking database migrations...");
+        
+        // Check if tables already exist (from manual migration)
+        var canConnect = context.Database.CanConnect();
+        if (canConnect)
+        {
+            // If migration fails because tables exist, just mark it as applied
+            try
+            {
+                context.Database.Migrate();
+                logger.LogInformation("✅ Database migrations applied successfully!");
+            }
+            catch (Exception migEx) when (migEx.Message.Contains("already exists") || migEx.Message.Contains("42P07"))
+            {
+                logger.LogWarning("⚠️ Tables already exist - marking migration as complete");
+                
+                // Manually insert migration record to mark it as applied
+                context.Database.ExecuteSqlRaw(
+                    @"INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                      VALUES ('20260514070632_InitialCreate', '8.0.0')
+                      ON CONFLICT (""MigrationId"") DO NOTHING");
+                      
+                logger.LogInformation("✅ Migration marked as complete!");
+            }
+        }
+        else
+        {
+            logger.LogWarning("⚠️ Cannot connect to database - skipping migrations");
+        }
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "❌ Error applying database migrations - continuing anyway");
+        logger.LogError(ex, "❌ Error with database migrations - continuing anyway");
         // Don't throw - let app start even if migrations fail
     }
 }
