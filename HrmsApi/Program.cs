@@ -141,6 +141,28 @@ builder.Services.AddSwaggerGen(c =>
 // ── Build ─────────────────────────────────────────────────
 var app = builder.Build();
 
+// ── Auto-run Database Migration on Startup (Railway) ─────
+// This automatically applies EF Core migrations when app starts
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<HrmsDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogInformation("🔄 Applying database migrations...");
+        context.Database.Migrate();
+        logger.LogInformation("✅ Database migrations applied successfully!");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "❌ Error applying database migrations - continuing anyway");
+        // Don't throw - let app start even if migrations fail
+    }
+}
+
 // ── Middleware Pipeline ───────────────────────────────────
 app.UseGlobalExceptionHandler();   // Custom exception middleware
 
