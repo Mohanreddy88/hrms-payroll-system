@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Railway Migration - Ready to Paste</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        .box {
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #d63447;
+        }
+        .success {
+            background: #00d4aa;
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: #0f3460;
+            color: #eee;
+            border: 1px solid #e94560;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .steps {
+            background: #16213e;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #e94560;
+        }
+        h1 { color: #e94560; }
+        h2 { color: #00d4aa; }
+    </style>
+</head>
+<body>
+    <h1>🚀 HRMS Railway Migration - Ready!</h1>
+    
+    <div class="box">
+        <h2>📋 Step 1: Copy the SQL (Click Button)</h2>
+        <button onclick="copySql()">📋 COPY SQL TO CLIPBOARD</button>
+        <div id="copySuccess" class="success">✅ SQL Copied! Now go to Railway...</div>
+    </div>
+
+    <div class="box">
+        <h2>🌐 Step 2: Open Railway & Paste</h2>
+        <div class="steps">
+            <p><strong>1.</strong> Click this button to open Railway PostgreSQL:</p>
+            <button onclick="openRailway()">🚂 OPEN RAILWAY DATABASE</button>
+            
+            <p><strong>2.</strong> In Railway, click <strong>"Data"</strong> or <strong>"Query"</strong> tab</p>
+            
+            <p><strong>3.</strong> Press <strong>Ctrl+V</strong> to paste the SQL</p>
+            
+            <p><strong>4.</strong> Click <strong>"Run"</strong> or <strong>"Execute"</strong> button</p>
+            
+            <p><strong>5.</strong> Wait for: <code>✅ Migration Completed Successfully!</code></p>
+        </div>
+    </div>
+
+    <div class="box">
+        <h2>📄 SQL Preview (401 lines)</h2>
+        <textarea id="sqlContent" readonly></textarea>
+    </div>
+
+    <script>
+        // Load SQL content
+        async function loadSql() {
+            try {
+                const response = await fetch('HrmsApi/Migrations/postgresql_migration.sql');
+                const sql = await response.text();
+                document.getElementById('sqlContent').value = sql;
+            } catch (error) {
+                document.getElementById('sqlContent').value = 'Loading SQL from file...';
+            }
+        }
+
+        function copySql() {
+            const sql = document.getElementById('sqlContent').value;
+            navigator.clipboard.writeText(sql).then(() => {
+                document.getElementById('copySuccess').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('copySuccess').style.display = 'none';
+                }, 3000);
+            });
+        }
+
+        function openRailway() {
+            window.open('https://railway.com/project/8991a96c-79ec-4896-bd54-045822daa5e9/service/550bf54a-d78b-4108-81e3-1b6de556467d?environmentId=e2f263cc-9f30-4ba5-8da7-e9b431009056', '_blank');
+        }
+
+        // Load SQL on page load
+        loadSql();
+    </script>
+</body>
+</html>
