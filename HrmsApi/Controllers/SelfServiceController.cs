@@ -16,13 +16,22 @@ public class SelfServiceController : ControllerBase
 {
     private readonly HrmsDbContext _db;
     private readonly ILogger<SelfServiceController> _logger;
-    private readonly ITimesheetService _timesheetService;  // ADD THIS
+    private readonly ITimesheetService _timesheetService;
+    private readonly IEmailService _emailService;
+    private readonly IPdfService _pdfService;
 
-    public SelfServiceController(HrmsDbContext db, ILogger<SelfServiceController> logger, ITimesheetService timesheetService)  // ADD PARAMETER
+    public SelfServiceController(
+        HrmsDbContext db, 
+        ILogger<SelfServiceController> logger, 
+        ITimesheetService timesheetService,
+        IEmailService emailService,
+        IPdfService pdfService)
     {
         _db = db;
         _logger = logger;
-        _timesheetService = timesheetService;  // ADD THIS
+        _timesheetService = timesheetService;
+        _emailService = emailService;
+        _pdfService = pdfService;
     }
 
     /// <summary>
@@ -107,6 +116,160 @@ public class SelfServiceController : ControllerBase
 
         return Ok(new { message = "Profile updated successfully", employee });
     }
+    /// <summary>
+    /// GET /api/selfservice/dashboard - Get employee dashboard data
+    /// </summary>
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetEmployeeDashboard()
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var employee = await _db.Employees
+            .Include(e => e.Department)
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var currentYear = DateTime.Now.Year;
+        var currentMonth = DateTime.Now.Month;
+
+        // 1. Leave Balance Summary
+        var leaveBalances = await _db.EmployeeLeaveBalances
+            .Include(lb => lb.LeaveType)
+            .Where(lb => lb.EmployeeId == employee.Id && lb.Year == currentYear)
+            .Select(lb => new
+            {
+                leaveTypeCode = lb.LeaveType.Code,
+                leaveTypeName = lb.LeaveType.Name,
+                lb.TotalDays,
+                lb.UsedDays,
+                lb.BalanceDays,
+                lb.CarryForwardDays
+            })
+            .ToListAsync();
+
+        // 2. Pending Leave Requests Count
+        var pendingLeaveCount = await _db.LeaveRequests
+            .Where(lr => lr.EmployeeId == employee.Id && lr.Status == "Pending")
+            .CountAsync();
+
+        // 3. Pending Attendance Periods Count
+        var pendingAttendanceCount = await _db.AttendancePeriods
+            .Where(ap => ap.EmployeeId == employee.Id && ap.Status == "Submitted")
+            .CountAsync();
+
+        // 4. Recent Payslips (Last 3 months)
+        var recentPayslips = await _db.Payrolls
+            .Where(p => p.EmployeeId == employee.Id)
+            .OrderByDescending(p => p.Year)
+            .ThenByDescending(p => p.Month)
+            .Take(3)
+            .Select(p => new
+            {
+                p.Id,
+                p.Month,
+                p.Year,
+                monthYear = new DateTime(p.Year, p.Month, 1).ToString("MMM yyyy"),
+                p.NetSalary,
+                p.Status,
+                p.GeneratedOn
+            })
+            .ToListAsync();
+
+        // 5. Upcoming Leaves (Approved leaves in next 30 days)
+        var today = DateTime.Today;
+        var next30Days = today.AddDays(30);
+        var upcomingLeaves = await _db.LeaveRequests
+            .Include(lr => lr.LeaveType)
+            .Where(lr => lr.EmployeeId == employee.Id 
+                      && lr.Status == "Approved" 
+                      && lr.StartDate >= today 
+                      && lr.StartDate <= next30Days)
+            .OrderBy(lr => lr.StartDate)
+            .Select(lr => new
+            {
+                lr.Id,
+                leaveType = lr.LeaveType.Name,
+                leaveTypeCode = lr.LeaveType.Code,
+                lr.StartDate,
+                lr.EndDate,
+                lr.TotalDays
+            })
+            .ToListAsync();
+
+        // 6. Recent Attendance Periods (Last 3 periods)
+        var recentAttendance = await _db.AttendancePeriods
+            .Where(ap => ap.EmployeeId == employee.Id)
+            .OrderByDescending(ap => ap.StartDate)
+            .Take(3)
+            .Select(ap => new
+            {
+                ap.Id,
+                ap.StartDate,
+                ap.EndDate,
+                ap.Status,
+                periodLabel = ap.StartDate.ToString("MMM dd") + " - " + ap.EndDate.ToString("MMM dd, yyyy")
+            })
+            .ToListAsync();
+
+        // 7. Upcoming Public Holidays (Next 3 months)
+        var next3Months = today.AddMonths(3);
+        var upcomingHolidays = await _db.PublicHolidays
+            .Where(h => h.Date >= today && h.Date <= next3Months)
+            .OrderBy(h => h.Date)
+            .Take(5)
+            .Select(h => new
+            {
+                h.Id,
+                h.Name,
+                h.Date,
+                dayOfWeek = h.Date.DayOfWeek.ToString()
+            })
+            .ToListAsync();
+
+        // 8. Quick Stats
+        var stats = new
+        {
+            totalLeaveBalance = leaveBalances.Sum(lb => lb.BalanceDays),
+            totalLeaveUsed = leaveBalances.Sum(lb => lb.UsedDays),
+            pendingApprovals = pendingLeaveCount + pendingAttendanceCount,
+            currentMonthAttendance = await _db.AttendancePeriods
+                .Where(ap => ap.EmployeeId == employee.Id 
+                          && ap.StartDate.Month == currentMonth 
+                          && ap.StartDate.Year == currentYear)
+                .CountAsync()
+        };
+
+        return Ok(new
+        {
+            employee = new
+            {
+                employee.Id,
+                employee.Name,
+                employee.Email,
+                employee.EmployeeCode,
+                employee.Designation,
+                departmentName = employee.Department?.Name,
+                employee.JoinDate
+            },
+            stats,
+            leaveBalances,
+            pendingCounts = new
+            {
+                leaveRequests = pendingLeaveCount,
+                attendancePeriods = pendingAttendanceCount,
+                total = pendingLeaveCount + pendingAttendanceCount
+            },
+            recentPayslips,
+            upcomingLeaves,
+            recentAttendance,
+            upcomingHolidays
+        });
+    }
+
 
     /// <summary>
     /// GET /api/selfservice/my-payslips - Get current user's payslips
@@ -155,6 +318,141 @@ public class SelfServiceController : ControllerBase
             .ToListAsync();
 
         return Ok(payslips);
+    }
+
+    /// <summary>
+    /// GET /api/selfservice/my-payslips/{id} - Get specific payslip details for current user
+    /// </summary>
+    [HttpGet("my-payslips/{id:int}")]
+    public async Task<IActionResult> GetMyPayslipById(int id)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var payslip = await _db.Payrolls
+            .Include(p => p.Employee)
+            .Include(p => p.Approver)
+            .Include(p => p.Processor)
+            .FirstOrDefaultAsync(p => p.Id == id && p.EmployeeId == employee.Id);
+
+        if (payslip == null)
+            return NotFound(new { message = "Payslip not found or does not belong to you" });
+
+        return Ok(new
+        {
+            payslip.Id,
+            payslip.Month,
+            payslip.Year,
+            monthName = new DateTime(payslip.Year, payslip.Month, 1).ToString("MMMM yyyy"),
+            payslip.BasicSalary,
+            payslip.Allowances,
+            payslip.Deductions,
+            payslip.EpfAmount,
+            payslip.SocsoAmount,
+            payslip.TaxAmount,
+            payslip.GrossIncome,
+            payslip.NetSalary,
+            payslip.Status,
+            payslip.GeneratedOn,
+            approverName = payslip.Approver?.Username,
+            payslip.ApprovedOn
+        });
+    }
+
+    /// <summary>
+    /// POST /api/selfservice/my-payslips/{id}/email - Request payslip to be emailed
+    /// </summary>
+    [HttpPost("my-payslips/{id:int}/email")]
+    public async Task<IActionResult> EmailMyPayslip(int id)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var payroll = await _db.Payrolls
+            .Include(p => p.Employee)
+            .FirstOrDefaultAsync(p => p.Id == id && p.EmployeeId == employee.Id);
+
+        if (payroll == null)
+            return NotFound(new { message = "Payslip not found or does not belong to you" });
+
+        if (string.IsNullOrWhiteSpace(employee.Email))
+            return BadRequest(new { message = "Your employee profile does not have an email address configured" });
+
+        try
+        {
+            // Generate PDF attachment
+            var pdfData = await _pdfService.GeneratePayslipPdfAsync(id);
+            var monthName = new DateTime(payroll.Year, payroll.Month, 1).ToString("MMMM_yyyy");
+            var fileName = $"Payslip_{payroll.Employee.Name.Replace(" ", "_")}_{monthName}.pdf";
+
+            var subject = $"Payslip for {new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy}";
+            var body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a; background-color: #f5f5f5; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; background-color: white; }}
+        .header {{ background: #4169E1; color: white; padding: 40px 20px; text-align: center; }}
+        .header h1 {{ margin: 0; font-size: 24px; font-weight: normal; }}
+        .content {{ padding: 40px 30px; background-color: white; }}
+        .content p {{ margin: 10px 0; color: #1a1a1a; font-size: 15px; }}
+        .salary-box {{ background: white; padding: 30px; margin: 30px 0; text-align: center; border: 3px solid #e0e0e0; border-left: 6px solid #10b981; }}
+        .salary-label {{ margin: 0; font-size: 16px; color: #666; }}
+        .salary-amount {{ font-size: 48px; font-weight: bold; color: #10b981; margin: 10px 0; }}
+        .footer {{ background: #f8f9fa; padding: 20px; text-align: center; font-size: 13px; color: #666; }}
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <div class=""header"">
+            <h1>🧾 Your Payslip is Ready</h1>
+        </div>
+        <div class=""content"">
+            <p>Dear <strong>{payroll.Employee.Name}</strong>,</p>
+            <p>Your payslip for <strong>{new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy}</strong> is now available.</p>
+            
+            <div class=""salary-box"">
+                <p class=""salary-label"">Net Salary</p>
+                <div class=""salary-amount"">RM {payroll.NetSalary:N2}</div>
+            </div>
+
+            <p>Please find your detailed payslip attached as a PDF document.</p>
+            <p>If you have any questions regarding your payslip, please contact the HR department.</p>
+        </div>
+        <div class=""footer"">
+            <p>This is an automated email from the HRMS Payroll System.</p>
+            <p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+            await _emailService.SendEmailWithAttachmentAsync(employee.Email, subject, body, pdfData, fileName);
+
+            _logger.LogInformation("Payslip email sent to {Email} for payroll ID {PayrollId}", employee.Email, id);
+
+            return Ok(new { message = $"Payslip email with PDF sent successfully to {employee.Email}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send payslip email for payroll ID {PayrollId}", id);
+            return StatusCode(500, new { message = $"Failed to send email: {ex.Message}" });
+        }
     }
 
     /// <summary>

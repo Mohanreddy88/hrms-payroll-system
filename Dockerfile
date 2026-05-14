@@ -1,45 +1,43 @@
-# Build stage
+# ===================================
+# HRMS API - Multi-stage Dockerfile
+# Optimized for Railway deployment
+# ===================================
+
+# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy project file
-COPY ["HrmsApi/HrmsApi.csproj", "HrmsApi/"]
-
-# Restore dependencies
+# Copy project file and restore dependencies
+COPY HrmsApi/HrmsApi.csproj HrmsApi/
 RUN dotnet restore "HrmsApi/HrmsApi.csproj"
 
-# Copy all source files
+# Copy all source code
 COPY HrmsApi/ HrmsApi/
 
-# Build and publish
+# Build the application
 WORKDIR /src/HrmsApi
-RUN dotnet publish "HrmsApi.csproj" -c Release -o /app/publish
+RUN dotnet build "HrmsApi.csproj" -c Release -o /app/build
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS final
+# Stage 2: Publish
+FROM build AS publish
+RUN dotnet publish "HrmsApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Copy published output
-COPY --from=build /app/publish .
+# Install PostgreSQL client tools (optional, for debugging)
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
 
-# Install EF Core tools for migrations
-RUN dotnet tool install --global dotnet-ef --version 8.0.0
-ENV PATH="${PATH}:/root/.dotnet/tools"
+# Copy published application
+COPY --from=publish /app/publish .
 
-# Set environment
-ENV ASPNETCORE_URLS=http://+:8080
+# Expose port (Railway assigns PORT dynamically)
 EXPOSE 8080
 
-# Create startup script that runs migrations
-RUN echo '#!/bin/bash\n\
-set -e\n\
-echo "HRMS API Starting..."\n\
-echo "Waiting for database connection..."\n\
-sleep 5\n\
-echo "Running database migrations..."\n\
-dotnet ef database update --no-build || echo "Migrations already applied or failed"\n\
-echo "Starting application..."\n\
-exec dotnet HrmsApi.dll\n' > /app/start.sh && chmod +x /app/start.sh
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Start
-CMD ["/bin/bash", "/app/start.sh"]
+# Run the application
+ENTRYPOINT ["dotnet", "HrmsApi.dll"]

@@ -28,7 +28,7 @@ public class EmployeesController : ControllerBase
             .OrderBy(e => e.Name)
             .Select(e => new
             {
-                e.Id, e.Name, e.Email, e.Phone,
+                e.Id, e.EmployeeCode, e.Name, e.Email, e.Phone,
                 e.DepartmentId,
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
@@ -40,7 +40,13 @@ public class EmployeesController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(employees);
+        // Remove duplicates in memory
+        var uniqueEmployees = employees
+            .GroupBy(e => e.Id)
+            .Select(g => g.First())
+            .ToList();
+
+        return Ok(uniqueEmployees);
     }
 
     /// <summary>
@@ -57,7 +63,7 @@ public class EmployeesController : ControllerBase
             .OrderBy(e => e.Name)
             .Select(e => new
             {
-                e.Id, e.Name, e.Email, e.Phone,
+                e.Id, e.EmployeeCode, e.Name, e.Email, e.Phone,
                 e.DepartmentId,
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
@@ -69,7 +75,13 @@ public class EmployeesController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(employees);
+        // Remove duplicates in memory
+        var uniqueEmployees = employees
+            .GroupBy(e => e.Id)
+            .Select(g => g.First())
+            .ToList();
+
+        return Ok(uniqueEmployees);
     }
 
     /// <summary>
@@ -85,7 +97,7 @@ public class EmployeesController : ControllerBase
             .Where(e => e.Id == id)
             .Select(e => new
             {
-                e.Id, e.Name, e.Email, e.Phone,
+                e.Id, e.EmployeeCode, e.Name, e.Email, e.Phone,
                 e.DepartmentId,
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
@@ -124,8 +136,30 @@ public class EmployeesController : ControllerBase
                 throw new KeyNotFoundException($"Bank with ID {req.BankId} not found.");
         }
 
+        // Auto-generate employee code
+        var lastEmployee = await _db.Employees
+            .OrderByDescending(e => e.Id)
+            .FirstOrDefaultAsync();
+        
+        int nextSequence = 1;
+        if (lastEmployee != null && !string.IsNullOrEmpty(lastEmployee.EmployeeCode))
+        {
+            var lastCode = lastEmployee.EmployeeCode;
+            if (lastCode.StartsWith("EMP") && lastCode.Length > 3)
+            {
+                var numberPart = lastCode.Substring(3);
+                if (int.TryParse(numberPart, out int lastNumber))
+                {
+                    nextSequence = lastNumber + 1;
+                }
+            }
+        }
+        
+        var employeeCode = $"EMP{nextSequence:D6}";
+
         var emp = new Employee
         {
+            EmployeeCode   = employeeCode,
             Name           = req.Name,
             Email          = req.Email,
             Phone          = req.Phone,
@@ -144,7 +178,11 @@ public class EmployeesController : ControllerBase
         _db.Employees.Add(emp);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = emp.Id }, emp);
+        return CreatedAtAction(nameof(GetById), new { id = emp.Id }, new { 
+            message = "Employee created successfully", 
+            employeeCode = employeeCode,
+            id = emp.Id 
+        });
     }
 
     /// <summary>

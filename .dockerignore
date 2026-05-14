@@ -1,11 +1,86 @@
-bin/
-obj/
+# ===================================
+# Docker ignore file for HRMS API
+# ===================================
+
+# Build output
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# Visual Studio cache
 .vs/
 .vscode/
-node_modules/
-dist/
-.angular/
+
+# Test results
+TestResults/
+[Tt]est[Rr]esult*/
+
+# NuGet packages
+*.nupkg
+**/packages/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Log files
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Git
 .git/
-hrms-ui/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
 *.md
+!DEPLOY.md
+
+# Backup files
+Backup/
+*backup*
+*.bak
+
+# Migration output
+migration-output.log
+api-output.log
+api_output.log
+api_log.txt
+
+# Temporary files
+*.tmp
+*.temp
+**/wwwroot/uploads/
+
+# Node modules (if any)
+node_modules/
+
+# Angular build (if in same repo)
+hrms-ui/node_modules/
+hrms-ui/dist/
+hrms-ui/.angular/
+
+# Data migration tool
+DataMigrationTool/bin/
+DataMigrationTool/obj/
+
+# Update password tool
+UpdatePassword/
+
+# Text files
 *.txt
+!requirements.txt

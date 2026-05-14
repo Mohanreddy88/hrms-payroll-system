@@ -31,6 +31,15 @@ public class AuthController : ControllerBase
 
         var (token, expiresAt) = _tokenService.GenerateToken(user);
 
-        return Ok(new LoginResponse(token, user.Username, user.Role, expiresAt));
+        // Find associated employee record (for non-admin users)
+        int? employeeId = null;
+        if (user.Role.ToLower() != "admin")
+        {
+            var employee = await _db.Employees
+                .FirstOrDefaultAsync(e => e.Email == user.Email || e.Email == user.Username);
+            employeeId = employee?.Id;
+        }
+
+        return Ok(new LoginResponse(token, user.Username, user.Role, expiresAt, employeeId));
     }
 }

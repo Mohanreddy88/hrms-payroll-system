@@ -19,6 +19,12 @@ public class HrmsDbContext : DbContext
     public DbSet<LeaveType>             LeaveTypes            => Set<LeaveType>();
     public DbSet<EmployeeLeaveBalance>  EmployeeLeaveBalances => Set<EmployeeLeaveBalance>();
     public DbSet<LeaveRequest>          LeaveRequests         => Set<LeaveRequest>();
+    public DbSet<AttendancePeriod>      AttendancePeriods     => Set<AttendancePeriod>();
+    public DbSet<AttendancePeriodDay>   AttendancePeriodDays  => Set<AttendancePeriodDay>();
+    public DbSet<PayrollAttendancePeriod> PayrollAttendancePeriods => Set<PayrollAttendancePeriod>();
+    public DbSet<PayrollLeaveRequest>   PayrollLeaveRequests  => Set<PayrollLeaveRequest>();
+    public DbSet<PayrollAdjustment>     PayrollAdjustments    => Set<PayrollAdjustment>();
+    public DbSet<Notification>          Notifications         => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +36,17 @@ public class HrmsDbContext : DbContext
             e.ToTable("BankMaster");
         });
 
+        // ── User ──────────────────────────────────────────────
+        modelBuilder.Entity<User>(e =>
+        {
+            e.Property(x => x.Email)
+             .HasMaxLength(255);
+            
+            e.HasIndex(x => x.Email)
+             .IsUnique()
+             .HasFilter("[Email] IS NOT NULL AND [Email] <> ''");
+        });
+
         // ── Department ────────────────────────────────────────
         modelBuilder.Entity<Department>(e =>
         {
@@ -39,6 +56,14 @@ public class HrmsDbContext : DbContext
         // ── Employee ──────────────────────────────────────────
         modelBuilder.Entity<Employee>(e =>
         {
+            // EmployeeCode configuration
+            e.Property(x => x.EmployeeCode)
+             .IsRequired()
+             .HasMaxLength(20);
+            
+            e.HasIndex(x => x.EmployeeCode)
+             .IsUnique();
+
             e.Property(x => x.Salary).HasPrecision(18, 2);
 
             // DepartmentId is a nullable FK — employee may not have a department assigned yet
@@ -65,6 +90,72 @@ public class HrmsDbContext : DbContext
             e.Property(x => x.TaxAmount).HasPrecision(18, 2);
             e.Property(x => x.GrossIncome).HasPrecision(18, 2);
             e.Property(x => x.NetSalary).HasPrecision(18, 2);
+            e.Property(x => x.AttendanceHours).HasPrecision(10, 2);
+            e.Property(x => x.ExpectedHours).HasPrecision(10, 2);
+
+            // Foreign keys for approvers
+            e.HasOne(x => x.Approver)
+             .WithMany()
+             .HasForeignKey(x => x.ApprovedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Processor)
+             .WithMany()
+             .HasForeignKey(x => x.ProcessedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── PayrollAttendancePeriod ───────────────────────────
+        modelBuilder.Entity<PayrollAttendancePeriod>(e =>
+        {
+            e.Property(x => x.HoursWorked).HasPrecision(10, 2);
+
+            e.HasOne(x => x.Payroll)
+             .WithMany(p => p.AttendancePeriods)
+             .HasForeignKey(x => x.PayrollId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.AttendancePeriod)
+             .WithMany()
+             .HasForeignKey(x => x.AttendancePeriodId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.PayrollId, x.AttendancePeriodId }).IsUnique();
+        });
+
+        // ── PayrollLeaveRequest ───────────────────────────────
+        modelBuilder.Entity<PayrollLeaveRequest>(e =>
+        {
+            e.Property(x => x.LeaveDays).HasPrecision(5, 2);
+            e.Property(x => x.DeductionAmount).HasPrecision(10, 2);
+
+            e.HasOne(x => x.Payroll)
+             .WithMany(p => p.LeaveRequests)
+             .HasForeignKey(x => x.PayrollId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.LeaveRequest)
+             .WithMany()
+             .HasForeignKey(x => x.LeaveRequestId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.PayrollId, x.LeaveRequestId }).IsUnique();
+        });
+
+        // ── PayrollAdjustment ─────────────────────────────────
+        modelBuilder.Entity<PayrollAdjustment>(e =>
+        {
+            e.Property(x => x.Amount).HasPrecision(10, 2);
+
+            e.HasOne(x => x.Payroll)
+             .WithMany(p => p.Adjustments)
+             .HasForeignKey(x => x.PayrollId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Creator)
+             .WithMany()
+             .HasForeignKey(x => x.CreatedBy)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ── Attendance ────────────────────────────────────────
@@ -145,6 +236,31 @@ public class HrmsDbContext : DbContext
              .WithMany(lt => lt.LeaveRequests)
              .HasForeignKey(x => x.LeaveTypeId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── Attendance Period ─────────────────────────────────
+        modelBuilder.Entity<AttendancePeriod>(e =>
+        {
+            e.HasOne(x => x.Employee)
+             .WithMany()
+             .HasForeignKey(x => x.EmployeeId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // One period per employee per date range (prevent overlapping periods)
+            e.HasIndex(x => new { x.EmployeeId, x.StartDate, x.EndDate }).IsUnique();
+        });
+
+        modelBuilder.Entity<AttendancePeriodDay>(e =>
+        {
+            e.Property(x => x.Hours).HasPrecision(5, 2);
+
+            e.HasOne(x => x.AttendancePeriod)
+             .WithMany(ap => ap.Days)
+             .HasForeignKey(x => x.AttendancePeriodId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // One day entry per period per date
+            e.HasIndex(x => new { x.AttendancePeriodId, x.Date }).IsUnique();
         });
     }
 }

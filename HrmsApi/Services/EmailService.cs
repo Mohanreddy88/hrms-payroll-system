@@ -9,6 +9,8 @@ public interface IEmailService
     Task SendBulkPayslipEmailsAsync(List<PayslipEmailData> recipients);
     Task SendEmailAsync(string toEmail, string subject, string body);
     Task SendEmailWithAttachmentAsync(string toEmail, string subject, string body, byte[] attachmentData, string attachmentName);
+    Task SendAttendanceApprovedEmailAsync(string toEmail, string employeeName, DateTime startDate, DateTime endDate);
+    Task SendAttendanceRejectedEmailAsync(string toEmail, string employeeName, DateTime startDate, DateTime endDate, string rejectionReason);
 }
 
 public class PayslipEmailData
@@ -174,6 +176,125 @@ public class EmailService : IEmailService
             _logger.LogError(ex, "Failed to send email with attachment to {Email}", toEmail);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Sends attendance approved notification email
+    /// </summary>
+    public async Task SendAttendanceApprovedEmailAsync(string toEmail, string employeeName, DateTime startDate, DateTime endDate)
+    {
+        var subject = $"Attendance Period Approved - {startDate:dd MMM yyyy} to {endDate:dd MMM yyyy}";
+        var body = GenerateAttendanceApprovedEmailBody(employeeName, startDate, endDate);
+        await SendEmailAsync(toEmail, subject, body);
+    }
+
+    /// <summary>
+    /// Sends attendance rejected notification email
+    /// </summary>
+    public async Task SendAttendanceRejectedEmailAsync(string toEmail, string employeeName, DateTime startDate, DateTime endDate, string rejectionReason)
+    {
+        var subject = $"Attendance Period Rejected - {startDate:dd MMM yyyy} to {endDate:dd MMM yyyy}";
+        var body = GenerateAttendanceRejectedEmailBody(employeeName, startDate, endDate, rejectionReason);
+        await SendEmailAsync(toEmail, subject, body);
+    }
+
+    /// <summary>
+    /// Generates HTML email body for attendance approved notification
+    /// </summary>
+    private string GenerateAttendanceApprovedEmailBody(string employeeName, DateTime startDate, DateTime endDate)
+    {
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .content {{ background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }}
+        .footer {{ text-align: center; margin-top: 20px; color: #888; font-size: 12px; }}
+        .success-icon {{ font-size: 48px; text-align: center; margin: 20px 0; }}
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <div class=""header"">
+            <h1>✅ Attendance Approved</h1>
+        </div>
+        <div class=""content"">
+            <div class=""success-icon"">✓</div>
+            <p>Dear <strong>{employeeName}</strong>,</p>
+            <p>Your attendance period has been <strong>approved</strong> by the administrator.</p>
+            
+            <div class=""info-box"">
+                <p style=""margin: 0; font-size: 14px; color: #666;""><strong>Period:</strong></p>
+                <p style=""margin: 5px 0; font-size: 16px; color: #000;"">{startDate:dddd, dd MMMM yyyy} - {endDate:dddd, dd MMMM yyyy}</p>
+            </div>
+
+            <p>No further action is required from you.</p>
+            
+            <p style=""margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 13px; color: #666;"">
+                <strong>Note:</strong> This is an automated email. Please do not reply to this message.
+            </p>
+        </div>
+        <div class=""footer"">
+            <p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// Generates HTML email body for attendance rejected notification
+    /// </summary>
+    private string GenerateAttendanceRejectedEmailBody(string employeeName, DateTime startDate, DateTime endDate, string rejectionReason)
+    {
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: #ef4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .content {{ background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }}
+        .footer {{ text-align: center; margin-top: 20px; color: #888; font-size: 12px; }}
+        .warning-icon {{ font-size: 48px; text-align: center; margin: 20px 0; color: #ef4444; }}
+        .btn {{ display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin-top: 15px; }}
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <div class=""header"">
+            <h1>⚠️ Attendance Rejected</h1>
+        </div>
+        <div class=""content"">
+            <div class=""warning-icon"">✗</div>
+            <p>Dear <strong>{employeeName}</strong>,</p>
+            <p>Your attendance period has been <strong>rejected</strong> by the administrator.</p>
+            
+            <div class=""info-box"">
+                <p style=""margin: 0; font-size: 14px; color: #666;""><strong>Period:</strong></p>
+                <p style=""margin: 5px 0 15px 0; font-size: 16px; color: #000;"">{startDate:dddd, dd MMMM yyyy} - {endDate:dddd, dd MMMM yyyy}</p>
+                <p style=""margin: 0; font-size: 14px; color: #666;""><strong>Reason:</strong></p>
+                <p style=""margin: 5px 0; font-size: 15px; color: #dc2626; font-weight: 500;"">{rejectionReason}</p>
+            </div>
+
+            <p>Please log in to the HRMS portal, amend your attendance data according to the reason above, and resubmit for approval.</p>
+            
+            <p style=""margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 13px; color: #666;"">
+                <strong>Note:</strong> This is an automated email. Please do not reply to this message.
+            </p>
+        </div>
+        <div class=""footer"">
+            <p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
     }
 
     /// <summary>

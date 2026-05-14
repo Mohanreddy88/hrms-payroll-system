@@ -81,7 +81,31 @@ public class LeaveService : ILeaveService
                 $"Insufficient leave balance. Available: {balance.BalanceDays} days, Requested: {leaveDays} days");
         }
 
-        // Create leave request
+        // Check for existing leave request with same dates (only Pending or Draft status)
+        var existingRequest = await _db.LeaveRequests
+            .FirstOrDefaultAsync(lr => lr.EmployeeId == request.EmployeeId
+                                    && lr.StartDate == request.StartDate
+                                    && lr.EndDate == request.EndDate
+                                    && (lr.Status == "Pending" || lr.Status == "Draft"));
+
+        if (existingRequest != null)
+        {
+            // Update existing request instead of creating duplicate
+            existingRequest.LeaveTypeId = request.LeaveTypeId;
+            existingRequest.TotalDays = leaveDays;
+            existingRequest.Reason = request.Reason;
+            existingRequest.Status = "Pending";
+            existingRequest.RequestedOn = DateTime.UtcNow;
+            
+            await _db.SaveChangesAsync();
+            
+            _logger.LogInformation("Leave request updated: Id {Id}, Employee {EmployeeId}, Type {LeaveType}, Days {Days}",
+                existingRequest.Id, request.EmployeeId, leaveType.Name, leaveDays);
+            
+            return existingRequest;
+        }
+
+        // Create new leave request
         var leaveRequest = new LeaveRequest
         {
             EmployeeId = request.EmployeeId,

@@ -7,6 +7,13 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 
+// Check for command-line utilities
+if (args.Length > 0 && args[0] == "generate-hash")
+{
+    HrmsApi.HashGenerator.GenerateHash();
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Railway Environment Variables Override ──────────────
@@ -102,6 +109,7 @@ builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
+builder.Services.AddScoped<IPayrollCalculationService, PayrollCalculationService>();
 builder.Services.AddControllers();
 
 // ── Swagger/OpenAPI ───────────────────────────────────────
