@@ -142,50 +142,52 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // ── Auto-run Database Migration on Startup (Railway) ─────
-// This automatically applies EF Core migrations when app starts
+// FORCE COMPLETE DATABASE RECREATION - This will drop and recreate everything
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
     try
     {
         var context = services.GetRequiredService<HrmsDbContext>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
         
-        logger.LogInformation("🔄 Checking database migrations...");
+        logger.LogWarning("🔥 FORCING COMPLETE DATABASE RECREATION...");
         
-        // Check if tables already exist (from manual migration)
-        var canConnect = context.Database.CanConnect();
-        if (canConnect)
+        // Drop entire database and recreate from scratch
+        context.Database.EnsureDeleted();
+        logger.LogInformation("✅ Database dropped");
+        
+        // Create fresh database with proper schema
+        context.Database.Migrate();
+        logger.LogInformation("✅ Database recreated with all tables!");
+        
+        // Seed leave types
+        if (!context.LeaveTypes.Any())
         {
-            // If migration fails because tables exist, just mark it as applied
-            try
+            context.LeaveTypes.AddRange(new[]
             {
-                context.Database.Migrate();
-                logger.LogInformation("✅ Database migrations applied successfully!");
-            }
-            catch (Exception migEx) when (migEx.Message.Contains("already exists") || migEx.Message.Contains("42P07"))
-            {
-                logger.LogWarning("⚠️ Tables already exist - marking migration as complete");
-                
-                // Manually insert migration record to mark it as applied
-                context.Database.ExecuteSqlRaw(
-                    @"INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-                      VALUES ('20260514070632_InitialCreate', '8.0.0')
-                      ON CONFLICT (""MigrationId"") DO NOTHING");
-                      
-                logger.LogInformation("✅ Migration marked as complete!");
-            }
+                new HrmsApi.Models.LeaveType { Name = "Annual Leave", Code = "AL", DefaultDaysPerYear = 14, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Medical Leave", Code = "ML", DefaultDaysPerYear = 14, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Emergency Leave", Code = "EL", DefaultDaysPerYear = 2, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Casual Leave", Code = "CL", DefaultDaysPerYear = 3, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Maternity Leave", Code = "MTL", DefaultDaysPerYear = 98, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Paternity Leave", Code = "PTL", DefaultDaysPerYear = 7, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Unpaid Leave", Code = "UL", DefaultDaysPerYear = 0, IsActive = true, RequiresApproval = true, IsPaid = false, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Study Leave", Code = "SL", DefaultDaysPerYear = 5, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Hajj Leave", Code = "HL", DefaultDaysPerYear = 0, IsActive = true, RequiresApproval = true, IsPaid = false, CreatedAt = DateTime.UtcNow },
+                new HrmsApi.Models.LeaveType { Name = "Replacement Leave", Code = "RL", DefaultDaysPerYear = 0, IsActive = true, RequiresApproval = true, IsPaid = true, CreatedAt = DateTime.UtcNow }
+            });
+            context.SaveChanges();
+            logger.LogInformation("✅ Leave types seeded (10 types)");
         }
-        else
-        {
-            logger.LogWarning("⚠️ Cannot connect to database - skipping migrations");
-        }
+        
+        logger.LogInformation("🎉 Database ready! All tables created with correct schema!");
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "❌ Error with database migrations - continuing anyway");
-        // Don't throw - let app start even if migrations fail
+        logger.LogError(ex, "❌ Database setup failed");
+        throw; // Stop app if database setup fails
     }
 }
 
