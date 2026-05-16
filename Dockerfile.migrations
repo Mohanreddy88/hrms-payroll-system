@@ -1,0 +1,31 @@
+# Dockerfile for running HRMS database migrations
+# This is a one-time job that applies migrations to Railway PostgreSQL
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project file and restore
+COPY HrmsApi/*.csproj ./HrmsApi/
+RUN dotnet restore HrmsApi/HrmsApi.csproj
+
+# Copy source code
+COPY HrmsApi/ ./HrmsApi/
+
+# Build migration bundle
+RUN dotnet tool install --global dotnet-ef --version 8.0.0
+ENV PATH="${PATH}:/root/.dotnet/tools"
+WORKDIR /src/HrmsApi
+RUN dotnet ef migrations bundle --self-contained -r linux-x64 -o /app/efbundle
+
+# Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+# Copy migration bundle
+COPY --from=build /app/efbundle ./efbundle
+
+# Copy migration script
+COPY run-migrations.sh ./run-migrations.sh
+RUN chmod +x ./run-migrations.sh
+
+CMD ["./run-migrations.sh"]
