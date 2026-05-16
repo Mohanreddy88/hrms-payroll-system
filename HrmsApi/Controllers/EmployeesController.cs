@@ -136,22 +136,28 @@ public class EmployeesController : ControllerBase
                 throw new KeyNotFoundException($"Bank with ID {req.BankId} not found.");
         }
 
-        // Auto-generate employee code
-        var lastEmployee = await _db.Employees
-            .OrderByDescending(e => e.Id)
-            .FirstOrDefaultAsync();
+        // Auto-generate employee code - find the highest sequence number from all employee codes
+        var allEmployeeCodes = await _db.Employees
+            .Where(e => e.EmployeeCode.StartsWith("EMP"))
+            .Select(e => e.EmployeeCode)
+            .ToListAsync();
         
         int nextSequence = 1;
-        if (lastEmployee != null && !string.IsNullOrEmpty(lastEmployee.EmployeeCode))
+        if (allEmployeeCodes.Any())
         {
-            var lastCode = lastEmployee.EmployeeCode;
-            if (lastCode.StartsWith("EMP") && lastCode.Length > 3)
-            {
-                var numberPart = lastCode.Substring(3);
-                if (int.TryParse(numberPart, out int lastNumber))
+            var sequenceNumbers = allEmployeeCodes
+                .Select(code => 
                 {
-                    nextSequence = lastNumber + 1;
-                }
+                    if (code.Length > 3 && int.TryParse(code.Substring(3), out int num))
+                        return num;
+                    return 0;
+                })
+                .Where(num => num > 0)
+                .ToList();
+            
+            if (sequenceNumbers.Any())
+            {
+                nextSequence = sequenceNumbers.Max() + 1;
             }
         }
         
