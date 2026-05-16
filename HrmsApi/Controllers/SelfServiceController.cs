@@ -591,15 +591,13 @@ public class SelfServiceController : ControllerBase
                 ap.StartDate,
                 ap.EndDate,
                 ap.Status,
-                ap.TotalWorkingDays,
-                ap.TotalPresent,
-                ap.TotalAbsent,
-                ap.TotalLeave,
-                ap.TotalHalfDay,
-                ap.TotalWorkHours,
-                ap.SubmittedOn,
+                ap.CreatedAt,
+                ap.SubmittedAt,
+                ap.ApprovedAt,
+                ap.RejectedAt,
                 ap.ApprovedBy,
-                ap.ApprovedOn,
+                ap.RejectedBy,
+                ap.RejectionReason,
                 ap.Remarks,
                 periodLabel = ap.StartDate.ToString("MMM dd") + " - " + ap.EndDate.ToString("MMM dd, yyyy")
             })
@@ -607,6 +605,7 @@ public class SelfServiceController : ControllerBase
 
         return Ok(attendancePeriods);
     }
+
 
     /// <summary>\r\n    /// GET /api/selfservice/my-leave-requests - Get current user's leave requests
     /// </summary>
