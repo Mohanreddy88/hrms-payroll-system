@@ -26,7 +26,17 @@ public class AuthController : ControllerBase
         var user = await _db.Users
             .FirstOrDefaultAsync(u => u.Username == request.Username);
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (user is null)
+            throw new UnauthorizedAccessException("Invalid username or password.");
+
+        // Debug logging
+        Console.WriteLine($"Login attempt - Username: {request.Username}, Password provided: {request.Password}");
+        Console.WriteLine($"User found - Username: {user.Username}, Hash: {user.PasswordHash}");
+        
+        var passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        Console.WriteLine($"Password verification result: {passwordValid}");
+        
+        if (!passwordValid)
             throw new UnauthorizedAccessException("Invalid username or password.");
 
         var (token, expiresAt) = _tokenService.GenerateToken(user);
@@ -41,5 +51,20 @@ public class AuthController : ControllerBase
         }
 
         return Ok(new LoginResponse(token, user.Username, user.Role, expiresAt, employeeId));
+    }
+    
+    /// <summary>POST /api/auth/test-hash — test password hash (temporary debug endpoint)</summary>
+    [HttpPost("test-hash")]
+    public IActionResult TestHash([FromBody] LoginRequest request)
+    {
+        var hash = "$2a$11$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+        var isValid = BCrypt.Net.BCrypt.Verify(request.Password, hash);
+        
+        return Ok(new { 
+            providedPassword = request.Password,
+            expectedHash = hash,
+            isValid = isValid,
+            message = isValid ? "Password matches!" : "Password does NOT match"
+        });
     }
 }
