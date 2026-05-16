@@ -1,0 +1,19 @@
+<div class="navbar">
+
+  <div class="navbar-left">
+    <button class="mobile-menu-toggle" (click)="toggleMobileMenu()">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="avatar">{{ avatarChar }}</div>
+    <span class="welcome-text">Welcome, {{ username }}</span>
+  </div>
+
+  <div class="navbar-right">
+    <span class="email-text">{{ userEmail }}</span>
+    <button class="btn-logout" (click)="logout()">Logout</button>
+  </div>
+
+</div>
+
+<!-- Mobile overlay -->
+<div class="mobile-overlay" [class.show]="mobileMenuOpen" (click)="closeMobileMenu()"></div>

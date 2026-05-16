@@ -92,14 +92,29 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ── CORS — allow Angular dev server ─────────────────────
+// ── CORS — allow Angular dev server and production ─────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
+    {
+        var origins = new List<string> 
+        { 
+            "http://localhost:4200", 
+            "https://localhost:4200" 
+        };
+        
+        // Add Railway domain if deployed
+        var railwayUrl = Environment.GetEnvironmentVariable("RAILWAY_PUBLIC_DOMAIN");
+        if (!string.IsNullOrEmpty(railwayUrl))
+        {
+            origins.Add($"https://{railwayUrl}");
+        }
+        
+        policy.WithOrigins(origins.ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials());
+              .AllowCredentials();
+    });
 });
 
 // ── Services ─────────────────────────────────────────────
@@ -196,6 +211,24 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("✅ Leave types seeded (10 types)");
         }
         
+        // Seed default admin user if no users exist
+        if (!context.Users.Any())
+        {
+            logger.LogInformation("🌱 Seeding default admin user...");
+            var adminUser = new HrmsApi.Models.User
+            {
+                Username = "admin",
+                Email = "admin@hrms.local",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                Role = "Admin",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(adminUser);
+            context.SaveChanges();
+            logger.LogInformation("✅ Default admin user created (Username: admin, Password: Admin@123)");
+        }
+        
         logger.LogInformation("🎉 Database ready!");
     }
     catch (Exception ex)
@@ -226,3 +259,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Make Program class accessible for integration testing
+public partial class Program { }

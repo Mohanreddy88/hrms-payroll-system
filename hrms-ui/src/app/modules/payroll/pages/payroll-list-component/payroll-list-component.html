@@ -1,0 +1,409 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h2><i class="bi bi-cash-stack"></i> Payroll Management</h2>
+      <p>Review, approve, and manage employee payroll records</p>
+    </div>
+    <button class="btn btn-primary" (click)="navigateToGenerate()">
+      <i class="bi bi-plus-circle"></i>
+      Generate Payroll
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <h5><i class="bi bi-funnel"></i> Filters</h5>
+    <div class="filter-row">
+      <div class="form-group">
+        <label>Status</label>
+        <select [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()" class="form-control">
+          <option value="">All Statuses</option>
+          <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Employee</label>
+        <select [(ngModel)]="filterEmployeeId" class="form-control">
+          <option [ngValue]="null">All Employees</option>
+          <option *ngFor="let emp of employees" [ngValue]="emp.id">{{ emp.employeeCode }} - {{ emp.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="filterMonth" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Months</option>
+          <option *ngFor="let m of months" [ngValue]="m.value">{{ m.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="filterYear" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Years</option>
+          <option *ngFor="let y of years" [ngValue]="y">{{ y }}</option>
+        </select>
+      </div>
+
+      <button class="btn btn-secondary clear-btn" (click)="clearFilters()">
+        <i class="bi bi-x-circle"></i>
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Payroll Table -->
+  <div class="payroll-table-card" *ngIf="!loading">
+    <table class="payroll-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Period</th>
+          <th>Status</th>
+          <th>Hours</th>
+          <th>Gross</th>
+          <th>Deductions</th>
+          <th>Net Salary</th>
+          <th>Generated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="filteredPayrolls.length === 0">
+          <td colspan="9" class="empty-row">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <p>No payroll records found</p>
+              <button class="btn btn-primary btn-sm" (click)="navigateToGenerate()">
+                <i class="bi bi-plus-circle"></i>
+                Generate Payroll
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngFor="let p of filteredPayrolls" class="payroll-row">
+          <td>
+            <div class="employee-cell">
+              <div class="employee-avatar">{{ p.employeeName.charAt(0) }}</div>
+              <div class="employee-info">
+                <div class="employee-name">{{ p.employeeName }}</div>
+                <div class="employee-code">{{ p.employeeCode }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="period-badge">{{ getMonthName(p.month) }} {{ p.year }}</span>
+          </td>
+          <td>
+            <span class="status-badge" [class]="getStatusClass(p.status)">
+              {{ p.status }}
+            </span>
+          </td>
+          <td>
+            <div class="hours-cell" *ngIf="p.attendanceHours !== undefined">
+              <div>{{ p.attendanceHours }}h / {{ p.expectedHours }}h</div>
+              <div class="hours-detail" *ngIf="p.paidLeaveDays || p.unpaidLeaveDays">
+                Paid Leave: {{ p.paidLeaveDays || 0 }}d | Unpaid: {{ p.unpaidLeaveDays || 0 }}d
+              </div>
+            </div>
+            <span *ngIf="p.attendanceHours === undefined" class="text-muted">—</span>
+          </td>
+          <td class="amount">RM {{ p.grossIncome | number:'1.2-2' }}</td>
+          <td class="amount negative">-RM {{ p.epfAmount + p.socsoAmount + p.taxAmount + p.deductions | number:'1.2-2' }}</td>
+          <td class="amount net">RM {{ p.netSalary | number:'1.2-2' }}</td>
+          <td class="date-cell">{{ p.generatedOn | date:'dd/MM/yyyy' }}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-icon" (click)="viewDetails(p.id)" title="View Details">
+                <i class="bi bi-eye"></i>
+              </button>
+
+              <!-- Approve (for Draft status) -->
+              <button 
+                *ngIf="p.status === 'Draft'" 
+                class="btn-icon btn-approve" 
+                (click)="openApproveModal(p.id)" 
+                title="Approve">
+                <i class="bi bi-check-circle"></i>
+              </button>
+
+              <!-- Reject (for Draft/Pending Approval) -->
+              <button 
+                *ngIf="p.status === 'Draft' || p.status === 'Pending Approval'" 
+                class="btn-icon btn-reject" 
+                (click)="openRejectModal(p.id)" 
+                title="Reject">
+                <i class="bi bi-x-circle"></i>
+              </button>
+
+              <!-- Process (for Approved status) -->
+              <button 
+                *ngIf="p.status === 'Approved'" 
+                class="btn-icon btn-process" 
+                (click)="processPayroll(p.id)" 
+                title="Mark as Processed">
+                <i class="bi bi-check2-square"></i>
+              </button>
+
+              <!-- Email -->
+              <button 
+                *ngIf="p.status === 'Approved' || p.status === 'Processed'" 
+                class="btn-icon btn-email" 
+                (click)="emailPayslip(p.id)" 
+                title="Email Payslip">
+                <i class="bi bi-envelope"></i>
+              </button>
+
+              <!-- Delete (for Draft/Rejected) -->
+              <button 
+                *ngIf="p.status === 'Draft' || p.status === 'Rejected'" 
+                class="btn-icon btn-delete" 
+                (click)="openDeleteModal(p.id)" 
+                title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading payroll records...</p>
+  </div>
+</div>
+
+<!-- Detail View Modal -->
+<div class="modal" [class.show]="showDetailModal" *ngIf="showDetailModal && selectedPayroll">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3>
+        <i class="bi bi-file-text"></i>
+        Payroll Details
+      </h3>
+      <button class="btn-close" (click)="closeDetailModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Employee & Period Info -->
+      <div class="detail-header">
+        <div class="detail-employee">
+          <div class="employee-avatar large">{{ selectedPayroll.employeeName.charAt(0) }}</div>
+          <div>
+            <h4>{{ selectedPayroll.employeeName }}</h4>
+            <p>{{ selectedPayroll.employeeCode }}</p>
+          </div>
+        </div>
+        <div class="detail-period">
+          <div class="period-label">Period</div>
+          <div class="period-value">{{ selectedPayroll.monthYear }}</div>
+          <span class="status-badge" [class]="getStatusClass(selectedPayroll.status)">
+            {{ selectedPayroll.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Salary Breakdown -->
+      <div class="detail-section">
+        <h5><i class="bi bi-cash-coin"></i> Salary Breakdown</h5>
+        <div class="breakdown-grid">
+          <div class="breakdown-item">
+            <span class="label">Basic Salary</span>
+            <span class="value">RM {{ selectedPayroll.basicSalary | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">Allowances</span>
+            <span class="value">RM {{ selectedPayroll.allowances | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item total">
+            <span class="label">Gross Income</span>
+            <span class="value">RM {{ selectedPayroll.grossIncome | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">EPF (2%)</span>
+            <span class="value negative">-RM {{ selectedPayroll.epfAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">SOCSO (0.5%)</span>
+            <span class="value negative">-RM {{ selectedPayroll.socsoAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">Tax (11.97%)</span>
+            <span class="value negative">-RM {{ selectedPayroll.taxAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">Other Deductions</span>
+            <span class="value negative">-RM {{ selectedPayroll.deductions | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-item net-salary">
+            <span class="label">Net Salary</span>
+            <span class="value">RM {{ selectedPayroll.netSalary | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Summary -->
+      <div class="detail-section" *ngIf="(selectedPayroll.attendancePeriods && selectedPayroll.attendancePeriods.length > 0)">
+        <h5><i class="bi bi-calendar-check"></i> Attendance Periods ({{ selectedPayroll.attendancePeriods.length }})</h5>
+        <div class="attendance-list">
+          <div class="attendance-item" *ngFor="let ap of selectedPayroll.attendancePeriods">
+            <div class="attendance-dates">
+              {{ ap.startDate | date:'dd/MM/yyyy' }} - {{ ap.endDate | date:'dd/MM/yyyy' }}
+            </div>
+            <div class="attendance-hours">{{ ap.hoursWorked }}h</div>
+            <span class="badge badge-success">{{ ap.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Requests -->
+      <div class="detail-section" *ngIf="(selectedPayroll.leaveRequests && selectedPayroll.leaveRequests.length > 0)">
+        <h5><i class="bi bi-calendar-x"></i> Leave Requests ({{ selectedPayroll.leaveRequests.length }})</h5>
+        <div class="leave-list">
+          <div class="leave-item" *ngFor="let lr of selectedPayroll.leaveRequests">
+            <div class="leave-type">{{ lr.leaveType }} ({{ lr.leaveDays }} days)</div>
+            <div class="leave-dates">{{ lr.startDate | date:'dd/MM/yyyy' }} - {{ lr.endDate | date:'dd/MM/yyyy' }}</div>
+            <span *ngIf="lr.isPaid" class="badge badge-success">Paid</span>
+            <span *ngIf="!lr.isPaid" class="badge badge-warning">Unpaid (-RM {{ lr.deductionAmount | number:'1.2-2' }})</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adjustments -->
+      <div class="detail-section" *ngIf="(selectedPayroll.adjustments && selectedPayroll.adjustments.length > 0)">
+        <h5><i class="bi bi-sliders"></i> Manual Adjustments ({{ selectedPayroll.adjustments.length }})</h5>
+        <div class="adjustment-list">
+          <div class="adjustment-item" *ngFor="let adj of selectedPayroll.adjustments">
+            <div class="adjustment-info">
+              <div class="adjustment-type">{{ adj.adjustmentType }}</div>
+              <div class="adjustment-desc">{{ adj.description }}</div>
+              <div class="adjustment-meta">By {{ adj.createdBy }} on {{ adj.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+            </div>
+            <div class="adjustment-amount">RM {{ adj.amount | number:'1.2-2' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      <div class="detail-section" *ngIf="selectedPayroll.remarks">
+        <h5><i class="bi bi-chat-left-text"></i> Remarks</h5>
+        <div class="remarks-box">{{ selectedPayroll.remarks }}</div>
+      </div>
+
+      <!-- Approval Info -->
+      <div class="detail-section" *ngIf="selectedPayroll.approvedBy">
+        <h5><i class="bi bi-check-circle"></i> Approval Information</h5>
+        <div class="approval-info">
+          <div><strong>Approved By:</strong> {{ selectedPayroll.approverName }}</div>
+          <div><strong>Approved On:</strong> {{ selectedPayroll.approvedOn | date:'dd/MM/yyyy HH:mm' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeDetailModal()">Close</button>
+      <button class="btn btn-primary" (click)="emailPayslip(selectedPayroll.id)" *ngIf="selectedPayroll.status === 'Approved' || selectedPayroll.status === 'Processed'">
+        <i class="bi bi-envelope"></i>
+        Email Payslip
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal" [class.show]="showApproveModal" *ngIf="showApproveModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="bi bi-check-circle"></i> Approve Payroll</h3>
+      <button class="btn-close" (click)="closeApproveModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to approve this payroll? The employee will be notified via email.</p>
+      <div class="form-group">
+        <label>Approval Remarks (Optional)</label>
+        <textarea [(ngModel)]="approvalRemarks" class="form-control" rows="3" placeholder="Add any remarks..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeApproveModal()">Cancel</button>
+      <button class="btn btn-success" (click)="confirmApprove()">
+        <i class="bi bi-check-circle"></i>
+        Approve
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal" [class.show]="showRejectModal" *ngIf="showRejectModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="bi bi-x-circle"></i> Reject Payroll</h3>
+      <button class="btn-close" (click)="closeRejectModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Please provide a reason for rejecting this payroll:</p>
+      <div class="form-group">
+        <label>Rejection Reason *</label>
+        <textarea [(ngModel)]="rejectionReason" class="form-control" rows="3" placeholder="Enter rejection reason..." required></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeRejectModal()">Cancel</button>
+      <button class="btn btn-danger" (click)="confirmReject()" [disabled]="!rejectionReason.trim()">
+        <i class="bi bi-x-circle"></i>
+        Reject
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal" [class.show]="showDeleteModal" *ngIf="showDeleteModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="bi bi-trash"></i> Delete Payroll</h3>
+      <button class="btn-close" (click)="closeDeleteModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete this payroll record? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" (click)="confirmDelete()">
+        <i class="bi bi-trash"></i>
+        Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

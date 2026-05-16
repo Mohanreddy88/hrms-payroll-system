@@ -1,0 +1,23 @@
+<svg width="200" height="80" viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Spiral Icon -->
+  <g transform="translate(10, 10)">
+    <!-- Three curved lines forming a spiral -->
+    <path d="M 5 15 Q 10 5, 20 10" stroke="#1a1f4e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M 5 30 Q 12 15, 28 22" stroke="#1a1f4e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M 5 45 Q 15 25, 35 35" stroke="#1a1f4e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- eSYNC Text -->
+  <g transform="translate(55, 20)">
+    <text x="0" y="30" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#8B1A1A" letter-spacing="1">
+      eSYNC
+    </text>
+  </g>
+  
+  <!-- Software Services Subtitle -->
+  <g transform="translate(55, 45)">
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="400" fill="#4a5568" letter-spacing="2">
+      Software Services
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,351 @@
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+
+  margin: 0;
+  height: 100%;
+}
+
+// Global Print Styles
+@media print {
+  // Hide sidebar and navbar
+  app-sidebar-component,
+  app-navbar,
+  app-toast {
+    display: none !important;
+  }
+
+  // Remove layout container constraints
+  .layout-container {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  // Make main content full width
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  // Ensure body and html take full width
+  html, body {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    background: white !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  // Make the print content full width
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   Global Button Styles
+   ───────────────────────────────────────────────── */
+
+// Common button base
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  gap: 8px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  i {
+    font-size: 16px;
+  }
+}
+
+// Primary button
+.btn-primary {
+  background: #2563eb;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+// Secondary button
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #4b5563;
+  }
+}
+
+// Outline secondary button
+.btn-outline-secondary {
+  background: white;
+  border: 1.5px solid #d1d5db;
+  color: #4b5563;
+
+  &:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+  }
+}
+
+// Outline primary button
+.btn-outline-primary {
+  background: white;
+  border: 1.5px solid #2563eb;
+  color: #2563eb;
+
+  &:hover:not(:disabled) {
+    background: #eff6ff;
+  }
+}
+
+// Back button (special styling)
+.btn-back {
+  background: white;
+  border: 1.5px solid #d1d5db;
+  color: #374151;
+  padding: 9px 18px;
+
+  i {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #2563eb;
+    color: #2563eb;
+
+    i {
+      transform: translateX(-2px);
+    }
+  }
+}
+
+// Danger button
+.btn-danger {
+  background: #dc2626;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #b91c1c;
+  }
+}
+
+// Warning button
+.btn-warning {
+  background: #f59e0b;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #d97706;
+  }
+}
+
+// Success button
+.btn-success {
+  background: #10b981;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #059669;
+  }
+}
+
+// Small button
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+
+  i {
+    font-size: 14px;
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   Page Header Styles (used across all pages)
+   ───────────────────────────────────────────────── */
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 20px;
+
+  h3 {
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: #1a2235;
+    font-size: 24px;
+  }
+
+  p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+}
+
+// Mobile responsive page header
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    h3 {
+      font-size: 20px;
+    }
+
+    p {
+      font-size: 13px;
+    }
+
+    .header-actions {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header {
+    h3 {
+      font-size: 18px;
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   Loading Spinner
+   ───────────────────────────────────────────────── */
+
+.spinner-border {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: -0.125em;
+  border: 0.15em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border 0.75s linear infinite;
+
+  &.spinner-border-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-width: 0.12em;
+  }
+}
+
+@keyframes spinner-border {
+  to { transform: rotate(360deg); }
+}
+
+/* ─────────────────────────────────────────────────
+   Global Mobile Responsive Utilities
+   ───────────────────────────────────────────────── */
+
+// Responsive table wrapper
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  // Button adjustments
+  .btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    
+    i {
+      font-size: 14px;
+    }
+  }
+
+  .btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  // Tables - make scrollable on mobile
+  table {
+    font-size: 12px;
+  }
+
+  // Card adjustments
+  .card {
+    border-radius: 8px;
+  }
+
+  // Form inputs
+  input, select, textarea {
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+
+  table {
+    font-size: 11px;
+  }
+}

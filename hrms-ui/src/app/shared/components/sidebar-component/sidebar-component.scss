@@ -1,0 +1,176 @@
+.sidebar {
+  width: 175px;
+  min-width: 175px;
+  background: #1a2235;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-brand {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brand-title {
+  color: #4fc3f7;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.menu-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  flex: 1;
+}
+
+.menu-list li {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+
+  i {
+    font-size: 17px;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+  }
+
+  span {
+    white-space: nowrap;
+  }
+}
+
+.menu-list li:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.active-menu {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+// Parent menu with submenu
+.menu-parent {
+  cursor: pointer;
+  
+  &.open {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.menu-parent-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  
+  i:first-child {
+    font-size: 17px;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+  }
+  
+  span {
+    flex: 1;
+    white-space: nowrap;
+  }
+  
+  .submenu-arrow {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+    
+    &.rotate {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+// Submenu styles
+.submenu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.3s ease;
+  
+  li {
+    padding: 11px 18px 11px 48px !important;
+    font-size: 12px;
+    
+    i {
+      font-size: 15px;
+    }
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+  }
+}
+
+.active-submenu {
+  background: #1d4ed8 !important;
+  color: white !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+// Mobile responsive
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 250px;
+    min-width: 250px;
+    transform: translateX(-100%);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    
+    &.mobile-open {
+      transform: translateX(0);
+    }
+  }
+
+  .brand-title {
+    font-size: 18px;
+  }
+
+  .menu-list li {
+    padding: 15px 18px;
+    font-size: 14px;
+  }
+}

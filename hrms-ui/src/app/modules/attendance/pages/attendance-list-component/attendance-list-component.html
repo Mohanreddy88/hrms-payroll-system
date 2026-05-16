@@ -1,0 +1,231 @@
+<div class="attendance-page">
+
+  <div class="page-header">
+    <div>
+      <h3>Attendance History</h3>
+      <p>View approved and finalized attendance periods</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-back" (click)="backToHome()">
+        <i class="bi bi-house"></i>
+        Home
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <h5 class="filter-title"><i class="bi bi-funnel me-2"></i>Filters</h5>
+    <div class="filter-row">
+      <div class="form-group">
+        <label>Status</label>
+        <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="form-control">
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ status }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Employee</label>
+        <select [(ngModel)]="selectedEmployeeId" (change)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Employees</option>
+          @for (emp of employees; track emp.id) {
+            <option [ngValue]="emp.id">{{ emp.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="selectedMonth" (change)="onFilterChange()" class="form-control">
+          <option [value]="1">January</option>
+          <option [value]="2">February</option>
+          <option [value]="3">March</option>
+          <option [value]="4">April</option>
+          <option [value]="5">May</option>
+          <option [value]="6">June</option>
+          <option [value]="7">July</option>
+          <option [value]="8">August</option>
+          <option [value]="9">September</option>
+          <option [value]="10">October</option>
+          <option [value]="11">November</option>
+          <option [value]="12">December</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="selectedYear" (change)="onFilterChange()" class="form-control">
+          @for (year of years; track year) {
+            <option [value]="year">{{ year }}</option>
+          }
+        </select>
+      </div>
+
+      <button class="btn btn-secondary clear-btn" (click)="clearFilters()">
+        <i class="bi bi-x-circle me-1"></i>Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Periods Table -->
+  @if (errorMessage) {
+    <div class="alert alert-danger">{{ errorMessage }}</div>
+  }
+
+  @if (loading) {
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+  } @else {
+    <div class="card periods-table-card">
+      <div class="table-title">
+        <strong>{{ periods.length }}</strong> periods found
+        @if (selectedEmployeeId) {
+          <span> for <strong>{{ employees.find(e => e.id === selectedEmployeeId)?.name }}</strong></span>
+        }
+        <span> in <strong>{{ getMonthName(selectedMonth) }} {{ selectedYear }}</strong></span>
+      </div>
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 40px;"></th>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Period</th>
+            <th>Total Hours</th>
+            <th>Days</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Approved</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (periods.length === 0) {
+            <tr><td colspan="9" class="text-center text-muted py-4">
+              No attendance periods found for the selected filters.
+            </td></tr>
+          }
+          @for (period of periods; track period.id; let i = $index) {
+            <!-- Period Summary Row -->
+            <tr class="period-row" [class.expanded]="period.expanded">
+              <td>
+                <button class="btn-expand" (click)="togglePeriodDetails(period)" [title]="period.expanded ? 'Collapse' : 'Expand'">
+                  <i class="bi" [class.bi-chevron-down]="!period.expanded" [class.bi-chevron-up]="period.expanded"></i>
+                </button>
+              </td>
+              <td>{{ i + 1 }}</td>
+              <td>
+                <div class="employee-info">
+                  <strong>{{ period.employeeName }}</strong>
+                  <small class="text-muted d-block">{{ period.employeeEmail }}</small>
+                </div>
+              </td>
+              <td>
+                <div class="period-dates">
+                  {{ formatDate(period.startDate) }} — {{ formatDate(period.endDate) }}
+                </div>
+              </td>
+              <td><strong>{{ period.totalHours }}</strong> hrs</td>
+              <td>{{ period.dayCount }} days</td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusClass(period.status)">
+                  {{ period.status }}
+                </span>
+              </td>
+              <td>
+                <small>{{ formatDateTime(period.submittedAt) }}</small>
+              </td>
+              <td>
+                @if (period.approvedAt) {
+                  <div class="approval-info">
+                    <small>{{ formatDateTime(period.approvedAt) }}</small>
+                    @if (period.approverName) {
+                      <small class="text-muted d-block">by {{ period.approverName }}</small>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-muted">—</span>
+                }
+              </td>
+            </tr>
+
+            <!-- Expanded Daily Breakdown -->
+            @if (period.expanded) {
+              <tr class="details-row">
+                <td colspan="9">
+                  @if (loadingDays) {
+                    <div class="text-center py-3">
+                      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                      <span class="ms-2">Loading days...</span>
+                    </div>
+                  } @else {
+                    <div class="daily-breakdown">
+                      <h6 class="breakdown-title">
+                        <i class="bi bi-calendar-week"></i>
+                        Daily Breakdown
+                      </h6>
+                      
+                      @if (period.rejectionReason) {
+                        <div class="alert alert-danger rejection-alert">
+                          <i class="bi bi-x-circle-fill"></i>
+                          <strong>Rejection Reason:</strong> {{ period.rejectionReason }}
+                        </div>
+                      }
+
+                      <table class="table table-sm days-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Hours</th>
+                            <th>Type</th>
+                            <th>Note</th>
+                            <th>Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (day of getPeriodDays(period.id); track day.date) {
+                            <tr [class.weekend]="day.isWeekend" [class.holiday]="day.isPublicHoliday">
+                              <td>{{ formatDate(day.date) }}</td>
+                              <td>{{ getDayName(day.date) }}</td>
+                              <td>
+                                <strong>{{ day.hours }}</strong> hrs
+                              </td>
+                              <td>
+                                @if (day.isPublicHoliday) {
+                                  <span class="badge bg-warning">Holiday</span>
+                                } @else if (day.isWeekend) {
+                                  <span class="badge bg-secondary">Weekend</span>
+                                } @else if (day.hours === 0) {
+                                  <span class="badge bg-danger">Absent</span>
+                                } @else if (day.hours < 8) {
+                                  <span class="badge bg-info">Partial</span>
+                                } @else {
+                                  <span class="badge bg-success">Full Day</span>
+                                }
+                              </td>
+                              <td>{{ day.note || '—' }}</td>
+                              <td class="remarks-cell">{{ day.remarks || '—' }}</td>
+                            </tr>
+                          }
+                          @if (getPeriodDays(period.id).length === 0) {
+                            <tr>
+                              <td colspan="6" class="text-center text-muted py-2">No daily records available</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>

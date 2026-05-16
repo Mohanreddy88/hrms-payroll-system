@@ -1,0 +1,41 @@
+@if (show) {
+  <div class="modal-backdrop" (click)="onBackdropClick($event)">
+    <div class="modal-dialog" (click)="onDialogClick($event)">
+      
+      <div class="modal-header" [class.danger]="variant === 'danger'" 
+                                  [class.warning]="variant === 'warning'" 
+                                  [class.info]="variant === 'info'">
+        <div class="modal-icon">
+          @if (variant === 'danger') {
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          } @else if (variant === 'warning') {
+            <i class="bi bi-exclamation-circle-fill"></i>
+          } @else {
+            <i class="bi bi-info-circle-fill"></i>
+          }
+        </div>
+        <h4 class="modal-title">{{ title }}</h4>
+      </div>
+
+      <div class="modal-body">
+        <p>{{ message }}</p>
+      </div>
+
+      <div class="modal-footer" [class.single-button]="!cancelText">
+        @if (cancelText) {
+          <button class="btn btn-cancel" (click)="onCancel()">
+            {{ cancelText }}
+          </button>
+        }
+        <button class="btn btn-confirm" 
+                [class.btn-danger]="variant === 'danger'"
+                [class.btn-warning]="variant === 'warning'"
+                [class.btn-info]="variant === 'info'"
+                (click)="onConfirm()">
+          {{ confirmText }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

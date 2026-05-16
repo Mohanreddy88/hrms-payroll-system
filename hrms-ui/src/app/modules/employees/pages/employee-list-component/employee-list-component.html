@@ -1,0 +1,146 @@
+<div class="employee-page">
+
+  <div class="page-header">
+    <div>
+      <h3>Employees</h3>
+      <p>Manage employee information</p>
+    </div>
+
+    <div class="header-actions">
+      @if (isAdmin) {
+        <button class="btn btn-back" routerLink="/home">
+          <i class="bi bi-house"></i>
+          Home
+        </button>
+        <button class="btn btn-primary" (click)="addEmployee()">
+          <i class="bi bi-plus-lg"></i>
+          Add Employee
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (loading) {
+
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="mt-2 text-muted">Loading employees...</p>
+  </div>
+
+  } @else {
+
+  <div class="card employee-table-card">
+
+    <table class="table align-middle mb-0">
+
+      <thead>
+        <tr>
+          <th>Employee Code</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Designation</th>
+          <th>Email</th>
+          <th>Salary</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        @if (employees.length === 0) {
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            No employees found.
+          </td>
+        </tr>
+        }
+
+        @for (emp of employees; track $index; let i = $index) {
+
+        <tr>
+
+          <td><strong>{{ emp.employeeCode }}</strong></td>
+
+          <td>
+            <div class="emp-name-cell">
+
+              @if (emp.profilePicture) {
+                <div class="emp-avatar-img">
+                  <img [src]="emp.profilePicture" [alt]="emp.name" />
+                </div>
+              } @else {
+                <div class="emp-avatar">
+                  {{ emp.name.charAt(0) || '?' }}
+                </div>
+              }
+
+              {{ emp.name || '-' }}
+
+            </div>
+          </td>
+
+          <td>
+            {{ emp.departmentName || '-' }}
+          </td>
+
+          <td>
+            {{ emp.designation || '-' }}
+          </td>
+
+          <td>
+            {{ emp.email || '-' }}
+          </td>
+
+          <td>
+            {{ emp.salary | number:'1.2-2' }}
+          </td>
+
+          <td>
+
+            <span class="status-badge" [class.active]="emp.isActive" [class.inactive]="!emp.isActive">
+
+              {{ emp.isActive ? 'Active' : 'Inactive' }}
+
+            </span>
+
+          </td>
+
+          <td>
+            @if (isAdmin) {
+              <button class="btn btn-sm btn-warning me-1" (click)="editEmployee(emp.id)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteEmployee(emp.id, emp.name)">
+                <i class="bi bi-trash"></i>
+              </button>
+            } @else {
+              <span class="text-muted">View Only</span>
+            }
+          </td>
+
+        </tr>
+
+        }
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+  }
+
+</div>
+
+<!-- Confirmation Modal -->
+<app-confirm-modal
+  [show]="showConfirmModal"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [variant]="confirmModalVariant"
+  confirmText="Delete"
+  cancelText="Cancel"
+  (confirmed)="onConfirmDelete()"
+  (cancelled)="onCancelDelete()"
+></app-confirm-modal>

@@ -1,0 +1,237 @@
+<div class="form-page">
+
+  <!-- ── Page Header ──────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h3>{{ isEdit ? 'Edit Employee' : 'Add New Employee' }}</h3>
+      <p>{{ isEdit ? 'Update employee information' : 'Create a new employee record' }}</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline-secondary" (click)="cancel()">
+        <i class="bi bi-arrow-left"></i>
+        Back to List
+      </button>
+      <button class="btn btn-back" (click)="backToHome()">
+        <i class="bi bi-house"></i>
+        Home
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Loading spinner (edit mode only, while fetching data) ── -->
+  @if (loading) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Loading employee data...</p>
+    </div>
+  } @else {
+
+    <div class="form-card">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+        <!-- ══ SECTION 1: Personal Information ══ -->
+        <div class="section-label">Personal Information</div>
+
+        <div class="form-row">
+
+          <!-- Full Name -->
+          <div class="form-group">
+            <label>Full Name <span class="req">*</span></label>
+            <input type="text" formControlName="name" placeholder="e.g. Mohan Reddy"
+              [class.is-invalid]="f['name'].invalid && f['name'].touched" />
+            @if (f['name'].invalid && f['name'].touched) {
+              <span class="field-error">Name is required</span>
+            }
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label>Email <span class="req">*</span></label>
+            <input type="email" formControlName="email" placeholder="e.g. mohan@company.com"
+              [class.is-invalid]="f['email'].invalid && f['email'].touched" />
+            @if (f['email'].invalid && f['email'].touched) {
+              <span class="field-error">Valid email is required</span>
+            }
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label>Phone <span class="req">*</span></label>
+            <input type="text" formControlName="phone" placeholder="e.g. +60123456789"
+              [class.is-invalid]="f['phone'].invalid && f['phone'].touched" />
+            @if (f['phone'].invalid && f['phone'].touched) {
+              <span class="field-error">Phone is required</span>
+            }
+          </div>
+
+          <!-- IC / Passport -->
+          <div class="form-group">
+            <label>IC / Passport No.</label>
+            <input type="text" formControlName="icPassport" placeholder="e.g. 900101-14-1234 or A1234567" />
+            <small class="field-hint">Used as NRIC on the payslip</small>
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <!-- Tax Identification Number -->
+          <div class="form-group">
+            <label>Tax Identification No. (TIN)</label>
+            <input type="text" formControlName="taxNumber" placeholder="e.g. IG12345678090" />
+            <small class="field-hint">Required for PCB/income tax reporting</small>
+          </div>
+
+          <!-- Join Date -->
+          <div class="form-group">
+            <label>Join Date <span class="req">*</span></label>
+            <input type="date" formControlName="joinDate"
+              [class.is-invalid]="f['joinDate'].invalid && f['joinDate'].touched" />
+            @if (f['joinDate'].invalid && f['joinDate'].touched) {
+              <span class="field-error">Join date is required</span>
+            }
+          </div>
+
+        </div>
+
+        <!-- ══ SECTION 2: Job Information ══ -->
+        <div class="section-label">Job Details</div>
+
+        <div class="form-row">
+
+          <!-- Department -->
+          <div class="form-group">
+            <label>Department <span class="req">*</span></label>
+            <select formControlName="departmentId"
+              [class.is-invalid]="f['departmentId'].invalid && f['departmentId'].touched">
+              <option [ngValue]="null">-- Select Department --</option>
+              @for (dept of departments; track dept.id) {
+                <option [ngValue]="dept.id">{{ dept.name }}</option>
+              }
+            </select>
+            @if (f['departmentId'].invalid && f['departmentId'].touched) {
+              <span class="field-error">Department is required</span>
+            }
+          </div>
+
+          <!-- Designation -->
+          <div class="form-group">
+            <label>Designation <span class="req">*</span></label>
+            <input type="text" formControlName="designation" placeholder="e.g. Software Engineer"
+              [class.is-invalid]="f['designation'].invalid && f['designation'].touched" />
+            @if (f['designation'].invalid && f['designation'].touched) {
+              <span class="field-error">Designation is required</span>
+            }
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <!-- Salary -->
+          <div class="form-group">
+            <label>Salary (RM) <span class="req">*</span></label>
+            <input type="number" formControlName="salary" placeholder="e.g. 5000"
+              [class.is-invalid]="f['salary'].invalid && f['salary'].touched" />
+            @if (f['salary'].invalid && f['salary'].touched) {
+              <span class="field-error">Salary must be 0 or more</span>
+            }
+          </div>
+
+          <!-- Active Status toggle -->
+          <div class="form-group status-group">
+            <label>Status</label>
+            <label class="toggle-switch">
+              <input type="checkbox" formControlName="isActive" />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">{{ form.value.isActive ? 'Active' : 'Inactive' }}</span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- ══ SECTION 3: Profile Picture ══ -->
+        <div class="section-label">Profile Picture</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Upload Profile Picture</label>
+            <div class="profile-upload-container">
+              <!-- Preview area -->
+              @if (profilePictureUrl || form.value.profilePicture) {
+                <div class="profile-preview">
+                  <img [src]="profilePictureUrl || form.value.profilePicture" alt="Profile Picture" />
+                  <button type="button" class="btn btn-sm btn-danger remove-btn" 
+                    (click)="removeProfilePicture()" [disabled]="uploading">
+                    <i class="bi bi-trash"></i> Remove
+                  </button>
+                </div>
+              } @else {
+                <div class="profile-placeholder">
+                  <i class="bi bi-person-circle"></i>
+                  <p>No image uploaded</p>
+                </div>
+              }
+
+              <!-- Upload button -->
+              <div class="upload-controls">
+                <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" 
+                  style="display: none" />
+                <button type="button" class="btn btn-outline-primary" 
+                  (click)="fileInput.click()" [disabled]="uploading">
+                  @if (uploading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                  <i class="bi bi-upload me-1"></i> Choose Image
+                </button>
+                <small class="field-hint">JPG, PNG, or GIF • Max 5MB</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ SECTION 4: Bank & Payment Information ══ -->
+        <div class="section-label">Bank & Payment Details</div>
+
+        <div class="form-row">
+
+          <!-- Bank dropdown — populated from BankMaster -->
+          <div class="form-group">
+            <label>Bank</label>
+            <select formControlName="bankId">
+              <option [ngValue]="null">-- Select Bank --</option>
+              @for (bank of banks; track bank.id) {
+                <option [ngValue]="bank.id">{{ bank.name }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Account Number -->
+          <div class="form-group">
+            <label>Account Number</label>
+            <input type="text" formControlName="accountNumber" placeholder="e.g. 1234567890" />
+            <small class="field-hint">Salary disbursement account</small>
+          </div>
+
+        </div>
+
+        <!-- ── Form Actions ── -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-secondary" (click)="cancel()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="saving">
+            @if (saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            {{ isEdit ? 'Update Employee' : 'Create Employee' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  }
+
+</div>
+

@@ -1,0 +1,114 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>📇 Employee Directory</h2>
+      <p>Complete employee directory with contact information</p>
+    </div>
+    <button class="btn-export" (click)="exportToExcel()">
+      <i class="bi bi-file-earmark-excel"></i>
+      Export to Excel
+    </button>
+  </div>
+
+  <!-- Summary and Filters -->
+  <div *ngIf="directoryData" class="controls-section">
+    <div class="summary-stats">
+      <div class="stat-item">
+        <span class="stat-label">Total Employees:</span>
+        <span class="stat-value">{{ directoryData.totalEmployees }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Active:</span>
+        <span class="stat-value active">{{ directoryData.activeEmployees }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Inactive:</span>
+        <span class="stat-value inactive">{{ directoryData.inactiveEmployees }}</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm" 
+          placeholder="Search by name, email, or designation..."
+          class="form-control">
+      </div>
+
+      <div class="filter-group">
+        <select [(ngModel)]="selectedDepartment" class="form-control">
+          <option *ngFor="let dept of departments" [value]="dept">{{ dept }}</option>
+        </select>
+      </div>
+
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" [(ngModel)]="includeInactive" (change)="onIncludeInactiveChange()">
+          <span>Include Inactive</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee Cards Grid -->
+  <div *ngIf="directoryData" class="employees-grid">
+    <div class="employee-card" *ngFor="let employee of filteredEmployees">
+      <div class="employee-header">
+        <div class="profile-picture">
+          <img 
+            [src]="getProfilePictureUrl(employee.profilePicture)" 
+            [alt]="employee.name"
+            (error)="$any($event.target).src='assets/img/default-avatar.svg'">
+        </div>
+        <div class="employee-basic">
+          <h3>{{ employee.name }}</h3>
+          <p class="designation">{{ employee.designation || 'N/A' }}</p>
+          <span class="status-badge" [class.active]="employee.isActive" [class.inactive]="!employee.isActive">
+            {{ employee.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="employee-details">
+        <div class="detail-row">
+          <i class="bi bi-envelope"></i>
+          <span>{{ employee.email || 'N/A' }}</span>
+        </div>
+        <div class="detail-row">
+          <i class="bi bi-telephone"></i>
+          <span>{{ employee.phone || 'N/A' }}</span>
+        </div>
+        <div class="detail-row">
+          <i class="bi bi-building"></i>
+          <span>{{ employee.departmentName }}</span>
+        </div>
+        <div class="detail-row">
+          <i class="bi bi-calendar"></i>
+          <span>Joined: {{ employee.joinDate | date:'dd/MM/yyyy' }}</span>
+        </div>
+        <div class="detail-row">
+          <i class="bi bi-cash"></i>
+          <span>Salary: RM {{ employee.salary | number:'1.2-2' }}</span>
+        </div>
+        <div class="detail-row" *ngIf="employee.bankName">
+          <i class="bi bi-bank"></i>
+          <span>{{ employee.bankName }} - {{ employee.accountNumber }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Results -->
+  <div *ngIf="directoryData && filteredEmployees.length === 0" class="no-results">
+    <i class="bi bi-search"></i>
+    <p>No employees found matching your criteria</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="!directoryData" class="no-data">
+    <i class="bi bi-inbox"></i>
+    <p>Loading employee directory...</p>
+  </div>
+</div>

@@ -1,0 +1,224 @@
+<div class="page-container">
+  <!-- Period Navigation Header -->
+  <div class="period-navigation">
+    <button class="btn-calendar" title="Calendar">
+      <i class="bi bi-calendar3"></i>
+    </button>
+    
+    <button class="btn-nav-arrow" (click)="previousPeriod()" [disabled]="currentPeriodIndex === 0" title="Previous Cycle">
+      <i class="bi bi-chevron-left"></i>
+    </button>
+    
+    <button class="btn-current-cycle" (click)="goToCurrentCycle()" title="Jump to Current Cycle">
+      Current Cycle
+    </button>
+    
+    <button class="btn-nav-arrow" (click)="nextPeriod()" [disabled]="currentPeriodIndex === periods.length - 1" title="Next Cycle">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+    
+    <button class="btn-print" title="Print">
+      <i class="bi bi-printer"></i>
+    </button>
+  </div>
+
+  <!-- Calendar Grid - Full Width -->
+  <div class="attendance-grid">
+    <div class="calendar-grid" *ngIf="currentPeriodDays.length > 0">
+      <!-- Header Row with Dates and Show Weekend Toggle -->
+      <div class="grid-header">
+        <div class="row-label show-weekend-cell">
+          <label class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="showWeekend" (change)="onShowWeekendChange()">
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">Show Weekend</span>
+        </div>
+        <div class="day-header" *ngFor="let day of currentPeriodDays" 
+             [class.weekend]="isWeekend(day.date)"
+             [style.display]="isWeekend(day.date) && !showWeekend ? 'none' : 'block'">
+          <div class="day-name">{{ day.dayName }} {{ day.dayNumber }}</div>
+        </div>
+        <div class="total-header">TOTAL</div>
+      </div>
+
+      <!-- Project/Employee Info Row -->
+      <div class="project-row">
+        <div class="project-details">
+          <div class="project-title">{{ employeeCode }} | {{ employeeName }}</div>
+          <div class="project-subtitle">Employee ID | Engagement Duration : {{ getCurrentPeriodDisplay() }}</div>
+        </div>
+        <div class="row-actions">
+          <button class="btn-action-icon" (click)="openCommentModal()" title="Comments">
+            <i class="bi bi-chat-left-text"></i>
+          </button>
+          <button class="btn-action-icon" title="Info">
+            <i class="bi bi-info-circle"></i>
+          </button>
+          <button class="btn-action-icon" title="Download">
+            <i class="bi bi-file-earmark-arrow-down"></i>
+          </button>
+          <button class="btn-action-icon delete" (click)="deleteCurrentRow()" title="Delete">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Attendance Entry Row -->
+      <div class="grid-row">
+        <div class="row-label">
+          <div class="status-badge submitted" *ngIf="currentPeriodStatus === 'Submitted'">SUBMITTED</div>
+          <div class="status-badge draft" *ngIf="currentPeriodStatus === 'Draft'">DRAFT</div>
+          <div class="status-badge approved" *ngIf="currentPeriodStatus === 'Approved'">APPROVED</div>
+          <div class="status-badge rejected" *ngIf="currentPeriodStatus === 'Rejected'">REJECTED</div>
+          <div class="row-category">Build</div>
+        </div>
+        
+        <div class="day-cell" *ngFor="let day of currentPeriodDays; let i = index" 
+             [class.weekend]="isWeekend(day.date)"
+             [class.public-holiday]="day.isPublicHoliday"
+             [class.leave-day]="day.hours === 0 && day.note && !day.isPublicHoliday && !isWeekend(day.date)"
+             [style.display]="isWeekend(day.date) && !showWeekend ? 'none' : 'flex'">
+          <div class="cell-content">
+            <input 
+              type="text" 
+              class="hours-input" 
+              [(ngModel)]="day.hours" 
+              (input)="onHoursInput($event, i)"
+              (blur)="onHoursBlur(i)"
+              (click)="$event.stopPropagation()"
+              [disabled]="day.isPublicHoliday || isWeekend(day.date) || !isPeriodEditable()"
+              placeholder="0">
+          </div>
+        </div>
+        
+        <div class="total-cell">
+          <span class="total-value">{{ getTotalHours() }}</span>
+        </div>
+        
+        <div class="close-cell">
+          <button class="btn-close-row">
+            <i class="bi bi-x-circle"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Row (shows hours below each day) -->
+      <div class="grid-summary">
+        <div class="row-label"></div>
+        <div class="day-summary" *ngFor="let day of currentPeriodDays"
+             [style.display]="isWeekend(day.date) && !showWeekend ? 'none' : 'block'">
+          {{ day.hours || 0 }}
+        </div>
+        <div class="total-summary">{{ getTotalHours() }}</div>
+      </div>
+    </div>
+
+    <!-- Rejection Reason Alert -->
+    <div class="rejection-alert" *ngIf="currentPeriodStatus === 'Rejected'">
+      <div class="alert-icon">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+      </div>
+      <div class="alert-content">
+        <h4>Period Rejected by Admin</h4>
+        <p>{{ currentPeriodRejectionReason || 'No reason provided' }}</p>
+        <small>Please amend the attendance data and resubmit</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions - Footer -->
+  <div class="action-footer">
+    <div class="checkbox-agreement">
+      <input type="checkbox" id="agreeCheckbox" [(ngModel)]="agreedToTerms" [disabled]="!canSubmitPeriod()">
+      <label for="agreeCheckbox">
+        I agree with <a href="#" class="agreement-link">PETRONAS Statement of Ethical Standards and PETRONAS Code of Conduct and Business Ethics.</a>
+      </label>
+    </div>
+    <div class="button-group">
+      <button class="btn-save" (click)="saveAttendance()" [disabled]="!canEditPeriod()">
+        <i class="bi bi-floppy"></i>
+        Save
+      </button>
+      <button class="btn-submit" (click)="submitAttendance()" 
+              [disabled]="!agreedToTerms || !canSubmitPeriod()">
+        <i class="bi bi-send"></i>
+        {{ currentPeriodStatus === 'Rejected' ? 'Resubmit' : 'Submit' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- No Periods State -->
+  <div *ngIf="periods.length === 0" class="no-periods">
+    <i class="bi bi-calendar-x"></i>
+    <p>No attendance periods available</p>
+    <small>Please contact administrator</small>
+  </div>
+</div>
+
+<!-- Note Modal -->
+<div class="modal" [class.show]="showNoteModal" *ngIf="showNoteModal">
+  <div class="modal-backdrop" (click)="closeNoteModal()"></div>
+  <div class="modal-dialog note-modal">
+    <div class="modal-header">
+      <h3>Leave Type</h3>
+      <button class="btn-close" (click)="closeNoteModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Select Leave Type</label>
+        <select [(ngModel)]="selectedNote" class="form-control">
+          <option value="">None (Working Day)</option>
+          <option value="AL">AL - Annual Leave</option>
+          <option value="EL">EL - Emergency Leave</option>
+          <option value="MC">MC - Medical Leave</option>
+        </select>
+      </div>
+      <div class="form-group" *ngIf="selectedNote">
+        <label>Additional Remarks (Optional)</label>
+        <textarea [(ngModel)]="selectedRemarks" class="form-control" rows="3" 
+                  placeholder="Enter any additional remarks..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="clearNote()">Clear</button>
+      <button class="btn-save-note" (click)="saveNote()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comment Entry Modal -->
+<div class="modal" [class.show]="showCommentModal" *ngIf="showCommentModal">
+  <div class="modal-backdrop" (click)="closeCommentModal()"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3>Comment Entry</h3>
+      <button class="btn-close" (click)="closeCommentModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="comment-info-box">
+        <div class="info-title">{{ employeeCode }} | {{ employeeName }}</div>
+        <div class="info-subtitle">Build | {{ getCurrentPeriodDisplay() }}</div>
+      </div>
+      <div class="form-group">
+        <textarea 
+          [(ngModel)]="commentText" 
+          class="form-control comment-textarea" 
+          rows="5" 
+          maxlength="200"
+          placeholder="Enter your comments..."></textarea>
+        <div class="character-limit">Character Limit : {{ 200 - commentText.length }}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeCommentModal()">Clear</button>
+      <button class="btn-save-comment" (click)="saveComment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Period Modal - Removed (2 fixed cycles per month) -->

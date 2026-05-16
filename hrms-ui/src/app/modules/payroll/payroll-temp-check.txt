@@ -1,0 +1,369 @@
+﻿import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { PayrollService } from '../../../../core/services/payroll.service';
+import { EmployeeService } from '../../../../core/services/employee.service';
+import { Payroll } from '../../../../core/models/payroll.model';
+import { Employee } from '../../../../core/models/employee.model';
+import { ToastService } from '../../../../core/services/toast.service';
+
+@Component({
+  selector: 'app-payroll-list-component',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './payroll-list-component.html',
+  styleUrl: './payroll-list-component.scss'
+})
+export class PayrollListComponent implements OnInit {
+  payrolls: Payroll[] = [];
+  employees: Employee[] = [];
+  loading = false;
+  generating = false;
+  months = [
+    { value: 1,  label: 'January'   }, { value: 2,  label: 'February'  },
+    { value: 3,  label: 'March'     }, { value: 4,  label: 'April'     },
+    { value: 5,  label: 'May'       }, { value: 6,  label: 'June'      },
+    { value: 7,  label: 'July'      }, { value: 8,  label: 'August'    },
+    { value: 9,  label: 'September' }, { value: 10, label: 'October'   },
+    { value: 11, label: 'November'  }, { value: 12, label: 'December'  }
+  ];
+
+  form = {
+    employeeId: null as number | null,
+    month:      new Date().getMonth() + 1,
+    year:       new Date().getFullYear(),
+    basicSalary: 0,
+    allowances:  0,
+    deductions:  0
+  };
+
+  constructor(
+    private payrollService: PayrollService,
+    private employeeService: EmployeeService,
+    private toast: ToastService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadPayrolls();
+    this.loadEmployees();
+  }
+
+  loadPayrolls(): void {
+    this.loading = true;
+    this.payrollService.getAll().subscribe({
+      next: (data) => { this.payrolls = data; this.loading = false; },
+      error: () => { this.toast.error('Load Failed', 'Could not load payroll records.'); this.loading = false; }
+    });
+  }
+
+  loadEmployees(): void {
+    this.employeeService.getAll().subscribe({
+      next: (data) => { this.employees = data; }
+    });
+  }
+
+  onEmployeeChange(): void {
+    const emp = this.employees.find(e => e.id === this.form.employeeId);
+    if (emp) this.form.basicSalary = emp.salary;
+  }
+
+  get epfAmount(): number  { return +(this.form.basicSalary * 0.02).toFixed(2); }
+  get socsoAmount(): number { return +(this.form.basicSalary * 0.005).toFixed(2); }
+  get taxAmount(): number  { return +((this.form.basicSalary + this.form.allowances) * 0.1197).toFixed(2); }
+
+  get netSalary(): number {
+    return +(this.form.basicSalary + this.form.allowances
+           - this.epfAmount - this.socsoAmount - this.taxAmount - this.form.deductions).toFixed(2);
+  }
+
+  generate(): void {
+    if (!this.form.employeeId) return;
+    this.generating = true;
+    // Coerce all fields to numbers — ngModel on select/input can bind as strings
+    const payload = {
+      employeeId:  this.form.employeeId!,
+      month:       +this.form.month,
+      year:        +this.form.year,
+      basicSalary: +this.form.basicSalary,
+      allowances:  +this.form.allowances,
+      deductions:  +this.form.deductions
+    };
+    this.payrollService.generate(payload).subscribe({
+      next: () => {
+        this.generating = false;
+        this.toast.success('Payroll Generated', 'Payslip has been created successfully.');
+        this.form = {
+          employeeId: null,
+          month: new Date().getMonth() + 1,
+          year:  new Date().getFullYear(),
+          basicSalary: 0, allowances: 0, deductions: 0
+        };
+        this.loadPayrolls();
+      },
+      error: (err: any) => {
+        this.generating = false;
+        this.toast.error('Generate Failed', err?.error?.message ?? 'Failed to generate payroll.');
+      }
+    });
+  }
+
+  deletePayroll(id: number): void {
+    if (!confirm('Delete this payroll record?')) return;
+    this.payrollService.delete(id).subscribe({
+      next:  () => { this.toast.success('Deleted', 'Payroll record removed.'); this.loadPayrolls(); },
+      error: () => { this.toast.error('Delete Failed', 'Could not delete payroll record.'); }
+    });
+  }
+
+  getMonthName(month: number): string {
+    return this.months.find(m => m.value === month)?.label ?? '';
+  }
+
+  getEmployeeInfo(employeeId: number): Employee | undefined {
+    return this.employees.find(e => e.id === employeeId);
+  }
+
+  printPayslip(p: Payroll): void {
+
+    const emp = this.getEmployeeInfo(p.employeeId);
+    const monthName = this.getMonthName(p.month);
+    const lastDay = new Date(p.year, p.month, 0);
+    const payDate = lastDay.toLocaleDateString('en-MY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const payDateFull = `${String(lastDay.getDate()).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`;
+
+    // Use stored values from API (calculated and saved at generation time)
+    const grossIncome = p.grossIncome   ?? (p.basicSalary + p.allowances);
+    const epfAmount   = p.epfAmount     ?? +(p.basicSalary * 0.02).toFixed(2);
+    const socsoAmount = p.socsoAmount   ?? +(p.basicSalary * 0.005).toFixed(2);
+    const taxAmount   = p.taxAmount     ?? +(grossIncome * 0.1197).toFixed(2);
+    const netPay      = p.netSalary;
+
+    // Employer contributions (informational only — not deducted from employee)
+    const employerEpf   = +(p.basicSalary * 0.13).toFixed(2);   // 13% employer EPF
+    const employerSocso = +(p.basicSalary * 0.0175).toFixed(2); // 1.75% employer SOCSO
+
+    const fmt = (n: number) => n.toFixed(2);
+    const fmtOr = (n: number) => n > 0 ? n.toFixed(2) : '';
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Pay slip for ${monthName}, ${p.year} - ${p.employeeName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #000; background: #fff; padding: 30px; }
+
+    .payslip { max-width: 750px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header { display: flex; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 6px; }
+    .logo-box { display: flex; align-items: center; gap: 10px; margin-right: 20px; }
+    .logo-icon { width: 54px; height: 54px; }
+    .company-block { flex: 1; text-align: center; }
+    .company-name { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+    .company-reg  { font-size: 12px; margin-top: 2px; }
+
+    /* ── Employee meta row ── */
+    .meta-row { display: flex; justify-content: space-between; margin: 10px 0 6px; font-size: 12px; }
+    .meta-left div, .meta-right div { margin-bottom: 3px; }
+
+    /* ── Main table ── */
+    .main-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    .main-table th, .main-table td { border: 1px solid #000; padding: 4px 8px; }
+    .main-table thead tr th { background: #d0d0d0; font-weight: 700; text-align: center; }
+    .main-table .section-head { background: #d0d0d0; font-weight: 700; }
+    .main-table .right { text-align: right; }
+    .main-table .center { text-align: center; }
+    .gross-row td { font-weight: 700; background: #f0f0f0; }
+    .net-row td   { font-weight: 700; font-size: 13px; }
+    .employer-label { font-style: italic; text-decoration: underline; font-size: 11px; }
+
+    /* ── Leave row ── */
+    .leave-row { display: flex; justify-content: space-between; border: 1px solid #000; border-top: none; font-size: 11px; }
+    .leave-cell { flex: 1; padding: 4px 8px; border-right: 1px solid #000; }
+    .leave-cell:last-child { border-right: none; }
+
+    /* ── Footer address ── */
+    .footer-addr { text-align: center; margin-top: 16px; font-size: 10px; color: #333; border-top: 1px solid #aaa; padding-top: 8px; }
+
+    @media print {
+      body { padding: 0; }
+      @page { margin: 12mm; }
+    }
+  </style>
+</head>
+<body>
+<div class="payslip">
+
+  <!-- eSYNC-style Header -->
+  <div class="header">
+    <div class="logo-box">
+      <!-- Logo placeholder – replace src with actual logo path if available -->
+      <svg class="logo-icon" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="54" height="54" rx="6" fill="#1a3a6e"/>
+        <text x="8" y="36" font-family="Arial" font-size="18" font-weight="800" fill="white">eS</text>
+      </svg>
+      <div style="font-size:11px;color:#555;">Software<br/>Services</div>
+    </div>
+    <div class="company-block">
+      <div class="company-name">ESYNC SOFTWARE SERVICES SDN.BHD</div>
+      <div class="company-reg">(1158750-D)</div>
+    </div>
+  </div>
+
+  <!-- Employee Meta -->
+  <div class="meta-row">
+    <div class="meta-left">
+      <div><strong>NAME:</strong> ${p.employeeName}</div>
+      <div><strong>NRIC NO:</strong> ${emp?.icPassport || emp?.phone || '—'}</div>
+      <div><strong>ACCOUNT No:</strong> ${emp?.accountNumber || '—'}</div>
+    </div>
+    <div class="meta-right" style="text-align:right;">
+      <div><strong>DATE:</strong> ${payDateFull}</div>
+      <div>Pay slip for ${monthName}, ${p.year}</div>
+      <div><strong>Bank:</strong> ${emp?.bankName || '—'}</div>
+    </div>
+  </div>
+
+  <!-- Main Payslip Table (matches eSYNC layout) -->
+  <table class="main-table">
+    <thead>
+      <tr>
+        <th style="width:22%">INCOME</th>
+        <th style="width:14%">Current</th>
+        <th style="width:14%">Y-T-D</th>
+        <th style="width:26%">DEDUCTION</th>
+        <th style="width:12%">CURRENT</th>
+        <th style="width:12%">Y-T-D</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>BASIC PAY</td>
+        <td class="right">${fmt(p.basicSalary)}</td>
+        <td></td>
+        <td>ADVANCE</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>Bonus</td>
+        <td></td>
+        <td></td>
+        <td>EPF</td>
+        <td class="right">${fmt(epfAmount)}</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>MA/HRA/DA</td>
+        <td class="right">${fmtOr(p.allowances)}</td>
+        <td></td>
+        <td>SOCSO</td>
+        <td class="right">${fmt(socsoAmount)}</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>Other Deductions</td>
+        <td></td>
+        <td></td>
+        <td>PCB</td>
+        <td class="right">${fmt(taxAmount)}</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>CP3B</td>
+        <td class="right">${p.deductions > 0 ? fmt(p.deductions) : ''}</td>
+        <td></td>
+      </tr>
+      <!-- Employer contributions row -->
+      <tr>
+        <td colspan="3"></td>
+        <td><span class="employer-label">Employer EPF</span></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td><span class="employer-label">Employer SOCSO</span></td>
+        <td class="right">${fmt(employerSocso)}</td>
+        <td></td>
+      </tr>
+      <!-- Gross Income row -->
+      <tr>
+        <td colspan="3"></td>
+        <td>Gross Income</td>
+        <td class="right">${fmt(grossIncome)}</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td>Net Income</td>
+        <td class="right">${fmt(grossIncome)}</td>
+        <td></td>
+      </tr>
+      <!-- Gross Total row -->
+      <tr class="gross-row">
+        <td>Gross Total</td>
+        <td class="right">${fmt(grossIncome)}</td>
+        <td class="right">0.00</td>
+        <td style="font-weight:700;">End of Month Pay</td>
+        <td class="right" colspan="2">${fmt(netPay)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Leave info row -->
+  <div class="leave-row">
+    <div class="leave-cell">Medical Leave = 0, Balance = 0, YTD = 0</div>
+    <div class="leave-cell">Annual Leave = 0, Balance = 0, YTD = 0</div>
+  </div>
+  <div class="leave-row" style="border-top:none;">
+    <div class="leave-cell" colspan="2">Other Leave = 0</div>
+  </div>
+
+  <!-- Summary box (EPF / SOCSO / Tax breakdown) -->
+  <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:11px;">
+    <tr>
+      <td style="padding:4px 8px;border:1px solid #ccc;background:#f7f7f7;font-weight:700;">EPF (Employee 2%)</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;text-align:right;">RM ${fmt(epfAmount)}</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;background:#f7f7f7;font-weight:700;">EPF (Employer 13%)</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;text-align:right;">RM ${fmt(employerEpf)}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 8px;border:1px solid #ccc;background:#f7f7f7;font-weight:700;">SOCSO (Employee 0.5%)</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;text-align:right;">RM ${fmt(socsoAmount)}</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;background:#f7f7f7;font-weight:700;">SOCSO (Employer 1.75%)</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;text-align:right;">RM ${fmt(employerSocso)}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 8px;border:1px solid #ccc;background:#f7f7f7;font-weight:700;">PCB / Tax (11.97%)</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;text-align:right;">RM ${fmt(taxAmount)}</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;background:#f7f7f7;font-weight:700;color:#1a3a6e;">NET PAY</td>
+      <td style="padding:4px 8px;border:1px solid #ccc;text-align:right;font-weight:700;font-size:13px;color:#1a3a6e;">RM ${fmt(netPay)}</td>
+    </tr>
+  </table>
+
+  <!-- Footer address -->
+  <div class="footer-addr">
+    NO 2-10 BLOCK B JALAN GC3 GLOMAC,CYBERJAYA, CYBER 12,63200<br/>
+    CYBERJAYA SELANGOR. Telefon No Baru : +60383228593
+  </div>
+
+</div>
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=820,height=750');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  }
+}
+

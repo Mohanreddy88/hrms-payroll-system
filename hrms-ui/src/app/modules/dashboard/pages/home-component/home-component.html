@@ -1,0 +1,207 @@
+<div class="dashboard">
+
+  <!-- Birthdays Row -->
+  <div class="birthdays-row">
+
+    <div class="birthday-panel upcoming">
+      <h3 class="panel-title"><span class="emoji">🎉</span> Upcoming Birthdays</h3>
+      <div class="birthday-card">
+        <div class="birthday-info">
+          <strong>John Doe</strong>
+          <span class="birthday-date">Dec 10, 2025</span>
+        </div>
+        <span class="days-badge">+3 days</span>
+      </div>
+    </div>
+
+    <div class="birthday-center">
+      <div class="birthday-icon">🎂</div>
+      <p class="birthday-label">Birthdays</p>
+    </div>
+
+    <div class="birthday-panel recent">
+      <h3 class="panel-title"><span class="emoji">🎁</span> Recent Birthdays</h3>
+      <p class="no-data">No recent birthdays</p>
+    </div>
+
+  </div>
+
+  <!-- Main Cards Row -->
+  <div class="main-cards-row">
+
+    <!-- Employee Management -->
+    <div class="mgmt-card">
+      <div class="mgmt-header">
+        <div class="mgmt-icon emp-icon">
+          <i class="bi bi-people-fill"></i>
+        </div>
+        <h3 class="mgmt-title">Employees Management</h3>
+        <div class="mgmt-action">
+          <span class="action-label">
+            <span class="action-text">Add New Employee</span>
+            <small>Creating new employee record</small>
+          </span>
+          <button class="action-btn add-btn" routerLink="/employees/add">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="mgmt-links">
+        <div class="mgmt-link-item" routerLink="/master/departments">
+          <div>
+            <strong>Departments</strong>
+            <small>Active teams</small>
+          </div>
+          <span class="link-badge purple"><i class="bi bi-diagram-3-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/employees">
+          <div>
+            <strong>All Employees</strong>
+            <small>Total active employees</small>
+          </div>
+          <span class="link-badge blue"><i class="bi bi-people-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/employees">
+          <div>
+            <strong>Employee Profiles</strong>
+            <small>View employee details</small>
+          </div>
+          <span class="link-badge teal"><i class="bi bi-person-badge"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/employees/add">
+          <div>
+            <strong>Register Employee</strong>
+            <small>Add a new employee</small>
+          </div>
+          <span class="link-badge green"><i class="bi bi-person-plus-fill"></i></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary Management -->
+    <div class="mgmt-card">
+      <div class="mgmt-header">
+        <div class="mgmt-icon salary-icon">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <h3 class="mgmt-title">Salary Management</h3>
+        <div class="mgmt-action">
+          <span class="action-label">
+            <span class="action-text">Payroll History Records</span>
+            <small>View &amp; print payslips</small>
+          </span>
+          <button class="action-btn payroll-btn" routerLink="/payroll/list">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="mgmt-links">
+        <div class="mgmt-link-item" routerLink="/payroll/generate">
+          <div>
+            <strong>Generate Payroll</strong>
+            <small>Monthly salary computation</small>
+          </div>
+          <span class="link-badge blue"><i class="bi bi-cash-coin"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/payroll/list">
+          <div>
+            <strong>Print Payslip</strong>
+            <small>Download &amp; print payslips</small>
+          </div>
+          <span class="link-badge orange"><i class="bi bi-printer-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/payroll/generate">
+          <div>
+            <strong>PCB / EPF / SOCSO</strong>
+            <small>Malaysia statutory deductions</small>
+          </div>
+          <span class="link-badge teal"><i class="bi bi-wallet2"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/payroll/generate">
+          <div>
+            <strong>Allowances &amp; Deductions</strong>
+            <small>Add special allowances</small>
+          </div>
+          <span class="link-badge pink"><i class="bi bi-piggy-bank"></i></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Cards Row -->
+  <div class="main-cards-row">
+
+    <!-- Attendance Management -->
+    <div class="mgmt-card">
+      <div class="mgmt-header">
+        <div class="mgmt-icon attend-icon">
+          <i class="bi bi-clock-fill"></i>
+        </div>
+        <h3 class="mgmt-title">Attendance Management</h3>
+      </div>
+
+      <div class="mgmt-links">
+        <div class="mgmt-link-item" routerLink="/attendance">
+          <div>
+            <strong>View Attendance</strong>
+            <small>Daily attendance overview</small>
+          </div>
+          <span class="link-badge orange"><i class="bi bi-calendar-check-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item" routerLink="/attendance">
+          <div>
+            <strong>Mark Attendance</strong>
+            <small>Mark present / absent</small>
+          </div>
+          <span class="link-badge blue-dark"><i class="bi bi-check2-circle"></i></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Malaysia Public Holidays -->
+    <div class="mgmt-card">
+      <div class="mgmt-header">
+        <div class="mgmt-icon my-icon">
+          <span class="flag-icon">🇲🇾</span>
+        </div>
+        <h3 class="mgmt-title">Malaysia Public Holidays {{ currentYear }}</h3>
+      </div>
+
+      <div class="mgmt-links">
+        <div class="mgmt-link-item static">
+          <div>
+            <strong>National Day</strong>
+            <small>31 August 2026</small>
+          </div>
+          <span class="link-badge red"><i class="bi bi-flag-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item static">
+          <div>
+            <strong>Malaysia Day</strong>
+            <small>16 September 2026</small>
+          </div>
+          <span class="link-badge red"><i class="bi bi-flag-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item static">
+          <div>
+            <strong>Hari Raya Aidilfitri</strong>
+            <small>30-31 March 2026</small>
+          </div>
+          <span class="link-badge yellow"><i class="bi bi-star-fill"></i></span>
+        </div>
+        <div class="mgmt-link-item static">
+          <div>
+            <strong>Thaipusam / Wesak Day</strong>
+            <small>By state</small>
+          </div>
+          <span class="link-badge teal"><i class="bi bi-calendar-event"></i></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

@@ -1,0 +1,77 @@
+<div class="login-wrapper">
+
+  <div class="login-card">
+
+    <div class="login-brand">
+      <div class="brand-logo">
+        <img src="/img/hrms-logo.svg" alt="HRMS Logo" />
+      </div>
+      <h1 class="brand-name">HR Dashboard</h1>
+      <p class="brand-sub">Manage Employees &amp; Data</p>
+    </div>
+
+    <h2 class="login-title">Sign in to your account</h2>
+
+    @if (sessionExpiredMessage) {
+      <div class="alert-warning">
+        <i class="bi bi-clock-history"></i>
+        {{ sessionExpiredMessage }}
+      </div>
+    }
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <div class="input-wrapper">
+          <i class="bi bi-person input-icon"></i>
+          <input
+            id="username"
+            type="text"
+            formControlName="username"
+            placeholder="Enter your username"
+            [class.is-invalid]="f['username'].invalid && f['username'].touched"
+          />
+        </div>
+        @if (f['username'].invalid && f['username'].touched) {
+          <span class="field-error">Username is required</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrapper">
+          <i class="bi bi-lock input-icon"></i>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            placeholder="Enter your password"
+            [class.is-invalid]="f['password'].invalid && f['password'].touched"
+          />
+        </div>
+        @if (f['password'].invalid && f['password'].touched) {
+          <span class="field-error">Password must be at least 6 characters</span>
+        }
+      </div>
+
+      @if (errorMessage) {
+        <div class="alert-error">
+          <i class="bi bi-exclamation-circle"></i>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <button type="submit" class="btn-login" [disabled]="loading">
+        @if (loading) {
+          <span class="spinner"></span> Signing in...
+        } @else {
+          Sign In
+        }
+      </button>
+
+    </form>
+
+  </div>
+
+</div>

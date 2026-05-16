@@ -1,0 +1,161 @@
+<div class="payroll-page">
+
+  <div class="page-header">
+    <div>
+      <h3>Payroll</h3>
+      <p>Generate and manage monthly payroll</p>
+    </div>
+  </div>
+
+  <!-- Generate Payroll Form (Admin Only) -->
+  @if (isAdmin) {
+  <div class="generate-card">
+    <h5 class="section-title"><i class="bi bi-receipt me-2"></i>Generate Payroll</h5>
+
+    <div class="gen-form">
+
+      <div class="form-group">
+        <label>Employee</label>
+        <select [(ngModel)]="form.employeeId" (change)="onEmployeeChange()">
+          <option [ngValue]="null">-- Select Employee --</option>
+          @for (emp of employees; track emp.id) {
+            <option [ngValue]="emp.id">{{ emp.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="form.month">
+          @for (m of months; track m.value) {
+            <option [ngValue]="m.value">{{ m.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Year</label>
+        <input type="number" [(ngModel)]="form.year" min="2020" max="2099" />
+      </div>
+
+      <div class="form-group">
+        <label>Basic Salary (RM)</label>
+        <input type="number" [(ngModel)]="form.basicSalary" min="0" />
+      </div>
+
+      <div class="form-group">
+        <label>Allowances (RM)</label>
+        <input type="number" [(ngModel)]="form.allowances" min="0" />
+      </div>
+
+      <div class="form-group">
+        <label>Deductions (RM)</label>
+        <input type="number" [(ngModel)]="form.deductions" min="0" />
+      </div>
+
+      <div class="form-group net-display">
+        <label>EPF (2%)</label>
+        <div class="net-value deduction-value">- RM {{ epfAmount | number: '1.2-2' }}</div>
+      </div>
+
+      <div class="form-group net-display">
+        <label>SOCSO (0.5%)</label>
+        <div class="net-value deduction-value">- RM {{ socsoAmount | number: '1.2-2' }}</div>
+      </div>
+
+      <div class="form-group net-display">
+        <label>Tax / PCB (11.97%)</label>
+        <div class="net-value deduction-value">- RM {{ taxAmount | number: '1.2-2' }}</div>
+      </div>
+
+      <div class="form-group net-display">
+        <label>Net Salary</label>
+        <div class="net-value">RM {{ netSalary | number: '1.2-2' }}</div>
+      </div>
+
+      <button class="btn btn-primary gen-btn" (click)="generate()" [disabled]="!form.employeeId || generating">
+        @if (generating) { <span class="spinner-border spinner-border-sm me-1"></span> }
+        Generate
+      </button>
+
+    </div>
+  </div>
+  }
+
+  <!-- Payroll Records -->
+  @if (loading) {
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+  } @else {
+    <div class="card payroll-table-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Period</th>
+            <th>Gross</th>
+            <th>EPF (2%)</th>
+            <th>SOCSO (0.5%)</th>
+            <th>Tax (11.97%)</th>
+            <th>Net Salary</th>
+            <th>Generated On</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (payrolls.length === 0) {
+            <tr>
+              <td colspan="10" class="text-center text-muted py-4">
+                No payroll records found. Generate a payroll above.
+              </td>
+            </tr>
+          }
+          @for (p of payrolls; track p.id; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              <td>
+                <div class="emp-name-cell">
+                  <div class="emp-avatar">{{ p.employeeName.charAt(0) }}</div>
+                  {{ p.employeeName }}
+                </div>
+              </td>
+              <td><span class="period-badge">{{ getMonthName(p.month) }} {{ p.year }}</span></td>
+              <td>RM {{ p.grossIncome | number: '1.2-2' }}</td>
+              <td class="text-danger">-RM {{ p.epfAmount | number: '1.2-2' }}</td>
+              <td class="text-danger">-RM {{ p.socsoAmount | number: '1.2-2' }}</td>
+              <td class="text-danger">-RM {{ p.taxAmount | number: '1.2-2' }}</td>
+              <td><strong class="net-cell">RM {{ p.netSalary | number: '1.2-2' }}</strong></td>
+              <td>{{ p.generatedOn | date: 'dd MMM yyyy' }}</td>
+              <td>
+                <button class="btn btn-sm btn-success me-1" (click)="printPayslip(p)" title="Print Payslip">
+                  <i class="bi bi-printer"></i>
+                </button>
+                @if (isAdmin) {
+                  <button class="btn btn-sm btn-danger" (click)="deletePayroll(p.id)" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>
+
+<!-- Confirmation Modal -->
+<app-confirm-modal
+  [show]="showConfirmModal"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [variant]="confirmModalVariant"
+  confirmText="Delete"
+  cancelText="Cancel"
+  (confirmed)="onConfirmDelete()"
+  (cancelled)="onCancelDelete()"
+></app-confirm-modal>
+

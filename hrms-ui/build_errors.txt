@@ -1,0 +1,8 @@
+
+> hrms-ui@0.0.0 build
+> ng build
+
+[33m>[39m Building...
+[32m√[39m Building...
+Application bundle generation failed. [11.573 seconds] - 2026-05-13T12:23:48.283Z
+

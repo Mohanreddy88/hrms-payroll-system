@@ -1,0 +1,321 @@
+<div class="timesheet-page">
+
+  <div class="page-header">
+    <div>
+      <h3>Timesheets</h3>
+      <p>View and manage employee timesheets</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-back" (click)="backToHome()">
+        <i class="bi bi-house"></i>
+        Home
+      </button>
+      @if (isAdmin) {
+        <button class="btn btn-primary" (click)="generateForAllEmployees()">
+          <i class="bi bi-lightning-charge"></i>
+          Generate All
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="filter-card">
+    <h5 class="section-title"><i class="bi bi-funnel me-2"></i>Filters</h5>
+    <div class="filter-form">
+      @if (isAdmin) {
+        <div class="form-group">
+          <label>Employee</label>
+          <select [(ngModel)]="filterEmployeeId" (ngModelChange)="applyFilters()">
+            <option [ngValue]="null">-- All Employees --</option>
+            @for (emp of employees; track emp.id) {
+              <option [ngValue]="emp.id">{{ emp.name }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="filterMonth" (ngModelChange)="applyFilters()">
+          <option [ngValue]="null">-- All Months --</option>
+          @for (m of months; track m.value) {
+            <option [ngValue]="m.value">{{ m.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="filterYear" (ngModelChange)="applyFilters()">
+          <option [ngValue]="null">-- All Years --</option>
+          <option [ngValue]="2024">2024</option>
+          <option [ngValue]="2025">2025</option>
+          <option [ngValue]="2026">2026</option>
+          <option [ngValue]="2027">2027</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select [(ngModel)]="filterStatus" (ngModelChange)="applyFilters()">
+          <option [ngValue]="null">-- All Status --</option>
+          <option value="Draft">Draft</option>
+          <option value="Submitted">Submitted</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timesheets Table -->
+  @if (loading) {
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+  } @else {
+    <div class="card timesheet-table-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Period</th>
+            <th>Working Days</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Leave</th>
+            <th>Half Day</th>
+            <th>Public Holidays</th>
+            <th>Work Hours</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredTimesheets.length === 0) {
+            <tr>
+              <td colspan="12" class="text-center text-muted py-4">
+                No timesheets found. Generate timesheets using filters above.
+              </td>
+            </tr>
+          }
+          @for (t of filteredTimesheets; track t.id; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              <td>
+                <div class="emp-name-cell">
+                  <div class="emp-avatar">{{ t.employeeName.charAt(0) }}</div>
+                  {{ t.employeeName }}
+                </div>
+              </td>
+              <td><span class="period-badge">{{ getMonthName(t.month) }} {{ t.year }}</span></td>
+              <td>{{ t.totalWorkingDays }}</td>
+              <td><span class="badge bg-success">{{ t.totalPresent }}</span></td>
+              <td><span class="badge bg-danger">{{ t.totalAbsent }}</span></td>
+              <td><span class="badge bg-warning text-dark">{{ t.totalLeave }}</span></td>
+              <td><span class="badge bg-info">{{ t.totalHalfDay }}</span></td>
+              <td><span class="badge bg-secondary">{{ t.totalPublicHolidays }}</span></td>
+              <td>{{ t.totalWorkHours | number: '1.1-1' }}h</td>
+              <td>
+                <span class="status-badge status-{{ t.status.toLowerCase() }}">
+                  {{ t.status }}
+                </span>
+              </td>
+              <td>
+                @if (t.status === 'Draft' && (!isAdmin || t.employeeId === currentUserId)) {
+                  <button class="btn btn-sm btn-primary me-1" (click)="submitTimesheet(t.id)" title="Submit">
+                    <i class="bi bi-send"></i>
+                  </button>
+                }
+                @if (t.status === 'Submitted' && isAdmin) {
+                  <button class="btn btn-sm btn-success me-1" (click)="approveTimesheet(t.id)" title="Approve">
+                    <i class="bi bi-check-circle"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger me-1" (click)="rejectTimesheet(t.id)" title="Reject">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                }
+                <button class="btn btn-sm btn-info me-1" (click)="viewDetails(t)" title="View Details">
+                  <i class="bi bi-eye"></i>
+                </button>
+                @if (t.status === 'Draft' && isAdmin) {
+                  <button class="btn btn-sm btn-secondary" (click)="deleteTimesheet(t.id)" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Timesheet Details Modal -->
+  @if (showModal && selectedTimesheet) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-container" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h4><i class="bi bi-file-earmark-text me-2"></i>Timesheet Details</h4>
+          <button class="modal-close" (click)="closeModal()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Employee Information -->
+          <div class="detail-section">
+            <h5 class="detail-section-title">Employee Information</h5>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Name:</span>
+                <span class="detail-value">{{ selectedTimesheet.employeeName }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Period:</span>
+                <span class="detail-value">{{ getMonthName(selectedTimesheet.month) }} {{ selectedTimesheet.year }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Status:</span>
+                <span class="status-badge status-{{ selectedTimesheet.status.toLowerCase() }}">
+                  {{ selectedTimesheet.status }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Summary -->
+          <div class="detail-section">
+            <h5 class="detail-section-title">Attendance Summary</h5>
+            <div class="attendance-cards">
+              <div class="attendance-card">
+                <div class="attendance-icon working-days">
+                  <i class="bi bi-calendar3"></i>
+                </div>
+                <div class="attendance-info">
+                  <div class="attendance-label">Working Days</div>
+                  <div class="attendance-value">{{ selectedTimesheet.totalWorkingDays }}</div>
+                </div>
+              </div>
+
+              <div class="attendance-card">
+                <div class="attendance-icon present">
+                  <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="attendance-info">
+                  <div class="attendance-label">Present</div>
+                  <div class="attendance-value">{{ selectedTimesheet.totalPresent }}</div>
+                </div>
+              </div>
+
+              <div class="attendance-card">
+                <div class="attendance-icon absent">
+                  <i class="bi bi-x-circle-fill"></i>
+                </div>
+                <div class="attendance-info">
+                  <div class="attendance-label">Absent</div>
+                  <div class="attendance-value">{{ selectedTimesheet.totalAbsent }}</div>
+                </div>
+              </div>
+
+              <div class="attendance-card">
+                <div class="attendance-icon leave">
+                  <i class="bi bi-calendar-check"></i>
+                </div>
+                <div class="attendance-info">
+                  <div class="attendance-label">Leave</div>
+                  <div class="attendance-value">{{ selectedTimesheet.totalLeave }}</div>
+                </div>
+              </div>
+
+              <div class="attendance-card">
+                <div class="attendance-icon half-day">
+                  <i class="bi bi-calendar-minus"></i>
+                </div>
+                <div class="attendance-info">
+                  <div class="attendance-label">Half Day</div>
+                  <div class="attendance-value">{{ selectedTimesheet.totalHalfDay }}</div>
+                </div>
+              </div>
+
+              <div class="attendance-card">
+                <div class="attendance-icon holidays">
+                  <i class="bi bi-calendar-event"></i>
+                </div>
+                <div class="attendance-info">
+                  <div class="attendance-label">Public Holidays</div>
+                  <div class="attendance-value">{{ selectedTimesheet.totalPublicHolidays }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Work Hours -->
+          <div class="detail-section">
+            <h5 class="detail-section-title">Work Hours</h5>
+            <div class="work-hours-display">
+              <i class="bi bi-clock-history me-2"></i>
+              <span class="work-hours-value">{{ selectedTimesheet.totalWorkHours | number: '1.1-1' }}</span>
+              <span class="work-hours-label">hours</span>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="detail-section">
+            <h5 class="detail-section-title">Additional Information</h5>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Generated On:</span>
+                <span class="detail-value">{{ selectedTimesheet.generatedOn | date: 'dd MMM yyyy, HH:mm' }}</span>
+              </div>
+              @if (selectedTimesheet.approvedOn) {
+                <div class="detail-item">
+                  <span class="detail-label">Approved On:</span>
+                  <span class="detail-value">{{ selectedTimesheet.approvedOn | date: 'dd MMM yyyy, HH:mm' }}</span>
+                </div>
+              }
+              @if (selectedTimesheet.remarks) {
+                <div class="detail-item full-width">
+                  <span class="detail-label">Remarks:</span>
+                  <span class="detail-value">{{ selectedTimesheet.remarks }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">
+            Close
+          </button>
+          <button class="btn btn-primary" (click)="emailTimesheet(selectedTimesheet)" title="Email timesheet with Excel attachment">
+            <i class="bi bi-envelope me-2"></i>Email Timesheet
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>
+
+<!-- Input Modal for Approval/Rejection -->
+<app-input-modal
+  [show]="showInputModal"
+  [title]="inputModalTitle"
+  [message]="inputModalMessage"
+  [placeholder]="inputModalRequired ? 'Required...' : 'Optional...'"
+  [required]="inputModalRequired"
+  [inputType]="inputModalType"
+  [confirmText]="pendingApprovalId ? 'Approve' : 'Reject'"
+  (confirmed)="onInputModalConfirmed($event)"
+  (cancelled)="closeInputModal()"
+></app-input-modal>
+
+<!-- Confirm Modal for Delete/Generate All -->
+<app-confirm-modal
+  [show]="showConfirmModal"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [variant]="confirmModalVariant"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="onConfirmModalCancelled()"
+></app-confirm-modal>

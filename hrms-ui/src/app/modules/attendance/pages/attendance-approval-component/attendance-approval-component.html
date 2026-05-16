@@ -1,0 +1,330 @@
+<div class="approval-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <h2>📋 Attendance Period Approval</h2>
+      <p>Review and approve employee attendance submissions</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card" *ngIf="!selectedPeriod">
+    <h5 class="filter-title"><i class="bi bi-funnel me-2"></i>Filters</h5>
+    <div class="filter-row">
+      <div class="form-group">
+        <label>Status</label>
+        <select [(ngModel)]="filterStatus" (change)="onFilterChange()" class="form-control">
+          <option value="Submitted">Submitted</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Draft">Draft</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Employee</label>
+        <select [(ngModel)]="filterEmployeeId" (change)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Employees</option>
+          <option *ngFor="let emp of employees" [ngValue]="emp.id">{{ emp.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="filterMonth" (change)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Months</option>
+          <option *ngFor="let month of months" [ngValue]="month.value">{{ month.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="filterYear" (change)="onFilterChange()" class="form-control">
+          <option *ngFor="let year of years" [ngValue]="year">{{ year }}</option>
+        </select>
+      </div>
+
+      <button class="btn btn-secondary clear-btn" (click)="clearFilters()">
+        <i class="bi bi-x-circle me-1"></i>Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Pending Periods List -->
+  <div class="periods-list" *ngIf="!selectedPeriod">
+    <div class="list-header">
+      <h3>Attendance Periods ({{ pendingPeriods.length }})</h3>
+    </div>
+
+    <div class="periods-grid" *ngIf="pendingPeriods.length > 0">
+      <div class="period-card" *ngFor="let period of pendingPeriods" (click)="viewPeriodDetails(period.id)">
+        <div class="card-header">
+          <div class="employee-info">
+            <h4>{{ period.employeeName }}</h4>
+            <span class="employee-email">{{ period.employeeEmail }}</span>
+          </div>
+          <span class="status-badge pending">{{ period.status }}</span>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="label">Period:</span>
+            <span class="value">{{ formatDate(period.startDate) }} - {{ formatDate(period.endDate) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Submitted:</span>
+            <span class="value">{{ formatDate(period.submittedAt) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Total Hours:</span>
+            <span class="value hours">{{ period.totalHours }}h</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Leave Days:</span>
+            <span class="value">{{ period.leaveCount }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn-view">View Details →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="no-data" *ngIf="pendingPeriods.length === 0">
+      <i class="bi bi-inbox"></i>
+      <p>No pending attendance periods for approval</p>
+    </div>
+  </div>
+
+  <!-- Period Details View -->
+  <div class="period-details" *ngIf="selectedPeriod">
+    <div class="details-header">
+      <button class="btn-back" (click)="closeDetails()">
+        <i class="bi bi-arrow-left"></i>
+        Back to List
+      </button>
+      <h3>Attendance Period Details</h3>
+    </div>
+
+    <!-- Employee Info -->
+    <div class="employee-detail-card">
+      <div class="detail-row">
+        <span class="label">Employee:</span>
+        <span class="value">{{ selectedPeriod.employeeName }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">Email:</span>
+        <span class="value">{{ selectedPeriod.employeeEmail }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">Period:</span>
+        <span class="value">{{ formatDate(selectedPeriod.startDate) }} - {{ formatDate(selectedPeriod.endDate) }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">Status:</span>
+        <span class="status-badge pending">{{ selectedPeriod.status }}</span>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="card-value">{{ selectedPeriod.summary.totalHours }}h</div>
+        <div class="card-label">Total Hours</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-value">{{ selectedPeriod.summary.workingDays }}</div>
+        <div class="card-label">Working Days</div>
+      </div>
+      <div class="summary-card al">
+        <div class="card-value">{{ selectedPeriod.summary.alCount }}</div>
+        <div class="card-label">Annual Leave</div>
+      </div>
+      <div class="summary-card el">
+        <div class="card-value">{{ selectedPeriod.summary.elCount }}</div>
+        <div class="card-label">Emergency Leave</div>
+      </div>
+      <div class="summary-card mc">
+        <div class="card-value">{{ selectedPeriod.summary.mcCount }}</div>
+        <div class="card-label">Medical Leave</div>
+      </div>
+    </div>
+
+    <!-- Days Grid -->
+    <div class="days-grid">
+      <h4>Daily Breakdown</h4>
+      <div class="days-table">
+        <div class="table-header">
+          <div class="col-date">Date</div>
+          <div class="col-day">Day</div>
+          <div class="col-hours">Hours</div>
+          <div class="col-note">Leave Type</div>
+          <div class="col-remarks">Remarks</div>
+        </div>
+        <div class="table-row" *ngFor="let day of selectedPeriod.days"
+             [class.weekend]="isWeekend(day.date)"
+             [class.holiday]="day.isPublicHoliday"
+             [class.leave]="day.note"
+             [class.pending-leave]="isDayPendingLeave(day.date)">
+          <div class="col-date">{{ formatDate(day.date) }}</div>
+          <div class="col-day">{{ getDayName(day.date) }}</div>
+          <div class="col-hours">{{ day.hours }}</div>
+          <div class="col-note">
+            <span class="leave-badge" *ngIf="day.note">{{ day.note }}</span>
+            <span class="pending-badge" *ngIf="!day.note && isDayPendingLeave(day.date)">
+              <i class="bi bi-clock-history"></i> Pending Leave
+            </span>
+            <span *ngIf="!day.note && !isDayPendingLeave(day.date)">-</span>
+          </div>
+          <div class="col-remarks">{{ day.remarks || '-' }}</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Pending Leave Requests Warning -->
+    <div class="pending-leave-warning" *ngIf="selectedPeriod.hasPendingLeaves">
+      <h4>
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        Pending Leave Requests ({{ selectedPeriod.pendingLeaves.length }})
+      </h4>
+      <p class="warning-note"><strong>Warning:</strong> Cannot approve attendance until these leave requests are approved or rejected</p>
+      <div class="leave-cards">
+        <div class="leave-card" *ngFor="let leave of selectedPeriod.pendingLeaves">
+          <div class="leave-header">
+            <span class="leave-type-badge" [class]="leave.leaveTypeCode.toLowerCase()">
+              {{ leave.leaveType }}
+            </span>
+            <span class="leave-days">{{ leave.totalDays }} day<span *ngIf="leave.totalDays > 1">s</span></span>
+          </div>
+          <div class="leave-body">
+            <div class="leave-row">
+              <i class="bi bi-calendar-range"></i>
+              <span>{{ formatDate(leave.startDate) }} - {{ formatDate(leave.endDate) }}</span>
+            </div>
+            <div class="leave-row" *ngIf="leave.reason">
+              <i class="bi bi-chat-left-text"></i>
+              <span>{{ leave.reason }}</span>
+            </div>
+            <div class="leave-row">
+              <i class="bi bi-clock-history"></i>
+              <span class="pending-status">Requested on {{ formatDate(leave.requestedOn) }} - Awaiting Approval</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approved Leave Requests -->
+    <div class="leave-requests-section" *ngIf="selectedPeriod.approvedLeaves && selectedPeriod.approvedLeaves.length > 0">
+      <h4>
+        <i class="bi bi-calendar-event-fill"></i>
+        Approved Leave Requests ({{ selectedPeriod.approvedLeaves.length }})
+      </h4>
+      <p class="section-note">These approved leaves overlap with this attendance period</p>
+      <div class="leave-cards">
+        <div class="leave-card" *ngFor="let leave of selectedPeriod.approvedLeaves">
+          <div class="leave-header">
+            <span class="leave-type-badge" [class]="leave.leaveTypeCode.toLowerCase()">
+              {{ leave.leaveType }}
+            </span>
+            <span class="leave-days">{{ leave.totalDays }} day<span *ngIf="leave.totalDays > 1">s</span></span>
+          </div>
+          <div class="leave-body">
+            <div class="leave-row">
+              <i class="bi bi-calendar-range"></i>
+              <span>{{ formatDate(leave.startDate) }} - {{ formatDate(leave.endDate) }}</span>
+            </div>
+            <div class="leave-row" *ngIf="leave.reason">
+              <i class="bi bi-chat-left-text"></i>
+              <span>{{ leave.reason }}</span>
+            </div>
+            <div class="leave-row">
+              <i class="bi bi-check-circle-fill"></i>
+              <span>Approved on {{ formatDate(leave.approvedOn) }}</span>
+            </div>
+            <div class="leave-row" *ngIf="leave.approvalRemarks">
+              <i class="bi bi-sticky"></i>
+              <span class="remarks">{{ leave.approvalRemarks }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Action Buttons - Only show for Submitted status -->
+    <div class="action-buttons" *ngIf="selectedPeriod.status === 'Submitted'">
+      <button class="btn-reject" (click)="openRejectModal(selectedPeriod.id)">
+        <i class="bi bi-x-circle"></i>
+        Reject
+      </button>
+      <button class="btn-approve" (click)="openApproveModal()">
+        <i class="bi bi-check-circle"></i>
+        Approve
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Confirmation Modal -->
+<div class="modal" [class.show]="showApproveModal" *ngIf="showApproveModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3>Approve Attendance Period</h3>
+      <button class="btn-close" (click)="closeApproveModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-message">
+        <i class="bi bi-check-circle-fill success-icon"></i>
+        <p>Are you sure you want to approve this attendance period?</p>
+        <div class="period-info" *ngIf="selectedPeriod">
+          <strong>Employee:</strong> {{ selectedPeriod.employeeName }}<br>
+          <strong>Period:</strong> {{ formatDate(selectedPeriod.startDate) }} - {{ formatDate(selectedPeriod.endDate) }}<br>
+          <strong>Total Hours:</strong> {{ selectedPeriod.summary.totalHours }}h
+        </div>
+        <p class="email-note">An approval email will be sent to the employee.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeApproveModal()">Cancel</button>
+      <button class="btn-confirm-approve" (click)="confirmApprove()">Approve & Send Email</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal" [class.show]="showRejectModal" *ngIf="showRejectModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3>Reject Attendance Period</h3>
+      <button class="btn-close" (click)="closeRejectModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Rejection Reason <span class="required">*</span></label>
+        <textarea 
+          [(ngModel)]="rejectionReason" 
+          class="form-control" 
+          rows="4" 
+          placeholder="Please provide a clear reason for rejection. The employee will receive this via email."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeRejectModal()">Cancel</button>
+      <button class="btn-confirm-reject" (click)="confirmReject()">Reject & Send Email</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+

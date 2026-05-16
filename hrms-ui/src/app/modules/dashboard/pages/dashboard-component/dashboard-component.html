@@ -1,0 +1,57 @@
+<div class="dashboard">
+
+  <!-- Summary Statistics Cards -->
+  <div class="summary-row">
+    @if (summary) {
+      <div class="stat-card">
+        <div class="stat-icon emp-icon"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-content">
+          <div class="stat-value">{{ summary.totalEmployees }}</div>
+          <div class="stat-label">Total Employees</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon dept-icon"><i class="bi bi-diagram-3-fill"></i></div>
+        <div class="stat-content">
+          <div class="stat-value">{{ summary.totalDepartments }}</div>
+          <div class="stat-label">Departments</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon payroll-icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="stat-content">
+          <div class="stat-value">RM {{ summary.monthlyPayroll | number:'1.2-2' }}</div>
+          <div class="stat-label">Monthly Payroll</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon attend-icon"><i class="bi bi-calendar-check-fill"></i></div>
+        <div class="stat-content">
+          <div class="stat-value">{{ summary.todayAttendance }}</div>
+          <div class="stat-label">Present Today</div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Analytics Charts Row -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <canvas #deptPieChart></canvas>
+    </div>
+
+    <div class="chart-card wide">
+      <canvas #payrollLineChart></canvas>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <canvas #attendanceBarChart></canvas>
+    </div>
+  </div>
+
+</div>

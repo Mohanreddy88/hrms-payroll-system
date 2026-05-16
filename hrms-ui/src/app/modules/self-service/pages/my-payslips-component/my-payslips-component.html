@@ -1,0 +1,313 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h2><i class="bi bi-receipt"></i> My Payslips</h2>
+      <p>View and download your salary payslips</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <h5><i class="bi bi-funnel"></i> Filter Payslips</h5>
+    <div class="filter-row">
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="selectedYear" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Years</option>
+          <option *ngFor="let y of years" [ngValue]="y">{{ y }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="selectedMonth" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Months</option>
+          <option *ngFor="let m of months" [ngValue]="m.value">{{ m.name }}</option>
+        </select>
+      </div>
+
+      <button class="btn btn-secondary clear-btn" (click)="clearFilters()" *ngIf="selectedYear || selectedMonth">
+        <i class="bi bi-x-circle"></i>
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Payslips Grid -->
+  <div class="payslips-grid" *ngIf="filteredPayslips.length > 0">
+    <div class="payslip-card" *ngFor="let payslip of filteredPayslips">
+      <div class="card-header">
+        <div class="period-info">
+          <div class="period-month">{{ getMonthName(payslip.month) }}</div>
+          <div class="period-year">{{ payslip.year }}</div>
+        </div>
+        <span class="status-badge" [class]="getStatusClass(payslip.status)">
+          {{ payslip.status }}
+        </span>
+      </div>
+
+      <div class="card-body">
+        <div class="salary-summary">
+          <div class="salary-label">Net Salary</div>
+          <div class="salary-amount">RM {{ payslip.netSalary | number:'1.2-2' }}</div>
+        </div>
+
+        <div class="salary-details">
+          <div class="detail-row">
+            <span class="label">Gross Income</span>
+            <span class="value">RM {{ payslip.grossIncome | number:'1.2-2' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Total Deductions</span>
+            <span class="value negative">-RM {{ (payslip.epfAmount + payslip.socsoAmount + payslip.taxAmount + payslip.deductions) | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <div class="breakdown-summary" *ngIf="payslip.attendanceHours !== undefined">
+          <div class="breakdown-item">
+            <i class="bi bi-clock-history"></i>
+            <span>{{ payslip.attendanceHours }}h / {{ payslip.expectedHours }}h</span>
+          </div>
+          <div class="breakdown-item" *ngIf="payslip.paidLeaveDays || payslip.unpaidLeaveDays">
+            <i class="bi bi-calendar-x"></i>
+            <span>{{ payslip.paidLeaveDays || 0 }}d paid, {{ payslip.unpaidLeaveDays || 0 }}d unpaid</span>
+          </div>
+        </div>
+
+        <div class="generated-date">
+          <i class="bi bi-calendar-check"></i>
+          Generated on {{ payslip.generatedOn | date:'dd MMM yyyy' }}
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <button class="btn-action btn-view" (click)="viewDetails(payslip.id)">
+          <i class="bi bi-eye"></i>
+          View Details
+        </button>
+        <button 
+          class="btn-action btn-download" 
+          (click)="downloadPayslip(payslip)"
+          *ngIf="payslip.status === 'Approved' || payslip.status === 'Processed'">
+          <i class="bi bi-download"></i>
+          Download PDF
+        </button>
+        <button 
+          class="btn-action btn-email" 
+          (click)="emailPayslip(payslip.id)"
+          *ngIf="payslip.status === 'Approved' || payslip.status === 'Processed'">
+          <i class="bi bi-envelope"></i>
+          Email
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="filteredPayslips.length === 0">
+    <i class="bi bi-inbox"></i>
+    <h3>No Payslips Found</h3>
+    <p>You don't have any payslips for the selected period yet.</p>
+    <button class="btn btn-secondary" (click)="clearFilters()" *ngIf="selectedYear || selectedMonth">
+      <i class="bi bi-arrow-clockwise"></i>
+      Clear Filters
+    </button>
+  </div>
+</div>
+
+<!-- Payslip Detail Modal -->
+<div class="modal" [class.show]="showDetailModal" *ngIf="showDetailModal && selectedPayslip">>
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">(click)="\$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <i class="bi bi-receipt"></i>
+        Payslip Details
+      </h3>
+      <button class="btn-close" (click)="closeDetailModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Period Header -->
+      <div class="detail-header">
+        <div class="header-left">
+          <div class="period-large">
+            <div class="month">{{ selectedPayslip.monthYear }}</div>
+          </div>
+          <span class="status-badge" [class]="getStatusClass(selectedPayslip.status)">
+            {{ selectedPayslip.status }}
+          </span>
+        </div>
+        <div class="header-right">
+          <div class="net-salary-display">
+            <div class="label">Net Salary</div>
+            <div class="amount">RM {{ selectedPayslip.netSalary | number:'1.2-2' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Salary Breakdown -->
+      <div class="detail-section">
+        <h5><i class="bi bi-cash-coin"></i> Salary Breakdown</h5>
+        <div class="breakdown-grid">
+          <div class="breakdown-row">
+            <span class="label">Basic Salary</span>
+            <span class="value">RM {{ selectedPayslip.basicSalary | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="label">Allowances</span>
+            <span class="value">RM {{ selectedPayslip.allowances | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row total">
+            <span class="label">Gross Income</span>
+            <span class="value">RM {{ selectedPayslip.grossIncome | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="label">EPF (2%)</span>
+            <span class="value negative">-RM {{ selectedPayslip.epfAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="label">SOCSO (0.5%)</span>
+            <span class="value negative">-RM {{ selectedPayslip.socsoAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="label">Tax (11.97%)</span>
+            <span class="value negative">-RM {{ selectedPayslip.taxAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row" *ngIf="selectedPayslip.deductions > 0">
+            <span class="label">Other Deductions</span>
+            <span class="value negative">-RM {{ selectedPayslip.deductions | number:'1.2-2' }}</span>
+          </div>
+          <div class="breakdown-row net-total">
+            <span class="label">Net Salary</span>
+            <span class="value">RM {{ selectedPayslip.netSalary | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance & Leave Summary -->
+      <div class="detail-section" *ngIf="selectedPayslip.attendanceHours !== undefined">
+        <h5><i class="bi bi-calendar-check"></i> Attendance & Leave Summary</h5>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-icon">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <div class="summary-info">
+              <div class="summary-label">Hours Worked</div>
+              <div class="summary-value">{{ selectedPayslip.attendanceHours }}h / {{ selectedPayslip.expectedHours }}h</div>
+            </div>
+          </div>
+          <div class="summary-item" *ngIf="selectedPayslip.paidLeaveDays">
+            <div class="summary-icon paid">
+              <i class="bi bi-calendar-check"></i>
+            </div>
+            <div class="summary-info">
+              <div class="summary-label">Paid Leave</div>
+              <div class="summary-value">{{ selectedPayslip.paidLeaveDays }} day(s)</div>
+            </div>
+          </div>
+          <div class="summary-item" *ngIf="selectedPayslip.unpaidLeaveDays">
+            <div class="summary-icon unpaid">
+              <i class="bi bi-calendar-x"></i>
+            </div>
+            <div class="summary-info">
+              <div class="summary-label">Unpaid Leave</div>
+              <div class="summary-value">{{ selectedPayslip.unpaidLeaveDays }} day(s)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Periods -->
+      <div class="detail-section" *ngIf="(selectedPayslip.attendancePeriods && selectedPayslip.attendancePeriods.length > 0)">
+        <h5><i class="bi bi-calendar-check"></i> Attendance Periods</h5>
+        <div class="attendance-list">
+          <div class="attendance-item" *ngFor="let ap of selectedPayslip.attendancePeriods">
+            <div class="attendance-dates">
+              {{ ap.startDate | date:'dd/MM/yyyy' }} - {{ ap.endDate | date:'dd/MM/yyyy' }}
+            </div>
+            <div class="attendance-hours">{{ ap.hoursWorked }}h</div>
+            <span class="badge badge-success">{{ ap.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Requests -->
+      <div class="detail-section" *ngIf="(selectedPayslip.leaveRequests && selectedPayslip.leaveRequests.length > 0)">
+        <h5><i class="bi bi-calendar-x"></i> Leave Requests</h5>
+        <div class="leave-list">
+          <div class="leave-item" *ngFor="let lr of selectedPayslip.leaveRequests">
+            <div class="leave-info">
+              <div class="leave-type">{{ lr.leaveType }}</div>
+              <div class="leave-dates">{{ lr.startDate | date:'dd/MM/yyyy' }} - {{ lr.endDate | date:'dd/MM/yyyy' }}</div>
+            </div>
+            <div class="leave-meta">
+              <span class="leave-days">{{ lr.leaveDays }} day(s)</span>
+              <span *ngIf="lr.isPaid" class="badge badge-success">Paid</span>
+              <span *ngIf="!lr.isPaid" class="badge badge-warning">
+                Unpaid (-RM {{ lr.deductionAmount | number:'1.2-2' }})
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adjustments -->
+      <div class="detail-section" *ngIf="(selectedPayslip.adjustments && selectedPayslip.adjustments.length > 0)">
+        <h5><i class="bi bi-sliders"></i> Adjustments</h5>
+        <div class="adjustment-list">
+          <div class="adjustment-item" *ngFor="let adj of selectedPayslip.adjustments">
+            <div class="adjustment-info">
+              <div class="adjustment-type">{{ adj.adjustmentType }}</div>
+              <div class="adjustment-desc">{{ adj.description }}</div>
+            </div>
+            <div class="adjustment-amount">RM {{ adj.amount | number:'1.2-2' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generated Info -->
+      <div class="generated-info">
+        <i class="bi bi-info-circle"></i>
+        Generated on {{ selectedPayslip.generatedOn | date:'dd MMM yyyy, HH:mm' }}
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeDetailModal()">Close</button>
+      <button 
+        class="btn btn-primary" 
+        (click)="downloadPayslip(selectedPayslip)"
+        *ngIf="selectedPayslip.status === 'Approved' || selectedPayslip.status === 'Processed'">
+        <i class="bi bi-download"></i>
+        Download PDF
+      </button>
+      <button 
+        class="btn btn-success" 
+        (click)="emailPayslip(selectedPayslip.id)"
+        *ngIf="selectedPayslip.status === 'Approved' || selectedPayslip.status === 'Processed'">
+        <i class="bi bi-envelope"></i>
+        Email Me
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

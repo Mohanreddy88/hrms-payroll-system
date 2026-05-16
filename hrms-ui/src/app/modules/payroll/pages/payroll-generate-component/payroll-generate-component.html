@@ -1,0 +1,308 @@
+<div class="page-container">
+  <div class="page-header">
+    <h2><i class="bi bi-cash-coin"></i> Generate Payroll</h2>
+    <p>Automatically generate payroll based on approved attendance and leave records</p>
+  </div>
+
+  <!-- Month/Year Selection -->
+  <div class="selection-card">
+    <h3><i class="bi bi-calendar3"></i> Select Period</h3>
+    <div class="period-selector">
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="selectedMonth" class="form-control">
+          <option *ngFor="let m of months" [value]="m.value">{{ m.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="selectedYear" class="form-control">
+          <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee Selection -->
+  <div class="selection-card">
+    <div class="card-header-actions">
+      <h3><i class="bi bi-people-fill"></i> Select Employees</h3>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" (click)="toggleSelectAll()">
+          <i class="bi" [class.bi-check-square]="allSelected" [class.bi-square]="!allSelected"></i>
+          {{ allSelected ? 'Deselect All' : 'Select All' }}
+        </button>
+        <span class="selection-count">{{ selectedEmployeeIds.length }} selected</span>
+      </div>
+    </div>
+
+    <div class="employee-grid">
+      <div 
+        *ngFor="let emp of employees" 
+        class="employee-card"
+        [class.selected]="isSelected(emp.id)"
+        (click)="toggleEmployeeSelection(emp.id)">
+        <div class="employee-checkbox">
+          <i class="bi" [class.bi-check-circle-fill]="isSelected(emp.id)" [class.bi-circle]="!isSelected(emp.id)"></i>
+        </div>
+        <div class="employee-info">
+          <div class="employee-name">{{ emp.name }}</div>
+          <div class="employee-code">{{ emp.employeeCode }}</div>
+          <div class="employee-salary">RM {{ emp.salary | number:'1.2-2' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="employees.length === 0" class="empty-state">
+      <i class="bi bi-inbox"></i>
+      <p>No active employees found</p>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons" *ngIf="selectedEmployeeIds.length > 0">
+    <button class="btn btn-primary" (click)="checkEligibility()" [disabled]="generating">
+      <i class="bi bi-clipboard-check"></i>
+      Check Eligibility
+    </button>
+    <button 
+      class="btn btn-success" 
+      (click)="generate()" 
+      [disabled]="generating || !hasEligibleEmployees()"
+      [title]="!hasEligibleEmployees() && eligibilityResults.size > 0 ? 'No eligible employees selected' : ''">
+      <i class="bi bi-cash-stack"></i>
+      {{ generating ? 'Generating...' : 'Generate Payroll' }}
+    </button>
+  </div>
+
+  <!-- Eligibility Results Panel -->
+  <div class="eligibility-panel" *ngIf="showEligibilityPanel">
+    <div class="panel-header">
+      <h3><i class="bi bi-check-circle"></i> Eligibility Check Results</h3>
+      <div class="eligibility-summary">
+        <span class="badge badge-success">{{ getEligibleCount() }} Eligible</span>
+        <span class="badge badge-danger">{{ getIneligibleCount() }} Ineligible</span>
+      </div>
+    </div>
+
+    <div class="eligibility-list">
+      <div 
+        *ngFor="let emp of getSelectedEmployees()" 
+        class="eligibility-item"
+        [class.eligible]="getEligibility(emp.id)?.isEligible"
+        [class.ineligible]="!getEligibility(emp.id)?.isEligible">
+        
+        <div class="eligibility-employee">
+          <i class="bi" 
+             [class.bi-check-circle-fill]="getEligibility(emp.id)?.isEligible" 
+             [class.bi-x-circle-fill]="!getEligibility(emp.id)?.isEligible"></i>
+          <div>
+            <div class="employee-name">{{ emp.name }}</div>
+            <div class="employee-code">{{ emp.employeeCode }}</div>
+          </div>
+        </div>
+
+        <div class="eligibility-details" *ngIf="getEligibility(emp.id) as elig">
+          <div class="detail-row">
+            <span class="label">Attendance Periods:</span>
+            <span class="value">{{ elig.approvedAttendancePeriods }} / {{ elig.totalAttendancePeriods }} approved</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Leave Requests:</span>
+            <span class="value">{{ elig.pendingLeaveRequests }} pending</span>
+          </div>
+
+          <!-- Errors -->
+          <div class="eligibility-errors" *ngIf="elig.errors.length > 0">
+            <div class="error-item" *ngFor="let error of elig.errors">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              {{ error }}
+            </div>
+          </div>
+
+          <!-- Warnings -->
+          <div class="eligibility-warnings" *ngIf="elig.warnings.length > 0">
+            <div class="warning-item" *ngFor="let warning of elig.warnings">
+              <i class="bi bi-info-circle-fill"></i>
+              {{ warning }}
+            </div>
+          </div>
+
+          <!-- Preview Button (for single employee) -->
+          <button 
+            *ngIf="selectedEmployeeIds.length === 1 && elig.isEligible" 
+            class="btn btn-secondary btn-sm"
+            (click)="calculatePreview(emp.id)">
+            <i class="bi bi-calculator"></i>
+            Preview Calculation
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calculation Preview Modal -->
+  <div class="modal" [class.show]="showCalculationPreview" *ngIf="showCalculationPreview && calculationPreview" >
+    <div class="modal-backdrop" (click)="closeCalculationPreview()"><div class="modal-backdrop" (click)="closeCalculationPreview()"></div>
+    <div class="modal-dialog calculation-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-calculator"></i>
+          Payroll Calculation Preview
+        </h3>
+        <button class="btn-close" (click)="closeCalculationPreview()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="calculation-summary">
+          <div class="summary-header">
+            <div class="employee-info">
+              <h4>{{ calculationPreview.employeeName }}</h4>
+              <p>{{ getMonthName(calculationPreview.month) }} {{ calculationPreview.year }}</p>
+            </div>
+            <div class="net-salary">
+              <div class="label">Net Salary</div>
+              <div class="amount">RM {{ calculationPreview.netSalary | number:'1.2-2' }}</div>
+            </div>
+          </div>
+
+          <div class="calculation-grid">
+            <!-- Income Section -->
+            <div class="calc-section">
+              <h5>Income</h5>
+              <div class="calc-row">
+                <span>Basic Salary</span>
+                <span class="amount">RM {{ calculationPreview.basicSalary | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row">
+                <span>Allowances</span>
+                <span class="amount">RM {{ calculationPreview.allowances | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row total">
+                <span>Gross Income</span>
+                <span class="amount">RM {{ calculationPreview.grossIncome | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <!-- Attendance Section -->
+            <div class="calc-section">
+              <h5>Attendance</h5>
+              <div class="calc-row">
+                <span>Working Days</span>
+                <span class="amount">{{ calculationPreview.workingDays }} days</span>
+              </div>
+              <div class="calc-row">
+                <span>Expected Hours</span>
+                <span class="amount">{{ calculationPreview.expectedHours }}h</span>
+              </div>
+              <div class="calc-row">
+                <span>Actual Hours</span>
+                <span class="amount">{{ calculationPreview.attendanceHours }}h</span>
+              </div>
+              <div class="calc-row">
+                <span>Hourly Rate</span>
+                <span class="amount">RM {{ calculationPreview.hourlyRate | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <!-- Leave Section -->
+            <div class="calc-section">
+              <h5>Leave</h5>
+              <div class="calc-row">
+                <span>Paid Leave Days</span>
+                <span class="amount">{{ calculationPreview.paidLeaveDays }} days</span>
+              </div>
+              <div class="calc-row">
+                <span>Unpaid Leave Days</span>
+                <span class="amount">{{ calculationPreview.unpaidLeaveDays }} days</span>
+              </div>
+              <div class="calc-row total">
+                <span>Unpaid Leave Deduction</span>
+                <span class="amount negative">-RM {{ calculationPreview.unpaidLeaveDeduction | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <!-- Deductions Section -->
+            <div class="calc-section">
+              <h5>Statutory Deductions</h5>
+              <div class="calc-row">
+                <span>EPF (2%)</span>
+                <span class="amount negative">-RM {{ calculationPreview.epfAmount | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row">
+                <span>SOCSO (0.5%)</span>
+                <span class="amount negative">-RM {{ calculationPreview.socsoAmount | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row">
+                <span>Tax (11.97%)</span>
+                <span class="amount negative">-RM {{ calculationPreview.taxAmount | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row total">
+                <span>Total Deductions</span>
+                <span class="amount negative">-RM {{ calculationPreview.totalDeductions | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Periods Used -->
+          <div class="source-data" *ngIf="calculationPreview.attendancePeriods.length > 0">
+            <h5><i class="bi bi-calendar-check"></i> Attendance Periods</h5>
+            <div class="source-list">
+              <div class="source-item" *ngFor="let ap of calculationPreview.attendancePeriods">
+                <span>{{ ap.startDate | date:'dd/MM/yyyy' }} - {{ ap.endDate | date:'dd/MM/yyyy' }}</span>
+                <span class="hours">{{ ap.hoursWorked }}h</span>
+                <span class="badge badge-success">{{ ap.status }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leave Requests Used -->
+          <div class="source-data" *ngIf="calculationPreview.leaveRequests.length > 0">
+            <h5><i class="bi bi-calendar-x"></i> Leave Requests</h5>
+            <div class="source-list">
+              <div class="source-item" *ngFor="let lr of calculationPreview.leaveRequests">
+                <span>{{ lr.leaveType }} ({{ lr.leaveDays }} days)</span>
+                <span>{{ lr.startDate | date:'dd/MM/yyyy' }} - {{ lr.endDate | date:'dd/MM/yyyy' }}</span>
+                <span *ngIf="lr.isPaid" class="badge badge-success">Paid</span>
+                <span *ngIf="!lr.isPaid" class="badge badge-warning">
+                  Unpaid (-RM {{ lr.deductionAmount | number:'1.2-2' }})
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCalculationPreview()">Close</button>
+        <button class="btn btn-success" (click)="generate()">
+          <i class="bi bi-cash-stack"></i>
+          Confirm & Generate
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Generation Result -->
+  <div class="bulk-result" *ngIf="bulkGenerationResult">
+    <h4>Bulk Generation Complete</h4>
+    <p>{{ bulkGenerationResult.message }}</p>
+    
+    <div *ngIf="bulkGenerationResult.errors.length > 0" class="error-list">
+      <h5>Errors:</h5>
+      <div class="error-item" *ngFor="let error of bulkGenerationResult.errors">
+        <strong>{{ error.employeeName }}:</strong> {{ error.errorMessage }}
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+

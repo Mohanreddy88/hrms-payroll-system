@@ -1,0 +1,249 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>📊 My Timesheets</h2>
+      <p>View and submit your monthly timesheets</p>
+    </div>
+    <!-- Upload button hidden as per requirement -->
+    <!--
+    <button class="btn-upload" (click)="toggleUploadSection()">
+      <i class="bi" [class.bi-plus-circle]="!showUploadSection" [class.bi-x-circle]="showUploadSection"></i>
+      {{ showUploadSection ? 'Cancel Upload' : 'Upload Timesheet' }}
+    </button>
+    -->
+  </div>
+
+  <!-- Upload Section - Disabled -->
+  <div *ngIf="false" class="upload-section">
+    <div class="upload-header">
+      <h3>📤 Upload Timesheet Excel</h3>
+      <p>Download the template, fill it with your attendance, and upload</p>
+    </div>
+
+    <div class="upload-form">
+      <!-- Step 1: Select Month/Year -->
+      <div class="form-step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Select Month & Year</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Month</label>
+              <select [(ngModel)]="uploadMonth" class="form-control">
+                <option *ngFor="let month of months" [value]="month.value" [disabled]="month.value === null">
+                  {{ month.label }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Year</label>
+              <select [(ngModel)]="uploadYear" class="form-control">
+                <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Download Template -->
+      <div class="form-step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Download Template</h4>
+          <p class="step-description">Download the Excel template for the selected month</p>
+          <button class="btn-download" (click)="downloadTemplate()">
+            <i class="bi bi-download"></i>
+            Download Template
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Upload Filled File -->
+      <div class="form-step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Upload Filled Timesheet</h4>
+          <p class="step-description">After filling the template, upload it here</p>
+          
+          <div class="file-upload-area">
+            <input 
+              type="file" 
+              id="timesheetFileInput"
+              accept=".xlsx,.xls" 
+              (change)="onFileSelected($event)"
+              style="display: none">
+            
+            <div *ngIf="!selectedFile" class="upload-placeholder" (click)="triggerFileInput()">
+              <i class="bi bi-cloud-upload"></i>
+              <p>Click to select Excel file</p>
+              <small>Supported formats: .xlsx, .xls (Max 5MB)</small>
+            </div>
+
+            <div *ngIf="selectedFile && uploadPreview" class="file-preview">
+              <div class="file-icon">
+                <i class="bi bi-file-earmark-excel"></i>
+              </div>
+              <div class="file-info">
+                <h5>{{ uploadPreview.name }}</h5>
+                <p>{{ uploadPreview.size }} • {{ uploadPreview.type }}</p>
+              </div>
+              <button class="btn-remove" (click)="clearSelectedFile()">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            </div>
+          </div>
+
+          <button 
+            class="btn-upload-submit" 
+            [disabled]="!selectedFile"
+            (click)="uploadTimesheet()">
+            <i class="bi bi-upload"></i>
+            Upload & Calculate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label>Year</label>
+      <select [(ngModel)]="selectedYear" (change)="onFilterChange()" class="form-control">
+        <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Month</label>
+      <select [(ngModel)]="selectedMonth" (change)="onFilterChange()" class="form-control">
+        <option *ngFor="let month of months" [value]="month.value">{{ month.label }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Timesheets Grid -->
+  <div class="timesheets-content">
+    <div class="timesheets-grid">
+      <div class="timesheet-card" *ngFor="let timesheet of timesheets">
+        <div class="card-header">
+          <div class="timesheet-info">
+            <h3>{{ timesheet.monthName }}</h3>
+            <p class="timesheet-date">Generated: {{ timesheet.generatedOn | date:'dd MMM yyyy' }}</p>
+          </div>
+          <span class="status-badge" [ngClass]="getStatusClass(timesheet.status)">
+            <i [class]="getStatusIcon(timesheet.status)"></i>
+            {{ timesheet.status }}
+          </span>
+        </div>
+
+        <div class="card-body">
+          <!-- Attendance Circle -->
+          <div class="attendance-visual">
+            <div class="attendance-circle">
+              <svg viewBox="0 0 120 120">
+                <circle 
+                  cx="60" 
+                  cy="60" 
+                  r="50" 
+                  fill="none" 
+                  stroke="#e2e8f0" 
+                  stroke-width="10"/>
+                <circle 
+                  cx="60" 
+                  cy="60" 
+                  r="50" 
+                  fill="none" 
+                  [attr.stroke]="getAttendanceColor(getAttendancePercentage(timesheet))"
+                  stroke-width="10"
+                  stroke-dasharray="314"
+                  [attr.stroke-dashoffset]="314 - (314 * getAttendancePercentage(timesheet) / 100)"
+                  transform="rotate(-90 60 60)"
+                  stroke-linecap="round"/>
+              </svg>
+              <div class="percentage-number">
+                <span class="value">{{ getAttendancePercentage(timesheet) | number:'1.0-0' }}%</span>
+                <span class="label">Attendance</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Statistics -->
+          <div class="timesheet-stats">
+            <div class="stat-row">
+              <span class="stat-label">Working Days</span>
+              <span class="stat-value">{{ timesheet.totalWorkingDays }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Present</span>
+              <span class="stat-value present">{{ timesheet.totalPresent }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Medical Leave (MC)</span>
+              <span class="stat-value medical-leave">{{ timesheet.totalMedicalLeave }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Annual Leave (AL)</span>
+              <span class="stat-value absent">{{ timesheet.totalAbsent }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Emergency Leave (EL)</span>
+              <span class="stat-value leave">{{ timesheet.totalLeave }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Half Day</span>
+              <span class="stat-value half-day">{{ timesheet.totalHalfDay }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Public Holidays</span>
+              <span class="stat-value">{{ timesheet.totalPublicHolidays }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Total Work Hours</span>
+              <span class="stat-value hours">{{ timesheet.totalWorkHours | number:'1.1-1' }}h</span>
+            </div>
+          </div>
+
+          <!-- Approval Info -->
+          <div class="approval-info" *ngIf="timesheet.status === 'Approved' && timesheet.approvedOn">
+            <i class="bi bi-check-circle text-success"></i>
+            Approved on {{ timesheet.approvedOn | date:'dd MMM yyyy' }}
+            <span *ngIf="timesheet.remarks"> - {{ timesheet.remarks }}</span>
+          </div>
+
+          <div class="rejection-info" *ngIf="timesheet.status === 'Rejected'">
+            <i class="bi bi-x-circle text-danger"></i>
+            Rejected
+            <span *ngIf="timesheet.remarks"> - {{ timesheet.remarks }}</span>
+          </div>
+
+          <!-- Submit Action -->
+          <div class="card-actions" *ngIf="timesheet.status === 'Draft'">
+            <button class="btn-submit" (click)="openSubmitConfirmation(timesheet.id, timesheet.monthName)">
+              <i class="bi bi-send"></i>
+              Submit for Approval
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Data -->
+    <div *ngIf="timesheets.length === 0" class="no-data">
+      <i class="bi bi-inbox"></i>
+      <p>No timesheets found</p>
+      <small>Timesheets are generated automatically by the HR department</small>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<app-confirm-modal
+  [show]="showConfirmModal"
+  [title]="'Confirm Timesheet Submission'"
+  [message]="'Are you sure you want to submit your timesheet for ' + confirmTimesheetMonth + '? Once submitted, you will not be able to edit it until it is reviewed by your manager.'"
+  [confirmText]="'Yes, Submit'"
+  [cancelText]="'Cancel'"
+  [variant]="'info'"
+  (confirmed)="onSubmitConfirmed()"
+  (cancelled)="closeConfirmModal()">
+</app-confirm-modal>

@@ -1,0 +1,278 @@
+<div class="leave-request-list-page">
+
+  <div class="page-header">
+    <div>
+      <h3>{{ isAdmin ? 'Leave Approvals' : 'Leave Requests' }}</h3>
+      <p>{{ isAdmin ? 'View and manage employee leave requests' : 'View and manage leave requests' }}</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-back" (click)="backToHome()">
+        <i class="bi bi-house"></i>
+        Home
+      </button>
+      <button class="btn btn-primary" *ngIf="!isAdmin" (click)="newRequest()">
+        <i class="bi bi-plus-circle"></i>
+        New Request
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="filter-card">
+    <h5 class="section-title"><i class="bi bi-funnel me-2"></i>Filters</h5>
+    <div class="filter-form">
+      <div class="form-group">
+        <label>Status</label>
+        <select [(ngModel)]="filterStatus" (ngModelChange)="applyFilters()">
+          <option [ngValue]="null">-- All Status --</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      
+      @if (isAdmin) {
+        <div class="form-group">
+          <label>Employee</label>
+          <select [(ngModel)]="filterEmployeeId" (ngModelChange)="applyFilters()">
+            <option [ngValue]="null">-- All Employees --</option>
+            <option *ngFor="let emp of employees" [ngValue]="emp.id">{{ emp.name }}</option>
+          </select>
+        </div>
+      }
+      
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="filterMonth" (ngModelChange)="applyFilters()">
+          <option [ngValue]="null">-- All Months --</option>
+          <option *ngFor="let month of months" [ngValue]="month.value">{{ month.name }}</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="filterYear" (ngModelChange)="applyFilters()">
+          <option [ngValue]="null">-- All Years --</option>
+          <option *ngFor="let year of years" [ngValue]="year">{{ year }}</option>
+        </select>
+      </div>
+      
+      <div class="form-group align-self-end">
+        <button class="btn btn-secondary clear-btn" (click)="clearFilters()">
+          <i class="bi bi-x-circle me-1"></i>Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave Requests Table -->
+  @if (loading) {
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+  } @else {
+    <div class="card request-table-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            @if (isAdmin) {
+              <th>Employee</th>
+            }
+            <th>Leave Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Days</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Requested On</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredRequests.length === 0) {
+            <tr>
+              <td [attr.colspan]="isAdmin ? 10 : 9" class="text-center text-muted py-4">
+                No leave requests found.
+              </td>
+            </tr>
+          }
+          @for (req of filteredRequests; track req.id; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              @if (isAdmin) {
+                <td>
+                  <div class="emp-name-cell">
+                    <div class="emp-avatar">{{ req.employeeName.charAt(0) }}</div>
+                    {{ req.employeeName }}
+                  </div>
+                </td>
+              }
+              <td>
+                <span class="leave-type-badge">{{ req.leaveTypeName }}</span>
+              </td>
+              <td>{{ formatDate(req.startDate) }}</td>
+              <td>{{ formatDate(req.endDate) }}</td>
+              <td><strong>{{ req.totalDays }}</strong></td>
+              <td>
+                <span class="reason-text" [title]="req.reason">
+                  {{ req.reason.length > 40 ? req.reason.substring(0, 40) + '...' : req.reason }}
+                </span>
+              </td>
+              <td>
+                <span class="status-badge status-{{ getStatusClass(req.status) }}">
+                  {{ req.status }}
+                </span>
+              </td>
+              <td>{{ formatDate(req.requestedOn) }}</td>
+              <td>
+                @if (req.status === 'Pending' && isAdmin) {
+                  <button class="btn btn-sm btn-success me-1" (click)="openApprovalModal(req, 'approve')" title="Approve">
+                    <i class="bi bi-check-circle"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger me-1" (click)="openApprovalModal(req, 'reject')" title="Reject">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                  <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                }
+                @if (req.status === 'Pending' && !isAdmin) {
+                  <button class="btn btn-sm btn-warning me-1" (click)="cancelRequest(req)" title="Cancel">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                  <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                }
+                @if (req.status === 'Rejected') {
+                  <button class="btn btn-sm btn-info me-1" [title]="req.approvalRemarks || 'No remarks'">
+                    <i class="bi bi-info-circle"></i>
+                  </button>
+                  <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                }
+                @if (req.status === 'Approved') {
+                  <button class="btn btn-sm btn-info" [title]="req.approvalRemarks || 'No remarks'">
+                    <i class="bi bi-info-circle"></i>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>
+
+<!-- Approval Modal -->
+@if (showApprovalModal && selectedRequest) {
+  <div class="modal-backdrop"></div>
+  <div class="approval-modal">
+    <div class="modal-header">
+      <h5>{{ approvalAction === 'approve' ? 'Approve' : 'Reject' }} Leave Request</h5>
+      <button class="close-btn" (click)="closeApprovalModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p><strong>Employee:</strong> {{ selectedRequest.employeeName }}</p>
+      <p><strong>Leave Type:</strong> {{ selectedRequest.leaveTypeName }}</p>
+      <p><strong>Period:</strong> {{ formatDate(selectedRequest.startDate) }} - {{ formatDate(selectedRequest.endDate) }}</p>
+      <p><strong>Total Days:</strong> {{ selectedRequest.totalDays }}</p>
+      <p><strong>Reason:</strong> {{ selectedRequest.reason }}</p>
+      
+      <div class="form-group mt-3">
+        <label>Remarks {{ approvalAction === 'reject' ? '(Required)' : '(Optional)' }}</label>
+        <textarea 
+          [(ngModel)]="approvalRemarks" 
+          rows="3" 
+          placeholder="Add your remarks here..."
+          class="form-control">
+        </textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeApprovalModal()">Cancel</button>
+      <button 
+        class="btn" 
+        [ngClass]="approvalAction === 'approve' ? 'btn-success' : 'btn-danger'"
+        (click)="confirmApproval()">
+        {{ approvalAction === 'approve' ? 'Approve' : 'Reject' }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Cancel Request Modal -->
+@if (showCancelModal && requestToCancel) {
+  <div class="modal-backdrop"></div>
+  <div class="approval-modal">
+    <div class="modal-header">
+      <h5>Cancel Leave Request</h5>
+      <button class="close-btn" (click)="closeCancelModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p><strong>Leave Type:</strong> {{ requestToCancel.leaveTypeName }}</p>
+      <p><strong>Period:</strong> {{ formatDate(requestToCancel.startDate) }} - {{ formatDate(requestToCancel.endDate) }}</p>
+      <p><strong>Total Days:</strong> {{ requestToCancel.totalDays }}</p>
+      
+      <div class="form-group mt-3">
+        <label>Cancellation Reason <span class="text-danger">*</span></label>
+        <textarea 
+          [(ngModel)]="cancelReason" 
+          rows="3" 
+          placeholder="Please provide a reason for cancelling this leave request..."
+          class="form-control">
+        </textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeCancelModal()">Close</button>
+      <button class="btn btn-warning" (click)="confirmCancel()">
+        Cancel Request
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Delete Request Modal -->
+@if (showDeleteModal && requestToDelete) {
+  <div class="modal-backdrop"></div>
+  <div class="approval-modal">
+    <div class="modal-header">
+      <h5>Delete Leave Request</h5>
+      <button class="close-btn" (click)="closeDeleteModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Warning:</strong> This action cannot be undone.
+      </div>
+      <p><strong>Leave Type:</strong> {{ requestToDelete.leaveTypeName }}</p>
+      <p><strong>Period:</strong> {{ formatDate(requestToDelete.startDate) }} - {{ formatDate(requestToDelete.endDate) }}</p>
+      <p><strong>Total Days:</strong> {{ requestToDelete.totalDays }}</p>
+      <p><strong>Status:</strong> {{ requestToDelete.status }}</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" (click)="confirmDelete()">
+        <i class="bi bi-trash me-2"></i>Delete
+      </button>
+    </div>
+  </div>
+}
+
+
+
+
+
+

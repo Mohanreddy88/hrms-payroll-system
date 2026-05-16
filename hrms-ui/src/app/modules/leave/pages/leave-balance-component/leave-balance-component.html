@@ -1,0 +1,75 @@
+<div class="leave-balance-page">
+
+  <div class="page-header">
+    <div>
+      <h3>Leave Balance</h3>
+      <p>View your available leave balances for {{ currentYear }}</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-back" (click)="backToHome()">
+        <i class="bi bi-house"></i>
+        Home
+      </button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+  } @else {
+    @if (balances.length === 0) {
+      <div class="empty-state">
+        <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
+        <h5>No Leave Balances Found</h5>
+        <p class="text-muted">Contact HR to initialize your leave balances.</p>
+      </div>
+    } @else {
+      <div class="balance-grid">
+        @for (balance of balances; track balance.id) {
+          <div class="balance-card">
+            <div class="card-icon">
+              <i class="bi bi-{{ getLeaveIcon(balance.leaveTypeCode) }}"></i>
+            </div>
+            <div class="card-content">
+              <h5 class="leave-type-name">{{ balance.leaveTypeName }}</h5>
+              <div class="leave-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Total</span>
+                  <span class="stat-value total">{{ balance.totalDays }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Used</span>
+                  <span class="stat-value used">{{ balance.usedDays }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Balance</span>
+                  <span class="stat-value balance">{{ balance.balanceDays }}</span>
+                </div>
+                @if (balance.carryForwardDays > 0) {
+                  <div class="stat-item">
+                    <span class="stat-label">Carried</span>
+                    <span class="stat-value carried">{{ balance.carryForwardDays }}</span>
+                  </div>
+                }
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress">
+                  <div 
+                    class="progress-bar bg-{{ getProgressColor(getProgressPercentage(balance)) }}"
+                    [style.width.%]="getProgressPercentage(balance)"
+                    role="progressbar">
+                  </div>
+                </div>
+                <span class="progress-text">
+                  {{ getProgressPercentage(balance) | number: '1.0-0' }}% used
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+</div>
