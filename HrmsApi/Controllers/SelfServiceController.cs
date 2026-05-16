@@ -561,7 +561,54 @@ public class SelfServiceController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/selfservice/my-leave-requests - Get current user's leave requests
+    /// <summary>
+    /// GET /api/selfservice/attendance-periods - Get current user's attendance periods
+    /// </summary>
+    [HttpGet("attendance-periods")]
+    public async Task<IActionResult> GetMyAttendancePeriods([FromQuery] string? status = null)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var query = _db.AttendancePeriods
+            .Where(ap => ap.EmployeeId == employee.Id);
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(ap => ap.Status == status);
+
+        var attendancePeriods = await query
+            .OrderByDescending(ap => ap.StartDate)
+            .Select(ap => new
+            {
+                ap.Id,
+                ap.StartDate,
+                ap.EndDate,
+                ap.Status,
+                ap.TotalWorkingDays,
+                ap.TotalPresent,
+                ap.TotalAbsent,
+                ap.TotalLeave,
+                ap.TotalHalfDay,
+                ap.TotalWorkHours,
+                ap.SubmittedOn,
+                ap.ApprovedBy,
+                ap.ApprovedOn,
+                ap.Remarks,
+                periodLabel = ap.StartDate.ToString("MMM dd") + " - " + ap.EndDate.ToString("MMM dd, yyyy")
+            })
+            .ToListAsync();
+
+        return Ok(attendancePeriods);
+    }
+
+    /// <summary>\r\n    /// GET /api/selfservice/my-leave-requests - Get current user's leave requests
     /// </summary>
     [HttpGet("my-leave-requests")]
     public async Task<IActionResult> GetMyLeaveRequests([FromQuery] string? status = null)
