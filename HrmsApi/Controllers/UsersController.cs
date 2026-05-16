@@ -29,7 +29,7 @@ public class UsersController : ControllerBase
             .OrderBy(u => u.Username)
             .Select(u => new
             {
-                u.Id, u.Username, u.Role,
+                u.Id, u.Username, u.Email, u.Role,
                 u.IsActive, u.CreatedAt
             })
             .ToListAsync();
@@ -52,9 +52,23 @@ public class UsersController : ControllerBase
         if (exists)
             throw new InvalidOperationException($"Username '{req.Username}' is already taken.");
 
+        // Check for duplicate email
+        var emailExists = await _db.Users.AnyAsync(u => u.Email.ToLower() == req.Email.ToLower());
+        if (emailExists)
+            return BadRequest(new { message = $"Email '{req.Email}' already exists. Please choose another email." });
+
+        // If role is Employee, validate that employee with this email exists
+        if (req.Role == "Employee")
+        {
+            var employeeExists = await _db.Employees.AnyAsync(e => e.Email.ToLower() == req.Email.ToLower());
+            if (!employeeExists)
+                return BadRequest(new { message = $"No employee found with email '{req.Email}'. Employee role requires matching employee record." });
+        }
+
         var user = new User
         {
             Username     = req.Username,
+            Email        = req.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
             Role         = req.Role,
             IsActive     = req.IsActive
@@ -63,7 +77,7 @@ public class UsersController : ControllerBase
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        return Ok(new { user.Id, user.Username, user.Role, user.IsActive, user.CreatedAt });
+        return Ok(new { user.Id, user.Username, user.Email, user.Role, user.IsActive, user.CreatedAt });
     }
 
     /// <summary>
@@ -87,7 +101,24 @@ public class UsersController : ControllerBase
                 throw new InvalidOperationException($"Username '{req.Username}' is already taken.");
         }
 
+        // Check for duplicate email (excluding current user)
+        if (user.Email.ToLower() != req.Email.ToLower())
+        {
+            var emailTaken = await _db.Users.AnyAsync(u => u.Email.ToLower() == req.Email.ToLower() && u.Id != id);
+            if (emailTaken)
+                return BadRequest(new { message = $"Email '{req.Email}' already exists. Please choose another email." });
+        }
+
+        // If role is Employee, validate that employee with this email exists
+        if (req.Role == "Employee")
+        {
+            var employeeExists = await _db.Employees.AnyAsync(e => e.Email.ToLower() == req.Email.ToLower());
+            if (!employeeExists)
+                return BadRequest(new { message = $"No employee found with email '{req.Email}'. Employee role requires matching employee record." });
+        }
+
         user.Username = req.Username;
+        user.Email    = req.Email;
         user.Role     = req.Role;
         user.IsActive = req.IsActive;
 
@@ -96,7 +127,7 @@ public class UsersController : ControllerBase
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
 
         await _db.SaveChangesAsync();
-        return Ok(new { user.Id, user.Username, user.Role, user.IsActive, user.CreatedAt });
+        return Ok(new { user.Id, user.Username, user.Email, user.Role, user.IsActive, user.CreatedAt });
     }
 
     /// <summary>

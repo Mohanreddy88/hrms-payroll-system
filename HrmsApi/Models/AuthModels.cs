@@ -54,6 +54,7 @@ public record PayrollRequest(
 
 public record UserRequest(
     string Username,
+    string Email,
     string Password,
     string Role,
     bool   IsActive
@@ -61,6 +62,7 @@ public record UserRequest(
 
 public record UserUpdateRequest(
     string  Username,
+    string  Email,
     string  Role,
     bool    IsActive,
     string? Password  // optional — leave blank to keep existing password
