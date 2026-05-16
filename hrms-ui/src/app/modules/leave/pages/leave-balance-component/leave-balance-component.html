@@ -3,7 +3,7 @@
   <div class="page-header">
     <div>
       <h3>Leave Balance</h3>
-      <p>View your available leave balances for {{ currentYear }}</p>
+      <p>{{ isAdmin ? 'View employee leave balances' : 'View your available leave balances for ' + currentYear }}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-back" (click)="backToHome()">
@@ -13,18 +13,58 @@
     </div>
   </div>
 
+  <!-- Admin Filters -->
+  @if (isAdmin) {
+    <div class="filter-card">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Employee <span class="required">*</span></label>
+          <select [(ngModel)]="selectedEmployeeId" (change)="onFilterChange()" class="form-control">
+            <option [value]="null">Select Employee</option>
+            @for (emp of employees; track emp.id) {
+              <option [value]="emp.id">{{ emp.employeeCode }} - {{ emp.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Year</label>
+          <select [(ngModel)]="selectedYear" (change)="onFilterChange()" class="form-control">
+            @for (year of years; track year) {
+              <option [value]="year">{{ year }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-actions">
+          <button class="btn btn-primary" (click)="loadBalances()" [disabled]="!selectedEmployeeId">
+            <i class="bi bi-search"></i>
+            View Balances
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   @if (loading) {
     <div class="text-center py-4">
       <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Loading leave balances...</p>
     </div>
   } @else {
-    @if (balances.length === 0) {
+    @if (isAdmin && !selectedEmployeeId) {
+      <div class="empty-state">
+        <i class="bi bi-person-check display-1 text-muted mb-3"></i>
+        <h5>Select an Employee</h5>
+        <p class="text-muted">Please select an employee from the dropdown above to view their leave balances.</p>
+      </div>
+    } @else if (balances.length === 0 && (!isAdmin || selectedEmployeeId)) {
       <div class="empty-state">
         <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
         <h5>No Leave Balances Found</h5>
-        <p class="text-muted">Contact HR to initialize your leave balances.</p>
+        <p class="text-muted">Contact HR to initialize leave balances for this employee.</p>
       </div>
-    } @else {
+    } @else if (balances.length > 0) {
       <div class="balance-grid">
         @for (balance of balances; track balance.id) {
           <div class="balance-card">

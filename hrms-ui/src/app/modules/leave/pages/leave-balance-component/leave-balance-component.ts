@@ -1,58 +1,89 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { LeaveService, LeaveBalance } from '../../../../core/services/leave.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-leave-balance',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './leave-balance-component.html',
   styleUrls: ['./leave-balance-component.scss']
 })
 export class LeaveBalanceComponent implements OnInit {
   balances: LeaveBalance[] = [];
+  employees: any[] = [];
   loading = false;
   currentYear = new Date().getFullYear();
   isAdmin = false;
+
+  // Admin filters
+  selectedEmployeeId: number | null = null;
+  selectedYear: number = this.currentYear;
+  years: number[] = [];
 
   constructor(
     private leaveService: LeaveService,
     private authService: AuthService,
     private toast: ToastService,
-    private cdr: ChangeDetectorRef
-  ,
-    private router: Router
-  ) {}
+    private cdr: ChangeDetectorRef,
+    private router: Router,
+    private http: HttpClient
+  ) {
+    // Generate year options (current year - 2 to current year + 1)
+    for (let year = this.currentYear - 2; year <= this.currentYear + 1; year++) {
+      this.years.push(year);
+    }
+  }
 
   ngOnInit(): void {
     this.isAdmin = this.authService.getRole() === 'Admin';
-    this.loadBalances();
+    
+    if (this.isAdmin) {
+      this.loadEmployees();
+    } else {
+      this.loadBalances();
+    }
+  }
+
+  loadEmployees(): void {
+    this.http.get<any[]>(`${environment.apiUrl}/employees/active`).subscribe({
+      next: (data) => {
+        this.employees = data;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error loading employees:', err);
+        this.toast.error('Load Failed', 'Could not load employees');
+      }
+    });
   }
 
   loadBalances(): void {
+    if (this.isAdmin && !this.selectedEmployeeId) {
+      // Admin must select an employee first
+      this.balances = [];
+      return;
+    }
+
     this.loading = true;
     console.log('Loading leave balances...');
     
-    // Note: Using placeholder employee ID 1
+    // For admin: use selected employee, for employee: use placeholder ID 1
     // TODO: Implement proper user-to-employee mapping via backend
-    const employeeId = 1;
+    const employeeId = this.isAdmin ? this.selectedEmployeeId! : 1;
     
-    this.leaveService.getBalance(employeeId, this.currentYear).subscribe({
+    this.leaveService.getBalance(employeeId, this.selectedYear).subscribe({
       next: (data: any) => {
         console.log('Leave balances received:', data);
-        console.log('Data type:', typeof data);
-        console.log('Is array:', Array.isArray(data));
-        
         this.balances = data;
         this.loading = false;
         this.cdr.detectChanges();
-        
-        console.log('Balances assigned:', this.balances);
-        console.log('Loading set to false');
-        console.log('Change detection triggered');
         
         if (data.length === 0) {
           this.toast.info('No Leave Balances', 'Leave balances need to be initialized. Contact your HR administrator.');
@@ -65,11 +96,14 @@ export class LeaveBalanceComponent implements OnInit {
           : err.error?.message || 'Failed to load leave balances. The employee may not have initialized balances yet.';
         this.toast.error('Load Failed', message);
         this.loading = false;
-      },
-      complete: () => {
-        console.log('Leave balance loading complete');
       }
     });
+  }
+
+  onFilterChange(): void {
+    if (this.selectedEmployeeId) {
+      this.loadBalances();
+    }
   }
 
   getProgressPercentage(balance: LeaveBalance): number {
