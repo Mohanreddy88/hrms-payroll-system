@@ -35,6 +35,62 @@ public class SelfServiceController : ControllerBase
     }
 
     /// <summary>
+    /// <summary>
+    /// GET /api/selfservice/check-link - Debug: Check user-employee link
+    /// </summary>
+    [HttpGet("check-link")]
+    public async Task<IActionResult> CheckUserEmployeeLink()
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        _logger.LogInformation("Checking employee link for username: {Username}", username);
+
+        // Find user account
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Username == username);
+
+        // Find employee by exact email match
+        var employeeExact = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        // Find employee by case-insensitive email match
+        var employeeCaseInsensitive = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email.ToLower() == username.ToLower());
+
+        // Get all employees with similar email
+        var similarEmployees = await _db.Employees
+            .Where(e => e.Email.ToLower().Contains(username.ToLower()) || username.ToLower().Contains(e.Email.ToLower()))
+            .Select(e => new { e.Id, e.Email, e.Name, e.IsActive })
+            .ToListAsync();
+
+        // Check for duplicate usernames
+        var duplicateUsers = await _db.Users
+            .Where(u => u.Username == username)
+            .Select(u => new { u.Id, u.Username, u.Role, u.IsActive })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            loggedInAs = username,
+            userAccount = user != null ? new { user.Id, user.Username, user.Role, user.IsActive } : null,
+            employeeFoundExact = employeeExact != null,
+            employeeExact = employeeExact != null ? new { employeeExact.Id, employeeExact.Email, employeeExact.Name, employeeExact.IsActive } : null,
+            employeeFoundCaseInsensitive = employeeCaseInsensitive != null,
+            employeeCaseInsensitive = employeeCaseInsensitive != null ? new { employeeCaseInsensitive.Id, employeeCaseInsensitive.Email, employeeCaseInsensitive.Name, employeeCaseInsensitive.IsActive } : null,
+            similarEmployees = similarEmployees,
+            duplicateUserAccounts = duplicateUsers,
+            hasDuplicates = duplicateUsers.Count > 1,
+            recommendation = employeeExact == null 
+                ? "No employee found with exact email match. Create employee with email: " + username
+                : employeeExact.IsActive 
+                    ? "Employee found and active. Link should work."
+                    : "Employee found but INACTIVE. Activate employee to use self-service."
+        });
+    }
+
+
     /// GET /api/selfservice/my-profile - Get current logged-in user's employee profile
     /// </summary>
     [HttpGet("my-profile")]
