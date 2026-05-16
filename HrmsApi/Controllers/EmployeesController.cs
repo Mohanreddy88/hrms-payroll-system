@@ -163,6 +163,11 @@ public class EmployeesController : ControllerBase
         
         var employeeCode = $"EMP{nextSequence:D6}";
 
+        // Convert JoinDate to UTC - PostgreSQL requires UTC timestamps
+        var joinDateUtc = req.JoinDate.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(req.JoinDate, DateTimeKind.Utc)
+            : req.JoinDate.ToUniversalTime();
+
         var emp = new Employee
         {
             EmployeeCode   = employeeCode,
@@ -171,7 +176,7 @@ public class EmployeesController : ControllerBase
             Phone          = req.Phone,
             DepartmentId   = req.DepartmentId,
             Designation    = req.Designation,
-            JoinDate       = req.JoinDate,
+            JoinDate       = joinDateUtc,
             Salary         = req.Salary,
             IsActive       = req.IsActive,
             IcPassport     = req.IcPassport,
@@ -251,12 +256,17 @@ public class EmployeesController : ControllerBase
                 throw new KeyNotFoundException($"Bank with ID {req.BankId} not found.");
         }
 
+        // Convert JoinDate to UTC - PostgreSQL requires UTC timestamps
+        var joinDateUtc = req.JoinDate.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(req.JoinDate, DateTimeKind.Utc)
+            : req.JoinDate.ToUniversalTime();
+
         emp.Name           = req.Name;
         emp.Email          = req.Email;
         emp.Phone          = req.Phone;
         emp.DepartmentId   = req.DepartmentId;
         emp.Designation    = req.Designation;
-        emp.JoinDate       = req.JoinDate;
+        emp.JoinDate       = joinDateUtc;
         emp.Salary         = req.Salary;
         emp.IsActive       = req.IsActive;
         emp.IcPassport     = req.IcPassport;
