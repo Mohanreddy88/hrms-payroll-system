@@ -35,25 +35,55 @@ public class PayrollCalculationService : IPayrollCalculationService
             return result;
         }
 
-        // Check attendance periods
+        // Check attendance periods (find periods that overlap with the month)
         var attendancePeriods = await _db.AttendancePeriods
             .Where(ap => ap.EmployeeId == employeeId
-                      && ap.StartDate >= startDate
-                      && ap.EndDate <= endDate)
+                      && ap.StartDate <= endDate
+                      && ap.EndDate >= startDate)
             .ToListAsync();
 
         result.TotalAttendancePeriods = attendancePeriods.Count;
         result.ApprovedAttendancePeriods = attendancePeriods.Count(ap => ap.Status == "Approved");
         result.PendingAttendancePeriods = attendancePeriods.Count(ap => ap.Status == "Submitted");
+        var draftAttendancePeriods = attendancePeriods.Count(ap => ap.Status == "Draft");
+        var rejectedAttendancePeriods = attendancePeriods.Count(ap => ap.Status == "Rejected");
 
         if (result.TotalAttendancePeriods == 0)
         {
-            result.Errors.Add("No attendance periods found for this month");
+            result.Errors.Add("No attendance records found for this month. Please create and approve attendance before generating payroll.");
+        }
+        else if (result.ApprovedAttendancePeriods == 0)
+        {
+            // Has attendance but none approved
+            if (result.PendingAttendancePeriods > 0)
+            {
+                result.Errors.Add($"Attendance not approved yet. Please go to 'Attendance Approval' page and approve {result.PendingAttendancePeriods} pending attendance period(s) before generating payroll.");
+            }
+            else if (draftAttendancePeriods > 0)
+            {
+                result.Errors.Add($"{draftAttendancePeriods} attendance period(s) are still in Draft status. Employee must submit them, then admin should approve in 'Attendance Approval' page.");
+            }
+            else if (rejectedAttendancePeriods > 0)
+            {
+                result.Errors.Add($"All {rejectedAttendancePeriods} attendance period(s) were rejected. Please review and resubmit attendance before generating payroll.");
+            }
+            else
+            {
+                result.Errors.Add("No approved attendance found. Please go to 'Attendance Approval' page to approve attendance before generating payroll.");
+            }
         }
         else if (result.ApprovedAttendancePeriods < result.TotalAttendancePeriods)
         {
-            var unapprovedCount = result.TotalAttendancePeriods - result.ApprovedAttendancePeriods;
-            result.Errors.Add($"{unapprovedCount} attendance period(s) not yet approved");
+            // Has some approved but not all
+            if (result.PendingAttendancePeriods > 0)
+            {
+                result.Errors.Add($"{result.PendingAttendancePeriods} attendance period(s) still pending approval. Please approve all attendance in 'Attendance Approval' page before generating payroll. ({result.ApprovedAttendancePeriods}/{result.TotalAttendancePeriods} approved)");
+            }
+            else
+            {
+                var unapprovedCount = result.TotalAttendancePeriods - result.ApprovedAttendancePeriods;
+                result.Errors.Add($"{unapprovedCount} attendance period(s) not yet approved. Please approve all attendance before generating payroll. ({result.ApprovedAttendancePeriods}/{result.TotalAttendancePeriods} approved)");
+            }
         }
 
         // Check leave requests
@@ -105,12 +135,12 @@ public class PayrollCalculationService : IPayrollCalculationService
         result.WorkingDays = workingDays;
         result.ExpectedHours = workingDays * STANDARD_HOURS_PER_DAY;
 
-        // Get approved attendance periods
+        // Get approved attendance periods (find periods that overlap with the month)
         var attendancePeriods = await _db.AttendancePeriods
             .Include(ap => ap.Days)
             .Where(ap => ap.EmployeeId == employeeId
-                      && ap.StartDate >= startDate
-                      && ap.EndDate <= endDate
+                      && ap.StartDate <= endDate
+                      && ap.EndDate >= startDate
                       && ap.Status == "Approved")
             .ToListAsync();
 

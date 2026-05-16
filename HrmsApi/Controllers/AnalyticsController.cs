@@ -66,43 +66,79 @@ public class AnalyticsController : ControllerBase
 
     /// <summary>
     /// GET /api/analytics/attendance-statistics?year=2026&month=5
-    /// Returns attendance statistics for a given month (defaults to current month)
+    /// Returns attendance statistics for a given period
+    /// - If month is provided: returns stats for that specific month
+    /// - If only year is provided: returns stats for the entire year
+    /// Uses AttendancePeriodDays table for daily attendance data
     /// </summary>
     [HttpGet("attendance-statistics")]
     public async Task<IActionResult> GetAttendanceStatistics([FromQuery] int? year, [FromQuery] int? month)
     {
         var targetYear = year ?? DateTime.UtcNow.Year;
-        var targetMonth = month ?? DateTime.UtcNow.Month;
+        
+        DateTime startDate;
+        DateTime endDate;
+        
+        if (month.HasValue)
+        {
+            // Monthly statistics
+            startDate = new DateTime(targetYear, month.Value, 1);
+            endDate = startDate.AddMonths(1).AddDays(-1);
+        }
+        else
+        {
+            // Yearly statistics (entire year)
+            startDate = new DateTime(targetYear, 1, 1);
+            endDate = new DateTime(targetYear, 12, 31);
+        }
 
-        var startDate = new DateTime(targetYear, targetMonth, 1);
-        var endDate = startDate.AddMonths(1).AddDays(-1);
-
-        var records = await _db.Attendances
-            .Include(a => a.Employee)
-            .Where(a => a.Date >= startDate && a.Date <= endDate)
+        // Query AttendancePeriodDays for daily attendance records
+        var records = await _db.AttendancePeriodDays
+            .Include(apd => apd.AttendancePeriod)
+                .ThenInclude(ap => ap.Employee)
+                    .ThenInclude(e => e.Department)
+            .Where(apd => apd.Date >= startDate && apd.Date <= endDate)
+            .Where(apd => apd.AttendancePeriod.Status == "Approved") // Only count approved attendance
             .ToListAsync();
+
+        // Calculate statistics based on hours worked
+        // Assume: 8+ hours = Present, 4-7.99 hours = HalfDay, 0 hours = Absent/Leave
+        var presentCount = records.Count(r => r.Hours >= 8.0m);
+        var halfDayCount = records.Count(r => r.Hours > 0 && r.Hours < 8.0m);
+        var absentCount = records.Count(r => r.Hours == 0 && !r.IsWeekend && !r.IsPublicHoliday);
+        var leaveCount = records.Count(r => r.Hours == 0 && !r.IsWeekend && !r.IsPublicHoliday);
+
+        // Group by department and employee to calculate employee-wise stats
+        var byDepartment = records
+            .GroupBy(r => new 
+            { 
+                Department = r.AttendancePeriod.Employee.Department?.Name ?? "Unassigned",
+                EmployeeId = r.AttendancePeriod.EmployeeId
+            })
+            .GroupBy(g => g.Key.Department)
+            .Select(deptGroup => new
+            {
+                department = deptGroup.Key,
+                employeeCount = deptGroup.Count(), // Number of employees in this department
+                totalDays = deptGroup.Sum(g => g.Count()), // Total attendance days across all employees
+                presentDays = deptGroup.Sum(g => g.Count(r => r.Hours >= 8.0m)), // Total present days
+                attendanceRate = deptGroup.Sum(g => g.Count()) > 0 
+                    ? Math.Round((decimal)deptGroup.Sum(g => g.Count(r => r.Hours >= 8.0m)) / deptGroup.Sum(g => g.Count()) * 100, 1)
+                    : 0
+            })
+            .OrderByDescending(x => x.employeeCount)
+            .ToList();
 
         var statistics = new
         {
             year = targetYear,
-            month = targetMonth,
+            month = month ?? 0, // 0 indicates yearly stats
             totalRecords = records.Count,
-            presentCount = records.Count(r => r.Status == "Present"),
-            absentCount = records.Count(r => r.Status == "Absent"),
-            leaveCount = records.Count(r => r.Status == "Leave"),
-            halfDayCount = records.Count(r => r.Status == "HalfDay"),
-            
-            // By department
-            byDepartment = records
-                .GroupBy(r => r.Employee.Department?.Name ?? "Unassigned")
-                .Select(g => new
-                {
-                    department = g.Key,
-                    totalRecords = g.Count(),
-                    presentCount = g.Count(r => r.Status == "Present")
-                })
-                .OrderByDescending(x => x.totalRecords)
-                .ToList()
+            presentCount = presentCount,
+            absentCount = absentCount,
+            leaveCount = leaveCount,
+            halfDayCount = halfDayCount,
+            byDepartment = byDepartment
         };
 
         return Ok(statistics);

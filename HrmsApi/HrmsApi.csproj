@@ -20,4 +20,12 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Exclude test files from main project -->
+    <Compile Remove="HrmsApi.Tests\**" />
+    <Content Remove="HrmsApi.Tests\**" />
+    <EmbeddedResource Remove="HrmsApi.Tests\**" />
+    <None Remove="HrmsApi.Tests\**" />
+  </ItemGroup>
+
 </Project>
