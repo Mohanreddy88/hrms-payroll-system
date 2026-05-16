@@ -31,6 +31,7 @@
           <tr>
             <th>#</th>
             <th>Username</th>
+            <th>Email</th>
             <th>Role</th>
             <th>Status</th>
             <th>Created On</th>
@@ -39,7 +40,7 @@
         </thead>
         <tbody>
           @if (users.length === 0) {
-            <tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>
+            <tr><td colspan="7" class="text-center text-muted py-4">No users found.</td></tr>
           }
           @for (u of users; track u.id; let i = $index) {
             <tr>
@@ -51,6 +52,9 @@
                   </div>
                   <strong>{{ u.username }}</strong>
                 </div>
+              </td>
+              <td>
+                <span class="text-muted">{{ u.email || '—' }}</span>
               </td>
               <td>
                 <span class="role-badge" [ngClass]="getRoleClass(u.role)">
@@ -106,6 +110,17 @@
           <input type="text" [(ngModel)]="form.username" placeholder="Enter username" />
         </div>
 
+        <!-- Email -->
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="form.email" (blur)="checkEmailDuplicate()" placeholder="Enter email address" />
+          @if (emailWarning) {
+            <div class="alert alert-warning py-1 px-2 mt-2" style="font-size: 12px;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ emailWarning }}
+            </div>
+          }
+        </div>
+
         <!-- Password (required on create, optional on edit) -->
         <div class="form-group">
           <label>{{ isEdit ? 'New Password (leave blank to keep)' : 'Password' }}</label>
@@ -137,7 +152,7 @@
 
       <div class="modal-footer-row">
         <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="save()" [disabled]="saving || !form.username.trim()">
+        <button class="btn btn-primary" (click)="save()" [disabled]="saving || !form.username.trim() || !form.email.trim()">
           @if (saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
           {{ isEdit ? 'Update' : 'Create' }}
         </button>

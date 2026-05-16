@@ -23,6 +23,7 @@ export class UserListComponent implements OnInit {
   isEdit    = false;
   editId: number | null = null;
   modalError = '';
+  emailWarning = '';
 
   // Confirmation modal state
   showConfirmModal = false;
@@ -31,7 +32,7 @@ export class UserListComponent implements OnInit {
   confirmModalVariant: 'danger' | 'warning' | 'info' = 'danger';
   pendingDeleteUser: AppUser | null = null;
 
-  form = { username: '', password: '', role: 'Admin', isActive: true };
+  form = { username: '', email: '', password: '', role: 'Admin', isActive: true };
 
   constructor(
     private userService: UserService,
@@ -64,25 +65,55 @@ export class UserListComponent implements OnInit {
 
   openCreate(): void {
     this.isEdit = false; this.editId = null;
-    this.form = { username: '', password: '', role: 'Admin', isActive: true };
-    this.showModal = true; this.modalError = '';
+    this.form = { username: '', email: '', password: '', role: 'Admin', isActive: true };
+    this.showModal = true; this.modalError = ''; this.emailWarning = '';
   }
 
   openEdit(u: AppUser): void {
     this.isEdit = true; this.editId = u.id;
-    this.form = { username: u.username, password: '', role: u.role, isActive: u.isActive };
-    this.showModal = true; this.modalError = '';
+    this.form = { username: u.username, email: u.email, password: '', role: u.role, isActive: u.isActive };
+    this.showModal = true; this.modalError = ''; this.emailWarning = '';
   }
 
-  closeModal(): void { this.showModal = false; this.modalError = ''; }
+  closeModal(): void { this.showModal = false; this.modalError = ''; this.emailWarning = ''; }
+
+  checkEmailDuplicate(): void {
+    if (!this.form.email || !this.form.email.trim()) {
+      this.emailWarning = '';
+      return;
+    }
+
+    const emailExists = this.users.some(u => 
+      u.email && u.email.toLowerCase() === this.form.email.toLowerCase() && 
+      u.id !== this.editId
+    );
+
+    if (emailExists) {
+      this.emailWarning = 'Email already exists. Please choose another email.';
+    } else {
+      this.emailWarning = '';
+    }
+  }
 
   save(): void {
-    if (!this.form.username.trim()) return;
+    if (!this.form.username.trim()) {
+      this.modalError = 'Username is required.';
+      return;
+    }
+    if (!this.form.email.trim()) {
+      this.modalError = 'Email is required.';
+      return;
+    }
+    if (this.emailWarning) {
+      this.modalError = this.emailWarning;
+      return;
+    }
+
     this.saving = true;
 
     if (this.isEdit && this.editId !== null) {
       this.userService.update(this.editId, {
-        username: this.form.username, role: this.form.role,
+        username: this.form.username, email: this.form.email, role: this.form.role,
         isActive: this.form.isActive, password: this.form.password || undefined
       }).subscribe({
         next: () => {
@@ -95,7 +126,7 @@ export class UserListComponent implements OnInit {
     } else {
       if (!this.form.password.trim()) { this.modalError = 'Password is required.'; this.saving = false; return; }
       this.userService.create({
-        username: this.form.username, password: this.form.password,
+        username: this.form.username, email: this.form.email, password: this.form.password,
         role: this.form.role, isActive: this.form.isActive
       }).subscribe({
         next: () => {
