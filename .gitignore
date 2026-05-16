@@ -9,7 +9,6 @@
 
 # Node
 node_modules/
-package-lock.json
 hrms-ui/dist/
 hrms-ui/.angular/
 npm-debug.log*
