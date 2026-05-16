@@ -213,10 +213,11 @@ table tbody tr td {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  font-weight: normal;
   user-select: none;
 
-  input[type='checkbox'] { display: none; }
+  input[type="checkbox"] {
+    display: none;
+  }
 
   .toggle-track {
     width: 52px;
@@ -243,14 +244,17 @@ table tbody tr td {
 
     &.on {
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      &::after { transform: translateX(24px); }
+
+      &::after {
+        transform: translateX(24px);
+      }
     }
   }
 
-  .toggle-text { 
-    font-size: 14px; 
+  .toggle-text {
+    font-size: 14px;
     font-weight: 600;
-    color: #374151; 
+    color: #374151;
     min-width: 60px;
     white-space: nowrap;
   }
