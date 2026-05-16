@@ -53,11 +53,11 @@ public class SelfServiceController : ControllerBase
 
         // Find employee by exact email match
         var employeeExact = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         // Find employee by case-insensitive email match
         var employeeCaseInsensitive = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email.ToLower() == username.ToLower());
 
         // Get all employees with similar email
         var similarEmployees = await _db.Employees
@@ -111,7 +111,7 @@ public class SelfServiceController : ControllerBase
         var employee = await _db.Employees
             .Include(e => e.Department)
             .Include(e => e.Bank)
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found. Please contact HR." });
@@ -149,7 +149,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -184,7 +184,7 @@ public class SelfServiceController : ControllerBase
 
         var employee = await _db.Employees
             .Include(e => e.Department)
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -338,7 +338,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -387,7 +387,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -433,7 +433,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -522,7 +522,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -581,7 +581,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -628,7 +628,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -673,7 +673,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -720,7 +720,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -773,7 +773,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -850,7 +850,7 @@ public class SelfServiceController : ControllerBase
 
         var employee = await _db.Employees
             .Include(e => e.Department)
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
@@ -1094,7 +1094,7 @@ public class SelfServiceController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
 
         var employee = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+            .FirstOrDefaultAsync(e => e.Email == username);
 
         if (employee == null)
             return NotFound(new { message = "Employee profile not found" });
