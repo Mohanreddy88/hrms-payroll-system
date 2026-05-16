@@ -67,4 +67,19 @@ public class AuthController : ControllerBase
             message = isValid ? "Password matches!" : "Password does NOT match"
         });
     }
+    
+    /// <summary>POST /api/auth/generate-hash — generate fresh BCrypt hash for password</summary>
+    [HttpPost("generate-hash")]
+    public IActionResult GenerateHash([FromBody] LoginRequest request)
+    {
+        var freshHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        var verified = BCrypt.Net.BCrypt.Verify(request.Password, freshHash);
+        
+        return Ok(new { 
+            password = request.Password,
+            generatedHash = freshHash,
+            verificationTest = verified,
+            sqlUpdateCommand = $"UPDATE \"Users\" SET \"PasswordHash\" = '{freshHash}' WHERE \"Username\" = 'admin';"
+        });
+    }
 }
