@@ -80,20 +80,8 @@ RUN echo 'server {\n\
         try_files $uri $uri/ /index.html;\n\
     }\n\
     \n\
-    # API proxy with CORS headers\n\
+    # API proxy\n\
     location /api/ {\n\
-        # Handle preflight OPTIONS requests immediately\n\
-        if ($request_method = OPTIONS) {\n\
-            add_header Access-Control-Allow-Origin * always;\n\
-            add_header Access-Control-Allow-Methods \"GET, POST, PUT, DELETE, PATCH, OPTIONS\" always;\n\
-            add_header Access-Control-Allow-Headers \"*\" always;\n\
-            add_header Access-Control-Allow-Credentials \"true\" always;\n\
-            add_header Access-Control-Max-Age 86400 always;\n\
-            add_header Content-Length 0;\n\
-            add_header Content-Type text/plain;\n\
-            return 204;\n\
-        }\n\
-        \n\
         proxy_pass http://localhost:5000/api/;\n\
         proxy_http_version 1.1;\n\
         proxy_set_header Upgrade $http_upgrade;\n\
@@ -102,12 +90,6 @@ RUN echo 'server {\n\
         proxy_cache_bypass $http_upgrade;\n\
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
-        \n\
-        # Add CORS headers to all responses\n\
-        add_header Access-Control-Allow-Origin * always;\n\
-        add_header Access-Control-Allow-Methods \"GET, POST, PUT, DELETE, PATCH, OPTIONS\" always;\n\
-        add_header Access-Control-Allow-Headers \"*\" always;\n\
-        add_header Access-Control-Allow-Credentials \"true\" always;\n\
     }\n\
     \n\
     # Swagger UI\n\
