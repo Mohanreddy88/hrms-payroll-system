@@ -131,8 +131,8 @@ export class LeaveRequestFormComponent implements OnInit {
     const request = {
       employeeId: employeeIdNumber,
       leaveTypeId: Number(this.leaveTypeId),
-      startDate: this.startDate,
-      endDate: this.endDate,
+      startDate: new Date(this.startDate).toISOString(),
+      endDate: new Date(this.endDate).toISOString(),
       reason: this.reason.trim()
     };
     

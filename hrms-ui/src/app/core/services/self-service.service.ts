@@ -249,7 +249,14 @@ export class SelfServiceService {
         request = { ...request, employeeId };
       }
     }
-    return this.http.post<LeaveRequest>(`${environment.apiUrl}/leavemanagement/requests`, request);
+    // Send dates as UTC ISO strings so ASP.NET Core deserializes with DateTimeKind.Utc
+    const payload = {
+      ...request,
+      leaveTypeId: Number(request.leaveTypeId),
+      startDate: new Date(request.startDate).toISOString(),
+      endDate: new Date(request.endDate).toISOString()
+    };
+    return this.http.post<LeaveRequest>(`${environment.apiUrl}/leavemanagement/requests`, payload);
   }
 
   cancelLeaveRequest(requestId: number, reason: string): Observable<any> {
