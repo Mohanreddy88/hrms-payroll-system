@@ -1,0 +1,19 @@
+# Railway Configuration
+# This file configures deployment settings for Railway
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "/app/start.sh"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Watch Paths - Empty means deploy on ANY file change
+# Remove or leave empty to trigger builds on all changes
+# watchPaths = []
+
+# Health check configuration
+healthcheckPath = "/"
+healthcheckTimeout = 300
