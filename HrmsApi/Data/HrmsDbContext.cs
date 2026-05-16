@@ -44,7 +44,7 @@ public class HrmsDbContext : DbContext
             
             e.HasIndex(x => x.Email)
              .IsUnique()
-             .HasFilter("[Email] IS NOT NULL AND [Email] <> ''");
+             .HasFilter("\"Email\" IS NOT NULL AND \"Email\" <> ''");
         });
 
         // ── Department ────────────────────────────────────────
