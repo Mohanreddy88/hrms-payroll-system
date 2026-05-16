@@ -97,23 +97,24 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        var origins = new List<string> 
-        { 
-            "http://localhost:4200", 
-            "https://localhost:4200" 
-        };
+        // Check if running in production (behind Nginx proxy)
+        var isProduction = builder.Environment.IsProduction() || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL"));
         
-        // Add Railway domain if deployed
-        var railwayUrl = Environment.GetEnvironmentVariable("RAILWAY_PUBLIC_DOMAIN");
-        if (!string.IsNullOrEmpty(railwayUrl))
+        if (isProduction)
         {
-            origins.Add($"https://{railwayUrl}");
+            // In production (Railway/Nginx), allow all origins since Nginx handles the proxy
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
         }
-        
-        policy.WithOrigins(origins.ToArray())
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        else
+        {
+            // In development, restrict to localhost Angular dev server
+            policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
     });
 });
 
