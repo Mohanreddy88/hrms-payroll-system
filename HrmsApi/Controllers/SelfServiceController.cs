@@ -236,7 +236,7 @@ public class SelfServiceController : ControllerBase
             .ToListAsync();
 
         // 5. Upcoming Leaves (Approved leaves in next 30 days)
-        var today = DateTime.Today;
+        var today = DateTime.UtcNow.Date;
         var next30Days = today.AddDays(30);
         var upcomingLeaves = await _db.LeaveRequests
             .Include(lr => lr.LeaveType)
