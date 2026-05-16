@@ -169,28 +169,17 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<HrmsDbContext>();
         
-        logger.LogInformation("🔄 Checking database state...");
+        logger.LogInformation("🔄 Checking database connection...");
         
-        // Check if migrations history exists but is empty - this causes issues
-        var historyExists = context.Database.ExecuteSqlRaw(@"
-            SELECT 1 FROM information_schema.tables 
-            WHERE table_name = '__EFMigrationsHistory'") > -1;
-            
-        if (historyExists)
+        // Skip migrations - tables were created via SQL script
+        // Just verify we can connect
+        var canConnect = await context.Database.CanConnectAsync();
+        if (!canConnect)
         {
-            var migrationsCount = context.Database.SqlQueryRaw<int>(
-                @"SELECT COUNT(*)::int FROM ""__EFMigrationsHistory""").FirstOrDefault();
-                
-            if (migrationsCount == 0)
-            {
-                logger.LogWarning("⚠️ Found empty migrations history table - dropping it to force recreation");
-                context.Database.ExecuteSqlRaw(@"DROP TABLE IF EXISTS ""__EFMigrationsHistory"" CASCADE");
-            }
+            throw new Exception("Cannot connect to database");
         }
         
-        logger.LogInformation("🔄 Applying database migrations...");
-        context.Database.Migrate();
-        logger.LogInformation("✅ Database migrations applied!");
+        logger.LogInformation("✅ Database connected!");
         
         // Seed leave types if they don't exist
         if (!context.LeaveTypes.Any())

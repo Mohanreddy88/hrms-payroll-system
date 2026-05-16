@@ -38,11 +38,7 @@ RUN dotnet restore HrmsApi/HrmsApi.csproj
 COPY HrmsApi/ ./HrmsApi/
 RUN dotnet publish HrmsApi/HrmsApi.csproj -c Release -o /app/publish
 
-# Build EF Core migration bundle for production database
-RUN dotnet tool install --global dotnet-ef --version 8.0.0
-ENV PATH="${PATH}:/root/.dotnet/tools"
-WORKDIR /src/HrmsApi
-RUN dotnet ef migrations bundle --self-contained -r linux-x64 -o /app/efbundle
+# Skip EF migrations - tables created via SQL script
 
 # ───────────────────────────────────────────────────────────────
 # Stage 3: Runtime - Single container serving both API and UI
@@ -56,8 +52,7 @@ RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 # Copy .NET API
 COPY --from=dotnet-build /app/publish ./api/
 
-# Copy EF migration bundle
-COPY --from=dotnet-build /app/efbundle ./efbundle
+# No migration bundle needed
 
 # Copy Angular build output
 COPY --from=angular-build /app/frontend/dist/hrms-ui/browser ./wwwroot
@@ -130,11 +125,7 @@ if [ -n "$DATABASE_URL" ]; then\n\
     \n\
     CONN_STRING="Host=$HOST;Port=$PORT;Database=$DB;Username=$USER;Password=$PASS;SSL Mode=Require;Trust Server Certificate=true"\n\
     \n\
-    echo "🔄 Running database migrations..."\n\
-    ./efbundle --connection "$CONN_STRING" || {\n\
-      echo "⚠️  Migration failed - database may already be up to date"\n\
-    }\n\
-    echo "✅ Database ready"\n\
+    echo "✅ Database connection configured"\n\
   else\n\
     echo "❌ Could not parse DATABASE_URL"\n\
     exit 1\n\

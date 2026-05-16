@@ -1,0 +1,19 @@
+{
+  "name": "hrms-automated-tests",
+  "version": "1.0.0",
+  "description": "Automated tests for HRMS Payroll System",
+  "scripts": {
+    "test:employee": "playwright test tests/employee-workflow.spec.ts --headed --slow-mo=1000",
+    "test:admin": "playwright test tests/admin-workflow.spec.ts --headed --slow-mo=1000",
+    "test:all": "playwright test --headed --slow-mo=1000",
+    "install-browsers": "playwright install chromium"
+  },
+  "keywords": ["hrms", "testing", "automation"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

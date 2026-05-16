@@ -1,0 +1,339 @@
+═══════════════════════════════════════════════════════════════
+  HRMS PRODUCTION DEPLOYMENT CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+PROJECT: HRMS Payroll System
+TARGET: Railway Cloud Platform
+DATE: 2026-05-16
+STATUS: ✅ READY FOR DEPLOYMENT
+
+───────────────────────────────────────────────────────────────
+ PHASE 1: PRE-DEPLOYMENT VERIFICATION
+───────────────────────────────────────────────────────────────
+
+□ Run verification script
+  Command: verify-deployment.bat
+  Expected: All checks pass (0 errors)
+
+□ Confirm files created
+  ✓ Dockerfile
+  ✓ .dockerignore
+  ✓ railway.json
+  ✓ .env.railway.template
+  ✓ deploy-to-railway.bat
+  ✓ verify-deployment.bat
+
+□ Confirm files modified
+  ✓ hrms-ui/src/environments/environment.prod.ts
+  ✓ HrmsApi/Program.cs
+
+□ Confirm backup created
+  ✓ C:\Users\HP\source\repos\walnut\backup\
+  ✓ 33,579+ files backed up
+
+□ Review documentation
+  ✓ PRODUCTION-DEPLOYMENT-READY.md
+  ✓ QUICK-START-DEPLOYMENT.md
+  ✓ RAILWAY-SETUP-GUIDE.md
+
+───────────────────────────────────────────────────────────────
+ PHASE 2: CODE DEPLOYMENT
+───────────────────────────────────────────────────────────────
+
+□ Open command prompt
+  Location: C:\Users\HP\source\repos\walnut
+
+□ Run deployment script
+  Command: deploy-to-railway.bat
+  
+□ Enter commit message (or press Enter for default)
+  Example: "Production deployment - v1.0"
+
+□ Wait for Git push to complete
+  Expected: "Code pushed to GitHub"
+  
+□ Verify GitHub repository updated
+  URL: https://github.com/Mohanreddy88/hrms-payroll-system
+  Check: Latest commit visible
+
+───────────────────────────────────────────────────────────────
+ PHASE 3: RAILWAY CONFIGURATION
+───────────────────────────────────────────────────────────────
+
+□ Open Railway project
+  URL: https://railway.com/project/311e929d-521f-401d-a6e6-981c0e599282
+
+□ Add PostgreSQL database service
+  Click: "New" → "Database" → "Add PostgreSQL"
+  Wait: ~30 seconds for provisioning
+  Verify: DATABASE_URL variable created
+
+□ Add GitHub repository service
+  Click: "New" → "GitHub Repo"
+  Select: Mohanreddy88/hrms-payroll-system
+  Verify: Dockerfile detected
+
+□ Link database to application
+  Click: App service → Settings → Service Variables
+  Add: DATABASE_URL reference from PostgreSQL
+
+□ Set environment variables
+  Click: App service → Variables tab
+  
+  Add these variables:
+  
+  ┌─────────────────────────────────────────────┐
+  │ JWT_SECRET_KEY                              │
+  │ Value: [Generate secure random key]        │
+  │ Use: https://randomkeygen.com/              │
+  └─────────────────────────────────────────────┘
+  
+  ┌─────────────────────────────────────────────┐
+  │ SMTP_USER                                   │
+  │ Value: mohan.net88@gmail.com                │
+  └─────────────────────────────────────────────┘
+  
+  ┌─────────────────────────────────────────────┐
+  │ SMTP_PASSWORD                               │
+  │ Value: mlpm gqdi mvhe ufue                  │
+  └─────────────────────────────────────────────┘
+  
+  ┌─────────────────────────────────────────────┐
+  │ ASPNETCORE_ENVIRONMENT                      │
+  │ Value: Production                           │
+  └─────────────────────────────────────────────┘
+
+□ Generate public domain
+  Click: Settings → Networking → "Generate Domain"
+  Copy: Your production URL
+  Example: hrms-production.up.railway.app
+
+───────────────────────────────────────────────────────────────
+ PHASE 4: DEPLOYMENT MONITORING
+───────────────────────────────────────────────────────────────
+
+□ Navigate to Deployments tab
+  Click: "Deployments" in Railway dashboard
+
+□ Monitor build logs
+  Look for these stages:
+  
+  ✓ Cloning repository from GitHub
+  ✓ Building Docker image
+    ├── Stage 1: Building Angular
+    ├── Stage 2: Building .NET API
+    └── Stage 3: Creating runtime image
+  ✓ Pushing to Railway registry
+  ✓ Starting container
+
+□ Check for successful startup
+  Look for these log messages:
+  
+  ✓ "Starting HRMS API..."
+  ✓ "Running database migrations..."
+  ✓ "Database migrations applied!"
+  ✓ "Leave types seeded (10 types)"
+  ✓ "Default admin user created"
+  ✓ "Database ready!"
+  ✓ "Starting services..."
+  ✓ "Nginx (port 8080) - serving Angular UI"
+  ✓ ".NET API (port 5000)"
+
+□ Wait for deployment completion
+  Status: "Running"
+  Time: 3-5 minutes
+
+───────────────────────────────────────────────────────────────
+ PHASE 5: POST-DEPLOYMENT VERIFICATION
+───────────────────────────────────────────────────────────────
+
+□ Access application
+  URL: https://[your-domain].up.railway.app
+  Expected: HRMS login page loads
+
+□ Access API documentation
+  URL: https://[your-domain].up.railway.app/swagger
+  Expected: Swagger UI shows API endpoints
+
+□ Test login with default credentials
+  Username: admin
+  Email: admin@hrms.local
+  Password: Admin@123
+  Expected: Successful login, redirects to dashboard
+
+□ Change admin password
+  Navigate: Profile/Settings
+  Change: To a strong password
+  Test: Logout and login with new password
+
+□ Verify database
+  Check: Dashboard shows leave types (10 types)
+  Check: Admin user visible in system
+
+□ Test API endpoints
+  In Swagger:
+  ✓ POST /api/auth/login - Authentication works
+  ✓ GET /api/departments - Returns data
+  ✓ GET /api/leavetypes - Shows 10 leave types
+
+□ Test core functionality
+  ✓ Create department
+  ✓ Add employee
+  ✓ Mark attendance
+  ✓ Submit leave request
+  ✓ Generate payslip (if applicable)
+
+□ Test email notifications (optional)
+  ✓ Submit leave request
+  ✓ Check if email sent
+
+□ Check on mobile device
+  ✓ Login page responsive
+  ✓ Dashboard loads correctly
+  ✓ Navigation works
+
+───────────────────────────────────────────────────────────────
+ PHASE 6: PRODUCTION READINESS
+───────────────────────────────────────────────────────────────
+
+□ Enable database backups
+  Railway: PostgreSQL service → Backups
+  Schedule: Daily (recommended)
+
+□ Review resource usage
+  Check: Memory, CPU usage
+  Adjust: If needed (Settings → Resources)
+
+□ Setup monitoring (optional)
+  Consider: Application Insights, DataDog
+
+□ Configure custom domain (optional)
+  Settings → Networking → Custom Domain
+  Add: CNAME record in DNS
+
+□ Security review
+  ✓ JWT secret is strong random string
+  ✓ Admin password changed
+  ✓ HTTPS enabled (automatic on Railway)
+  ✓ Environment variables secured
+  ✓ Database SSL enabled
+
+□ Create user documentation
+  ✓ Login instructions
+  ✓ Basic workflows
+  ✓ Common tasks
+
+□ Train users
+  ✓ Demo session
+  ✓ Q&A
+  ✓ Support contact
+
+───────────────────────────────────────────────────────────────
+ PHASE 7: GO LIVE
+───────────────────────────────────────────────────────────────
+
+□ Announce to team
+  Share: Production URL
+  Provide: Login credentials
+  
+□ Monitor for first 24 hours
+  Check: Error logs
+  Monitor: Performance
+  Respond: To user feedback
+
+□ Create backup schedule
+  Frequency: Daily database backups
+  Retention: 7-30 days
+
+□ Plan for updates
+  Process: Git push → Auto-deploy
+  Testing: Use staging environment (optional)
+
+───────────────────────────────────────────────────────────────
+ TROUBLESHOOTING REFERENCE
+───────────────────────────────────────────────────────────────
+
+Issue: Build fails
+Solution: Check Railway logs for specific error
+Documentation: RAILWAY-SETUP-GUIDE.md → Troubleshooting
+
+Issue: Database connection error
+Solution: Verify DATABASE_URL is linked correctly
+Check: PostgreSQL service is running
+
+Issue: 502 Bad Gateway
+Solution: Check container logs for startup errors
+Verify: Port 8080 is exposed
+
+Issue: CORS errors
+Solution: Check RAILWAY_PUBLIC_DOMAIN is set
+Verify: Program.cs CORS configuration
+
+Issue: Can't login
+Solution: Check database migrations ran successfully
+Verify: Admin user created in logs
+
+───────────────────────────────────────────────────────────────
+ CONTACT & SUPPORT
+───────────────────────────────────────────────────────────────
+
+GitHub Repository:
+https://github.com/Mohanreddy88/hrms-payroll-system
+
+Railway Project:
+https://railway.com/project/311e929d-521f-401d-a6e6-981c0e599282
+
+Railway Documentation:
+https://docs.railway.app
+
+Railway Support:
+https://discord.gg/railway
+
+───────────────────────────────────────────────────────────────
+ DEPLOYMENT SUCCESS CRITERIA
+───────────────────────────────────────────────────────────────
+
+✅ Application accessible at Railway URL
+✅ Login page loads without errors
+✅ Admin can login successfully
+✅ API endpoints respond correctly
+✅ Database has initial data
+✅ Angular UI communicates with API
+✅ No errors in Railway logs
+✅ Admin password changed
+✅ Core functionality tested
+✅ Mobile responsive
+
+───────────────────────────────────────────────────────────────
+ NOTES
+───────────────────────────────────────────────────────────────
+
+• Estimated deployment time: ~10 minutes
+• Local environment: Unchanged
+• Database: Local SQL Server preserved
+• Backup location: C:\Users\HP\source\repos\walnut\backup
+• Cost estimate: $5-10/month (Railway Hobby plan)
+
+───────────────────────────────────────────────────────────────
+ SIGN-OFF
+───────────────────────────────────────────────────────────────
+
+Deployment Date: _______________
+
+Deployed By: _______________
+
+Production URL: _______________
+
+Admin Password Changed: _______________
+
+Backup Verified: _______________
+
+Users Notified: _______________
+
+Status: _______________
+
+═══════════════════════════════════════════════════════════════
+  END OF CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+Print this checklist and check off items as you complete them!

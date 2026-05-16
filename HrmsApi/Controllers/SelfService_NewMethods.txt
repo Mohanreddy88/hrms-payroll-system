@@ -1,0 +1,71 @@
+    /// <summary>
+    /// GET /api/selfservice/my-payslips/{id} - Get specific payslip details for current user
+    /// </summary>
+    [HttpGet("my-payslips/{id:int}")]
+    public async Task<IActionResult> GetMyPayslipById(int id)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var payslip = await _db.Payrolls
+            .Include(p => p.Employee)
+            .Include(p => p.Approver)
+            .Include(p => p.Processor)
+            .FirstOrDefaultAsync(p => p.Id == id && p.EmployeeId == employee.Id);
+
+        if (payslip == null)
+            return NotFound(new { message = "Payslip not found or does not belong to you" });
+
+        return Ok(new
+        {
+            payslip.Id,
+            payslip.Month,
+            payslip.Year,
+            monthName = new DateTime(payslip.Year, payslip.Month, 1).ToString("MMMM yyyy"),
+            payslip.BasicSalary,
+            payslip.Allowances,
+            payslip.Deductions,
+            payslip.EpfAmount,
+            payslip.SocsoAmount,
+            payslip.TaxAmount,
+            payslip.GrossIncome,
+            payslip.NetSalary,
+            payslip.Status,
+            payslip.GeneratedOn,
+            approverName = payslip.Approver?.Username,
+            payslip.ApprovedOn
+        });
+    }
+
+    /// <summary>
+    /// POST /api/selfservice/my-payslips/{id}/email - Request payslip to be emailed
+    /// </summary>
+    [HttpPost("my-payslips/{id:int}/email")]
+    public async Task<IActionResult> EmailMyPayslip(int id)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email == username);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var payroll = await _db.Payrolls
+            .Include(p => p.Employee)
+            .FirstOrDefaultAsync(p => p.Id == id && p.EmployeeId == employee.Id);
+
+        if (payroll == null)
+            return NotFound(new { message = "Payslip not found or does not belong to you" });
+
+        return Ok(new { message = "Payslip email feature will be implemented soon" });
+    }
