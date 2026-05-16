@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://localhost:64558/api'
+  apiUrl: 'http://localhost:5000/api'  // Point to local .NET API
 };
