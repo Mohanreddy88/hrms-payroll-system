@@ -15,7 +15,12 @@ RUN npm ci --legacy-peer-deps
 
 # Copy source and build for production
 COPY hrms-ui/ ./
-RUN npm run build:prod
+RUN npm run build:prod && \
+    echo "✅ Angular build complete. Verifying output..." && \
+    ls -la dist/ && \
+    ls -la dist/hrms-ui/ && \
+    test -d dist/hrms-ui/browser || (echo "❌ ERROR: dist/hrms-ui/browser not found!" && exit 1) && \
+    echo "✅ Angular build output verified at dist/hrms-ui/browser"
 
 # ───────────────────────────────────────────────────────────────
 # Stage 2: Build .NET API
@@ -54,6 +59,12 @@ COPY --from=dotnet-build /app/efbundle ./efbundle
 
 # Copy Angular build output
 COPY --from=angular-build /app/frontend/dist/hrms-ui/browser ./wwwroot
+
+# Verify Angular files were copied
+RUN echo "Verifying Angular files in wwwroot..." && \
+    ls -la /app/wwwroot/ && \
+    test -f /app/wwwroot/index.html || (echo "❌ ERROR: index.html not found in wwwroot!" && exit 1) && \
+    echo "✅ Angular files verified in /app/wwwroot"
 
 # Configure nginx
 RUN echo 'server {\n\
