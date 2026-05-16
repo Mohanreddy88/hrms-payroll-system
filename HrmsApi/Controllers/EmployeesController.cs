@@ -182,7 +182,41 @@ public class EmployeesController : ControllerBase
         };
 
         _db.Employees.Add(emp);
-        await _db.SaveChangesAsync();
+        
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            // Return detailed error information for debugging
+            var innerException = ex.InnerException?.Message ?? ex.Message;
+            var stackTrace = ex.StackTrace;
+            
+            return StatusCode(500, new
+            {
+                error = "Database update failed",
+                message = ex.Message,
+                innerException = innerException,
+                stackTrace = stackTrace,
+                employeeCode = employeeCode,
+                employeeData = new
+                {
+                    emp.Name,
+                    emp.Email,
+                    emp.Phone,
+                    emp.DepartmentId,
+                    emp.Designation,
+                    emp.JoinDate,
+                    emp.Salary,
+                    emp.IsActive,
+                    emp.IcPassport,
+                    emp.TaxNumber,
+                    emp.BankId,
+                    emp.AccountNumber
+                }
+            });
+        }
 
         return CreatedAtAction(nameof(GetById), new { id = emp.Id }, new { 
             message = "Employee created successfully", 
