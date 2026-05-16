@@ -690,6 +690,7 @@ public class SelfServiceController : ControllerBase
             return NotFound(new { message = "Employee profile not found" });
 
         var query = _db.AttendancePeriods
+            .Include(ap => ap.Days)
             .Where(ap => ap.EmployeeId == employee.Id);
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -711,7 +712,17 @@ public class SelfServiceController : ControllerBase
                 ap.RejectedBy,
                 ap.RejectionReason,
                 ap.Remarks,
-                periodLabel = ap.StartDate.ToString("MMM dd") + " - " + ap.EndDate.ToString("MMM dd, yyyy")
+                periodLabel = ap.StartDate.ToString("MMM dd") + " - " + ap.EndDate.ToString("MMM dd, yyyy"),
+                days = ap.Days.OrderBy(d => d.Date).Select(d => new
+                {
+                    d.Id,
+                    d.Date,
+                    d.Hours,
+                    d.Note,
+                    d.Remarks,
+                    d.IsPublicHoliday,
+                    d.IsWeekend
+                })
             })
             .ToListAsync();
 
@@ -719,7 +730,161 @@ public class SelfServiceController : ControllerBase
     }
 
 
-    /// <summary>\r\n    /// GET /api/selfservice/my-leave-requests - Get current user's leave requests
+    /// <summary>
+    /// POST /api/selfservice/attendance-periods - Save (create or update) an attendance period
+    /// </summary>
+    [HttpPost("attendance-periods")]
+    public async Task<IActionResult> SaveAttendancePeriod([FromBody] SaveAttendancePeriodRequest request)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (user == null)
+            return NotFound(new { message = "User not found" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        // Normalize dates to UTC
+        var startDate = DateTime.SpecifyKind(request.StartDate.Date, DateTimeKind.Utc);
+        var endDate   = DateTime.SpecifyKind(request.EndDate.Date,   DateTimeKind.Utc);
+
+        AttendancePeriod period;
+
+        if (request.Id.HasValue && request.Id.Value > 0)
+        {
+            // UPDATE existing period
+            period = await _db.AttendancePeriods
+                .Include(ap => ap.Days)
+                .FirstOrDefaultAsync(ap => ap.Id == request.Id.Value && ap.EmployeeId == employee.Id);
+
+            if (period == null)
+                return NotFound(new { message = "Attendance period not found" });
+
+            if (period.Status == "Submitted" || period.Status == "Approved")
+                return BadRequest(new { message = $"Cannot edit a period with status: {period.Status}" });
+
+            // Remove old days and replace
+            _db.RemoveRange(period.Days);
+            period.Days.Clear();
+        }
+        else
+        {
+            // CREATE new period - check for duplicate
+            var existing = await _db.AttendancePeriods
+                .FirstOrDefaultAsync(ap => ap.EmployeeId == employee.Id
+                                        && ap.StartDate == startDate
+                                        && ap.EndDate == endDate);
+            if (existing != null)
+            {
+                // Re-use existing period (treat as update)
+                period = await _db.AttendancePeriods
+                    .Include(ap => ap.Days)
+                    .FirstOrDefaultAsync(ap => ap.Id == existing.Id);
+
+                if (period.Status == "Submitted" || period.Status == "Approved")
+                    return BadRequest(new { message = $"Cannot edit a period with status: {period.Status}" });
+
+                _db.RemoveRange(period.Days);
+                period.Days.Clear();
+            }
+            else
+            {
+                period = new AttendancePeriod
+                {
+                    EmployeeId = employee.Id,
+                    StartDate  = startDate,
+                    EndDate    = endDate,
+                    Status     = "Draft",
+                    CreatedAt  = DateTime.UtcNow
+                };
+                _db.AttendancePeriods.Add(period);
+                await _db.SaveChangesAsync(); // Get period.Id before adding days
+            }
+        }
+
+        // Add days
+        foreach (var d in request.Days)
+        {
+            period.Days.Add(new AttendancePeriodDay
+            {
+                AttendancePeriodId = period.Id,
+                Date             = DateTime.SpecifyKind(d.Date.Date, DateTimeKind.Utc),
+                Hours            = d.Hours,
+                Note             = d.Note,
+                Remarks          = d.Remarks,
+                IsPublicHoliday  = d.IsPublicHoliday,
+                IsWeekend        = d.IsWeekend
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Attendance period {Id} saved for employee {EmployeeId}", period.Id, employee.Id);
+
+        return Ok(new
+        {
+            message = "Attendance period saved successfully",
+            id      = period.Id,
+            status  = period.Status,
+            period.StartDate,
+            period.EndDate
+        });
+    }
+
+    /// <summary>
+    /// POST /api/selfservice/attendance-periods/{id}/submit - Submit a saved period for approval
+    /// </summary>
+    [HttpPost("attendance-periods/{id:int}/submit")]
+    public async Task<IActionResult> SubmitAttendancePeriod(int id)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (user == null)
+            return NotFound(new { message = "User not found" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var period = await _db.AttendancePeriods
+            .FirstOrDefaultAsync(ap => ap.Id == id && ap.EmployeeId == employee.Id);
+
+        if (period == null)
+            return NotFound(new { message = "Attendance period not found or does not belong to you" });
+
+        if (period.Status == "Submitted")
+            return BadRequest(new { message = "Attendance period is already submitted" });
+
+        if (period.Status == "Approved")
+            return BadRequest(new { message = "Attendance period is already approved" });
+
+        period.Status      = "Submitted";
+        period.SubmittedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Attendance period {Id} submitted by employee {EmployeeId}", id, employee.Id);
+
+        return Ok(new
+        {
+            message     = "Attendance period submitted successfully for approval",
+            id          = period.Id,
+            status      = period.Status,
+            submittedAt = period.SubmittedAt
+        });
+    }
+
+    /// <summary>
+    /// GET /api/selfservice/my-leave-requests - Get current user's leave requests
     /// </summary>
     [HttpGet("my-leave-requests")]
     public async Task<IActionResult> GetMyLeaveRequests([FromQuery] string? status = null)
