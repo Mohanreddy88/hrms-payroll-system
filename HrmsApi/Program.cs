@@ -54,6 +54,12 @@ if (!string.IsNullOrEmpty(smtpUser))
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var usePostgres = builder.Configuration.GetValue<bool>("UsePostgreSQL");
 
+// Enable legacy timestamp behaviour globally: Npgsql will accept DateTime with
+// Kind=Local or Kind=Unspecified and store them as UTC without throwing.
+// This is the safest fix for an existing codebase where every timestamp column
+// is 'timestamp with time zone' and all DateTimes should be treated as UTC.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 builder.Services.AddDbContext<HrmsDbContext>(options =>
 {
     if (usePostgres || connectionString?.Contains("postgres") == true)
