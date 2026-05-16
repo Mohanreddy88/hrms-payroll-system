@@ -2,7 +2,7 @@
 # Multi-stage Dockerfile for HRMS Production Deployment
 # Builds: .NET 8 API + Angular UI in a single container
 # Build Date: 2026-05-16
-# Version: Production v1.0
+# Version: Production v1.1 - Fixed PostgreSQL migration syntax
 # ═══════════════════════════════════════════════════════════════
 
 # ───────────────────────────────────────────────────────────────
