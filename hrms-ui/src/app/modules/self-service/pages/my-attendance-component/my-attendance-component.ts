@@ -266,10 +266,12 @@ export class MyAttendanceComponent implements OnInit {
   }
 
   formatDateForApi(date: Date): string {
+    // Build a UTC midnight ISO string (ends with Z) so ASP.NET Core
+    // deserializes it as DateTimeKind.Utc — required by Npgsql
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}T00:00:00`;
+    return `${year}-${month}-${day}T00:00:00Z`;
   }
 
   loadCurrentPeriod(): void {
