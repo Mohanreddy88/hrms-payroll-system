@@ -5,8 +5,8 @@ import { BehaviorSubject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class SessionTimeoutService {
-  private readonly TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes (900 seconds)
-  private readonly WARNING_TIME = 10 * 60 * 1000; // Show warning at 10 minutes (600 seconds) - gives 5 min to respond
+  private readonly TIMEOUT_DURATION = 20 * 60 * 1000; // 20 minutes (1200 seconds)
+  private readonly WARNING_TIME = 15 * 60 * 1000; // Show warning at 15 minutes (900 seconds) - gives 5 min to respond
   private timeoutId: any;
   private warningTimeoutId: any;
   private isBrowser = typeof window !== 'undefined';
