@@ -50,10 +50,15 @@ export class EmployeeListComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        // Only show error toast for actual errors (not empty data)
-        if (err.status !== 404) {
-          this.toast.error('Load Failed', 'Could not load employees.');
+        // Only show error toast for actual server errors
+        // 404 = Not Found (empty data) - don't show error
+        // 200 with empty array = Success with no data - don't show error
+        if (err.status && err.status !== 404 && err.status !== 204) {
+          const errorMsg = err?.error?.message || err?.message || 'Could not load employees.';
+          this.toast.error('Load Failed', errorMsg);
         }
+        // Always set loading to false and show empty state
+        this.employees = [];
         this.loading = false;
         this.cdr.detectChanges();
       }

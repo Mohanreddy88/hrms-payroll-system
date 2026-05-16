@@ -1,4 +1,5 @@
 # Railway Deployment Trigger
 # Update this file to force Railway to deploy
-LAST_UPDATE=2026-05-16T11:00:00Z
-BUILD_NUMBER=4
+LAST_UPDATE=2026-05-16T11:10:00Z
+BUILD_NUMBER=5
+FORCE_DEPLOY=true
