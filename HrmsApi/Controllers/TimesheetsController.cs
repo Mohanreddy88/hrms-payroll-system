@@ -236,7 +236,7 @@ public class TimesheetsController : ControllerBase
                 {
                     leaveBalance.UsedDays += totalLeaveDeducted;
                     leaveBalance.BalanceDays = leaveBalance.TotalDays - leaveBalance.UsedDays;
-                    leaveBalance.UpdatedAt = DateTime.Now;
+                    leaveBalance.UpdatedAt = DateTime.UtcNow;
                 }
             }
         }

@@ -1250,6 +1250,8 @@ public class SelfServiceController : ControllerBase
                     currentRow++;
                     continue;
                 }
+                // Ensure UTC Kind so Npgsql accepts it for 'timestamp with time zone'
+                attendanceDate = DateTime.SpecifyKind(attendanceDate.Date, DateTimeKind.Utc);
 
                 // Check if it's a weekend or holiday
                 if (timeInStr.Contains("WEEKEND") || timeInStr.Contains("Public Holiday"))
@@ -1319,9 +1321,9 @@ public class SelfServiceController : ControllerBase
                     totalWorkHours += workHours;
                     status = "Present";
 
-                    // Convert TimeSpan to DateTime
-                    checkInTime = attendanceDate.Date.Add(timeInSpan);
-                    checkOutTime = attendanceDate.Date.Add(timeOutSpan);
+                    // Convert TimeSpan to DateTime (UTC Kind required by Npgsql)
+                    checkInTime = DateTime.SpecifyKind(attendanceDate.Date.Add(timeInSpan), DateTimeKind.Utc);
+                    checkOutTime = DateTime.SpecifyKind(attendanceDate.Date.Add(timeOutSpan), DateTimeKind.Utc);
                     
                     _logger.LogInformation($"Row {currentRow}: Detected Present - totalPresent={totalPresent}, hours={workHours}, totalWorkHours={totalWorkHours}");
                 }
@@ -1341,8 +1343,8 @@ public class SelfServiceController : ControllerBase
                         CheckIn = checkInTime,
                         CheckOut = checkOutTime,
                         WorkHours = workHours,
-                        Remarks = $"PENDING APPROVAL - Uploaded from timesheet {DateTime.Now:yyyy-MM-dd}",
-                        CreatedAt = DateTime.Now
+                        Remarks = $"PENDING APPROVAL - Uploaded from timesheet {DateTime.UtcNow:yyyy-MM-dd}",
+                        CreatedAt = DateTime.UtcNow
                     });
                 }
 
@@ -1403,7 +1405,7 @@ public class SelfServiceController : ControllerBase
                 existingTimesheet.TotalPublicHolidays = publicHolidays.Count;
                 existingTimesheet.TotalWorkHours = totalWorkHours;
                 existingTimesheet.Status = "Draft";
-                existingTimesheet.GeneratedOn = DateTime.Now;
+                existingTimesheet.GeneratedOn = DateTime.UtcNow;
             }
             else
             {
@@ -1422,7 +1424,7 @@ public class SelfServiceController : ControllerBase
                     TotalPublicHolidays = publicHolidays.Count,
                     TotalWorkHours = totalWorkHours,
                     Status = "Draft",
-                    GeneratedOn = DateTime.Now
+                    GeneratedOn = DateTime.UtcNow
                 };
 
                 _db.Timesheets.Add(timesheet);
