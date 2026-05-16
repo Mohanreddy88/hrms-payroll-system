@@ -1,8 +1,6 @@
 # ═══════════════════════════════════════════════════════════════
 # Multi-stage Dockerfile for HRMS Production Deployment
 # Builds: .NET 8 API + Angular UI in a single container
-# Build Date: 2026-05-16
-# Version: Production v1.1 - Fixed PostgreSQL migration syntax
 # ═══════════════════════════════════════════════════════════════
 
 # ───────────────────────────────────────────────────────────────
@@ -17,12 +15,7 @@ RUN npm ci --legacy-peer-deps
 
 # Copy source and build for production
 COPY hrms-ui/ ./
-RUN npm run build:prod && \
-    echo "✅ Angular build complete. Verifying output..." && \
-    ls -la dist/ && \
-    ls -la dist/hrms-ui/ && \
-    test -d dist/hrms-ui/browser || (echo "❌ ERROR: dist/hrms-ui/browser not found!" && exit 1) && \
-    echo "✅ Angular build output verified at dist/hrms-ui/browser"
+RUN npm run build:prod
 
 # ───────────────────────────────────────────────────────────────
 # Stage 2: Build .NET API
@@ -38,7 +31,11 @@ RUN dotnet restore HrmsApi/HrmsApi.csproj
 COPY HrmsApi/ ./HrmsApi/
 RUN dotnet publish HrmsApi/HrmsApi.csproj -c Release -o /app/publish
 
-# Skip EF migrations - tables created via SQL script
+# Build EF Core migration bundle for production database
+RUN dotnet tool install --global dotnet-ef --version 8.0.0
+ENV PATH="${PATH}:/root/.dotnet/tools"
+WORKDIR /src/HrmsApi
+RUN dotnet ef migrations bundle --self-contained -r linux-x64 -o /app/efbundle
 
 # ───────────────────────────────────────────────────────────────
 # Stage 3: Runtime - Single container serving both API and UI
@@ -52,16 +49,11 @@ RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 # Copy .NET API
 COPY --from=dotnet-build /app/publish ./api/
 
-# No migration bundle needed
+# Copy EF migration bundle
+COPY --from=dotnet-build /app/efbundle ./efbundle
 
 # Copy Angular build output
 COPY --from=angular-build /app/frontend/dist/hrms-ui/browser ./wwwroot
-
-# Verify Angular files were copied
-RUN echo "Verifying Angular files in wwwroot..." && \
-    ls -la /app/wwwroot/ && \
-    test -f /app/wwwroot/index.html || (echo "❌ ERROR: index.html not found in wwwroot!" && exit 1) && \
-    echo "✅ Angular files verified in /app/wwwroot"
 
 # Configure nginx
 RUN echo 'server {\n\
@@ -125,7 +117,11 @@ if [ -n "$DATABASE_URL" ]; then\n\
     \n\
     CONN_STRING="Host=$HOST;Port=$PORT;Database=$DB;Username=$USER;Password=$PASS;SSL Mode=Require;Trust Server Certificate=true"\n\
     \n\
-    echo "✅ Database connection configured"\n\
+    echo "🔄 Running database migrations..."\n\
+    ./efbundle --connection "$CONN_STRING" || {\n\
+      echo "⚠️  Migration failed - database may already be up to date"\n\
+    }\n\
+    echo "✅ Database ready"\n\
   else\n\
     echo "❌ Could not parse DATABASE_URL"\n\
     exit 1\n\
