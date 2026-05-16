@@ -102,10 +102,11 @@ builder.Services.AddCors(options =>
         
         if (isProduction)
         {
-            // In production (Railway/Nginx), allow all origins since Nginx handles the proxy
-            policy.AllowAnyOrigin()
+            // In production (Railway/Nginx), allow ALL origins (*) since Nginx handles the proxy
+            policy.SetIsOriginAllowed(_ => true)  // Allow * (any origin)
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         }
         else
         {
