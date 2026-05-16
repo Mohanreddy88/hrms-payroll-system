@@ -612,7 +612,7 @@ namespace HrmsApi.Migrations
                 table: "Users",
                 column: "Email",
                 unique: true,
-                filter: "[Email] IS NOT NULL AND [Email] <> ''");
+                filter: "\"Email\" IS NOT NULL AND \"Email\" <> ''");
         }
 
         /// <inheritdoc />
