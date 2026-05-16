@@ -1,2 +1,3 @@
-# Force rebuild  
-"# Railway deployment $(date)"  
+# This file helps trigger Railway deployments
+# Update the timestamp below when you make UI/API changes
+LAST_UPDATE=2026-05-16T10:53:00Z
