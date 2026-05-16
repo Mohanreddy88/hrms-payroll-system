@@ -45,9 +45,11 @@ public class AuthController : ControllerBase
         int? employeeId = null;
         if (user.Role.ToLower() != "admin")
         {
+            // Match employee by user's email (case-insensitive)
             var employee = await _db.Employees
-                .FirstOrDefaultAsync(e => e.Email == user.Email || e.Email == user.Username);
+                .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
             employeeId = employee?.Id;
+            Console.WriteLine($"Employee lookup for email '{user.Email}': {(employee != null ? $"Found Id={employee.Id}" : "Not found")}");
         }
 
         return Ok(new LoginResponse(token, user.Username, user.Role, expiresAt, employeeId));

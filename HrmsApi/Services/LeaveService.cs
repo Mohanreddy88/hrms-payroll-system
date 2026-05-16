@@ -48,18 +48,22 @@ public class LeaveService : ILeaveService
         if (!leaveType.IsActive)
             throw new InvalidOperationException($"Leave type '{leaveType.Name}' is not active");
 
+        // Normalize to UTC (Npgsql requires DateTimeKind.Utc for timestamp with time zone)
+        var startDate = DateTime.SpecifyKind(request.StartDate.Date, DateTimeKind.Utc);
+        var endDate   = DateTime.SpecifyKind(request.EndDate.Date,   DateTimeKind.Utc);
+
         // Validate dates
-        if (request.StartDate > request.EndDate)
+        if (startDate > endDate)
             throw new InvalidOperationException("Start date cannot be after end date");
 
         // Calculate leave days (excluding weekends and public holidays)
-        var leaveDays = await CalculateLeaveDaysAsync(request.StartDate, request.EndDate);
+        var leaveDays = await CalculateLeaveDaysAsync(startDate, endDate);
 
         if (leaveDays <= 0)
             throw new InvalidOperationException("Leave request must be for at least 0.5 days");
 
         // Check leave balance
-        var year = request.StartDate.Year;
+        var year = startDate.Year;
         var balance = await _db.EmployeeLeaveBalances
             .FirstOrDefaultAsync(b => b.EmployeeId == request.EmployeeId 
                                    && b.LeaveTypeId == request.LeaveTypeId 
@@ -84,8 +88,8 @@ public class LeaveService : ILeaveService
         // Check for existing leave request with same dates (only Pending or Draft status)
         var existingRequest = await _db.LeaveRequests
             .FirstOrDefaultAsync(lr => lr.EmployeeId == request.EmployeeId
-                                    && lr.StartDate == request.StartDate
-                                    && lr.EndDate == request.EndDate
+                                    && lr.StartDate == startDate
+                                    && lr.EndDate == endDate
                                     && (lr.Status == "Pending" || lr.Status == "Draft"));
 
         if (existingRequest != null)
@@ -105,13 +109,13 @@ public class LeaveService : ILeaveService
             return existingRequest;
         }
 
-        // Create new leave request
+        // Create new leave request (use UTC-normalized dates)
         var leaveRequest = new LeaveRequest
         {
             EmployeeId = request.EmployeeId,
             LeaveTypeId = request.LeaveTypeId,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
+            StartDate = startDate,
+            EndDate = endDate,
             TotalDays = leaveDays,
             Reason = request.Reason,
             Status = "Pending",
@@ -238,6 +242,10 @@ public class LeaveService : ILeaveService
     /// </summary>
     public async Task<decimal> CalculateLeaveDaysAsync(DateTime startDate, DateTime endDate)
     {
+        // Normalize to UTC date-only (strip time, set Kind=Utc)
+        startDate = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc);
+        endDate   = DateTime.SpecifyKind(endDate.Date,   DateTimeKind.Utc);
+
         if (startDate > endDate)
             return 0;
 
