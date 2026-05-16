@@ -52,8 +52,11 @@ export class DepartmentListComponent implements OnInit {
       },
       error: (err) => {
         console.error('Department load error:', err);
-        const errorMsg = err?.error?.message || err?.message || 'Could not load departments. Please check if API is running.';
-        this.toast.error('Load Failed', errorMsg);
+        // Only show error toast for actual errors (not empty data)
+        if (err.status !== 404) {
+          const errorMsg = err?.error?.message || err?.message || 'Could not load departments. Please check if API is running.';
+          this.toast.error('Load Failed', errorMsg);
+        }
         this.loading = false;
         this.cdr.detectChanges();
       }

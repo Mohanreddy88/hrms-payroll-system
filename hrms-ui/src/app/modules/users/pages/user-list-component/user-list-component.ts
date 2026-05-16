@@ -51,8 +51,11 @@ export class UserListComponent implements OnInit {
         this.loading = false;
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.toast.error('Load Failed', 'Could not load users.');
+      error: (err) => {
+        // Only show error toast for actual errors (not empty data)
+        if (err.status !== 404) {
+          this.toast.error('Load Failed', 'Could not load users.');
+        }
         this.loading = false;
         this.cdr.detectChanges();
       }

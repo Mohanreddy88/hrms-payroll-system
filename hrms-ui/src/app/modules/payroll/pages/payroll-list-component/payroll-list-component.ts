@@ -69,7 +69,12 @@ export class PayrollListComponent implements OnInit {
   loadEmployees(): void {
     this.http.get<any[]>(`${environment.apiUrl}/employees`).subscribe({
       next: (data) => this.employees = data.filter(e => e.isActive),
-      error: () => this.toast.error('Error', 'Failed to load employees')
+      error: (err) => {
+        // Only show error toast for actual errors (not empty data)
+        if (err.status !== 404) {
+          this.toast.error('Error', 'Failed to load employees');
+        }
+      }
     });
   }
 
@@ -81,8 +86,11 @@ export class PayrollListComponent implements OnInit {
         this.applyFilters();
         this.loading = false;
       },
-      error: () => {
-        this.toast.error('Error', 'Failed to load payrolls');
+      error: (err) => {
+        // Only show error toast for actual errors (not empty data)
+        if (err.status !== 404) {
+          this.toast.error('Error', 'Failed to load payrolls');
+        }
         this.loading = false;
       }
     });
