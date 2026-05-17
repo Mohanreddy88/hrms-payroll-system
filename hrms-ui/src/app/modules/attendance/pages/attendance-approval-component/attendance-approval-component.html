@@ -265,7 +265,7 @@
     <div class="missing-leave-section" *ngIf="getMissingLeaveDays().length > 0">
       <div class="missing-leave-header">
         <i class="bi bi-exclamation-circle-fill"></i>
-        <span>{{ getMissingLeaveDays().length }} day(s) have 0 hours with no leave request</span>
+        <span>{{ getMissingLeaveDays().length }} day(s) marked as leave ({{ getNotesForMissingDays() }}) but no leave request submitted</span>
       </div>
       <div class="missing-days-list">
         <span class="missing-day-chip" *ngFor="let d of getMissingLeaveDays()">
