@@ -414,13 +414,10 @@
   }
 }
 
-// Modal Styles
+// ── Modal Styles ─────────────────────────────────────────────────────────────
 .modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 1000;
   display: none;
 
@@ -432,170 +429,260 @@
 
   .modal-backdrop {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    pointer-events: none;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    cursor: pointer;
   }
 
   .modal-dialog {
     position: relative;
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     width: 90%;
-    max-width: 500px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 480px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
     z-index: 1001;
     pointer-events: auto;
+    overflow: hidden;
+    animation: modalIn 0.2s ease;
+  }
+}
 
-    .modal-header {
-      padding: 20px 24px;
-      border-bottom: 2px solid #f1f5f9;
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+// ── Coloured Banner ──────────────────────────────────────────────────────────
+.modal-banner {
+  position: relative;
+  padding: 28px 24px 24px;
+  text-align: center;
+  color: white;
+
+  .banner-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: white;
+  }
+
+  p {
+    font-size: 13px;
+    margin: 0;
+    opacity: 0.85;
+  }
+
+  .btn-close-banner {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: background 0.2s;
+
+    &:hover { background: rgba(255,255,255,0.35); }
+  }
+}
+
+.approve-banner { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.reject-banner  { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+
+// ── Modal Body ───────────────────────────────────────────────────────────────
+.modal-dialog .modal-body {
+  padding: 20px 24px 8px;
+
+  // Info grid for approve modal
+  .info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 16px;
+
+    .info-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 11px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
 
-      h3 {
-        font-size: 20px;
+      &:last-child { border-bottom: none; }
+
+      .info-label {
+        color: #64748b;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        i { font-size: 13px; }
+      }
+
+      .info-value {
         color: #1e293b;
         font-weight: 600;
-        margin: 0;
-      }
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
 
-      .btn-close {
-        background: none;
-        border: none;
-        font-size: 20px;
-        color: #64748b;
-        cursor: pointer;
-
-        &:hover {
-          color: #1e293b;
-        }
+        &.hours-value { color: #10b981; font-size: 16px; }
       }
     }
+  }
 
-    .modal-body {
-      padding: 24px;
+  // Email notice bar
+  .email-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 4px;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 
-      .form-group {
-        label {
-          display: block;
-          font-weight: 500;
-          color: #1e293b;
-          margin-bottom: 8px;
-          font-size: 14px;
+    i { font-size: 15px; flex-shrink: 0; }
 
-          .required {
-            color: #ef4444;
-          }
-        }
+    &.reject-notice {
+      background: #fff7ed;
+      color: #9a3412;
+      border-color: #fed7aa;
+    }
+  }
 
-        .form-control {
-          width: 100%;
-          padding: 10px 14px;
-          border: 2px solid #e2e8f0;
-          border-radius: 8px;
-          font-size: 14px;
-          font-family: inherit;
+  // Reject form
+  .form-group {
+    margin-bottom: 12px;
 
-          &:focus {
-            outline: none;
-            border-color: #14b8a6;
-          }
-        }
+    label {
+      display: block;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+      font-size: 14px;
 
-        textarea.form-control {
-          resize: vertical;
-        }
-      }
+      .required { color: #ef4444; margin-left: 2px; }
     }
 
-    .modal-footer {
-      padding: 16px 24px;
-      border-top: 2px solid #f1f5f9;
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #1e293b;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+      resize: vertical;
 
-      button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        font-size: 14px;
-
-        &.btn-cancel {
-          background: #f1f5f9;
-          color: #475569;
-
-          &:hover {
-            background: #e2e8f0;
-          }
-        }
-
-        &.btn-confirm-reject {
-          background: #ef4444;
-          color: white;
-
-          &:hover {
-            background: #dc2626;
-          }
-        }
+      &:focus {
+        outline: none;
+        border-color: #ef4444;
+        background: #fff8f8;
       }
+
+      &::placeholder { color: #94a3b8; }
     }
   }
 }
 
-  // Approve Modal Specific Styles
-  .approve-modal {
-    .confirm-message {
-      text-align: center;
-      padding: 20px;
+// ── Modal Footer ─────────────────────────────────────────────────────────────
+.modal-dialog .modal-footer {
+  padding: 16px 24px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 
-      .success-icon {
-        font-size: 64px;
-        color: #10b981;
-        margin-bottom: 20px;
-      }
+  .btn-modal-cancel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
 
-      p {
-        font-size: 16px;
-        color: #1e293b;
-        margin-bottom: 20px;
-      }
+    &:hover { background: #e2e8f0; color: #1e293b; }
+  }
 
-      .period-info {
-        background: #f8fafc;
-        padding: 16px;
-        border-radius: 8px;
-        text-align: left;
-        margin-bottom: 20px;
-        line-height: 1.8;
-        color: #475569;
-      }
+  .btn-modal-approve {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.35);
 
-      .email-note {
-        font-size: 14px;
-        color: #64748b;
-        font-style: italic;
-      }
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(16,185,129,0.45);
     }
 
-    .modal-footer {
-      .btn-confirm-approve {
-        background: #10b981;
-        color: white;
-
-        &:hover {
-          background: #059669;
-        }
-      }
+    &:disabled {
+      background: #94a3b8;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.7;
     }
   }
+
+  .btn-modal-reject {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(239,68,68,0.35);
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(239,68,68,0.45);
+    }
+  }
+}
 
 // Filter Card Styles
 .filter-card {

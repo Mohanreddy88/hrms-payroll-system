@@ -280,32 +280,53 @@
 
 <!-- Approve Confirmation Modal -->
 <div class="modal" [class.show]="showApproveModal" *ngIf="showApproveModal">
-  <div class="modal-backdrop"></div>
-  <div class="modal-dialog">
-    <div class="modal-header">
+  <div class="modal-backdrop" (click)="closeApproveModal()"></div>
+  <div class="modal-dialog approve-modal">
+    <!-- Coloured top banner -->
+    <div class="modal-banner approve-banner">
+      <div class="banner-icon"><i class="bi bi-check-circle-fill"></i></div>
       <h3>Approve Attendance Period</h3>
-      <button class="btn-close" (click)="closeApproveModal()">
+      <p>Review the details below before confirming</p>
+      <button class="btn-close-banner" (click)="closeApproveModal()">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
-    <div class="modal-body">
-      <div class="confirm-message">
-        <i class="bi bi-check-circle-fill success-icon"></i>
-        <p>Are you sure you want to approve this attendance period?</p>
-        <div class="period-info" *ngIf="selectedPeriod">
-          <strong>Employee:</strong> {{ selectedPeriod.employeeName }}<br>
-          <strong>Period:</strong> {{ formatDate(selectedPeriod.startDate) }} - {{ formatDate(selectedPeriod.endDate) }}<br>
-          <strong>Total Hours:</strong> {{ selectedPeriod.summary.totalHours }}h
+    <div class="modal-body" *ngIf="selectedPeriod">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-person-fill"></i> Employee</span>
+          <span class="info-value">{{ selectedPeriod.employeeName }}</span>
         </div>
-        <p class="email-note">An approval email will be sent to the employee.</p>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-calendar-range"></i> Period</span>
+          <span class="info-value">{{ formatDate(selectedPeriod.startDate) }} – {{ formatDate(selectedPeriod.endDate) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-clock"></i> Total Hours</span>
+          <span class="info-value hours-value">{{ selectedPeriod.summary.totalHours }}h</span>
+        </div>
+        <div class="info-item" *ngIf="selectedPeriod.summary.alCount > 0 || selectedPeriod.summary.elCount > 0 || selectedPeriod.summary.mcCount > 0">
+          <span class="info-label"><i class="bi bi-calendar-x"></i> Leave Days</span>
+          <span class="info-value">
+            <span class="leave-tag al" *ngIf="selectedPeriod.summary.alCount > 0">AL: {{ selectedPeriod.summary.alCount }}</span>
+            <span class="leave-tag el" *ngIf="selectedPeriod.summary.elCount > 0">EL: {{ selectedPeriod.summary.elCount }}</span>
+            <span class="leave-tag mc" *ngIf="selectedPeriod.summary.mcCount > 0">MC: {{ selectedPeriod.summary.mcCount }}</span>
+          </span>
+        </div>
+      </div>
+      <div class="email-notice">
+        <i class="bi bi-envelope-check-fill"></i>
+        An approval email will be sent automatically to the employee.
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeApproveModal()">Cancel</button>
-      <button class="btn-confirm-approve"
+      <button class="btn-modal-cancel" (click)="closeApproveModal()">
+        <i class="bi bi-x"></i> Cancel
+      </button>
+      <button class="btn-modal-approve"
               (click)="confirmApprove()"
               [disabled]="selectedPeriod?.hasPendingLeaves">
-        Approve & Send Email
+        <i class="bi bi-check-circle"></i> Approve & Send Email
       </button>
     </div>
   </div>
@@ -313,27 +334,38 @@
 
 <!-- Reject Modal -->
 <div class="modal" [class.show]="showRejectModal" *ngIf="showRejectModal">
-  <div class="modal-backdrop"></div>
-  <div class="modal-dialog">
-    <div class="modal-header">
+  <div class="modal-backdrop" (click)="closeRejectModal()"></div>
+  <div class="modal-dialog reject-modal">
+    <!-- Coloured top banner -->
+    <div class="modal-banner reject-banner">
+      <div class="banner-icon"><i class="bi bi-x-circle-fill"></i></div>
       <h3>Reject Attendance Period</h3>
-      <button class="btn-close" (click)="closeRejectModal()">
+      <p>Provide a reason — it will be emailed to the employee</p>
+      <button class="btn-close-banner" (click)="closeRejectModal()">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
     <div class="modal-body">
       <div class="form-group">
         <label>Rejection Reason <span class="required">*</span></label>
-        <textarea 
-          [(ngModel)]="rejectionReason" 
-          class="form-control" 
-          rows="4" 
+        <textarea
+          [(ngModel)]="rejectionReason"
+          class="form-control"
+          rows="4"
           placeholder="Please provide a clear reason for rejection. The employee will receive this via email."></textarea>
+      </div>
+      <div class="email-notice reject-notice">
+        <i class="bi bi-envelope-exclamation-fill"></i>
+        A rejection email with your reason will be sent to the employee.
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeRejectModal()">Cancel</button>
-      <button class="btn-confirm-reject" (click)="confirmReject()">Reject & Send Email</button>
+      <button class="btn-modal-cancel" (click)="closeRejectModal()">
+        <i class="bi bi-x"></i> Cancel
+      </button>
+      <button class="btn-modal-reject" (click)="confirmReject()">
+        <i class="bi bi-x-circle"></i> Reject & Send Email
+      </button>
     </div>
   </div>
 </div>
