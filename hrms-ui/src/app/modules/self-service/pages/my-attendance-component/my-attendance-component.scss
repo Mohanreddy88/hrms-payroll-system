@@ -292,7 +292,11 @@
       .row-actions {
         display: flex;
         gap: 8px;
-        margin-left: auto;
+        position: sticky;
+        right: 0;
+        background: #f8fafc;
+        padding-left: 8px;
+        z-index: 2;
 
         .btn-action-icon {
           width: 30px;
