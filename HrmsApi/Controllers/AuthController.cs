@@ -1,6 +1,7 @@
 using HrmsApi.Data;
 using HrmsApi.Models;
 using HrmsApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,11 +13,15 @@ public class AuthController : ControllerBase
 {
     private readonly HrmsDbContext _db;
     private readonly TokenService _tokenService;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _config;
 
-    public AuthController(HrmsDbContext db, TokenService tokenService)
+    public AuthController(HrmsDbContext db, TokenService tokenService, IEmailService emailService, IConfiguration config)
     {
         _db           = db;
         _tokenService = tokenService;
+        _emailService = emailService;
+        _config       = config;
     }
 
     /// <summary>POST /api/auth/login — authenticate and return JWT</summary>
@@ -84,4 +89,53 @@ public class AuthController : ControllerBase
             sqlUpdateCommand = $"UPDATE \"Users\" SET \"PasswordHash\" = '{freshHash}' WHERE \"Username\" = 'admin';"
         });
     }
+
+    /// <summary>
+    /// POST /api/auth/test-email — Send a test email to verify SMTP config (Admin only)
+    /// </summary>
+    [HttpPost("test-email")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> TestEmail([FromBody] TestEmailRequest request)
+    {
+        var smtpHost = _config["Email:SmtpHost"] ?? "NOT SET";
+        var smtpPort = _config["Email:SmtpPort"] ?? "NOT SET";
+        var smtpUser = _config["Email:SmtpUser"] ?? "NOT SET";
+        var fromEmail = _config["Email:FromEmail"] ?? "NOT SET";
+
+        try
+        {
+            await _emailService.SendEmailAsync(
+                request.ToEmail,
+                "HRMS Test Email - SMTP Verification",
+                $@"<h2>✅ SMTP is working!</h2>
+                   <p>This is a test email from your HRMS system.</p>
+                   <p><strong>SMTP Host:</strong> {smtpHost}</p>
+                   <p><strong>SMTP Port:</strong> {smtpPort}</p>
+                   <p><strong>SMTP User:</strong> {smtpUser}</p>
+                   <p><strong>From:</strong> {fromEmail}</p>
+                   <p><strong>Sent at:</strong> {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</p>"
+            );
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Test email sent to {request.ToEmail}",
+                smtpHost, smtpPort, smtpUser, fromEmail
+            });
+        }
+        catch (Exception ex)
+        {
+            return Ok(new
+            {
+                success = false,
+                error = ex.Message,
+                smtpHost, smtpPort, smtpUser, fromEmail,
+                hint = smtpUser.Contains("gmail") 
+                    ? "Gmail requires an App Password (not your regular password). Enable 2FA then generate App Password at myaccount.google.com/apppasswords"
+                    : "Check SMTP credentials and host/port settings"
+            });
+        }
+    }
 }
+
+public record TestEmailRequest(string ToEmail);

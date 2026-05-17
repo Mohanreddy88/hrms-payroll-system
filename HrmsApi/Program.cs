@@ -41,14 +41,24 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
     builder.Configuration["Jwt:Key"] = jwtSecretKey;
 }
 
-var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
+var smtpUser     = Environment.GetEnvironmentVariable("SMTP_USER");
 var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+var smtpHost     = Environment.GetEnvironmentVariable("SMTP_HOST");
+var smtpPort     = Environment.GetEnvironmentVariable("SMTP_PORT");
+var smtpFrom     = Environment.GetEnvironmentVariable("SMTP_FROM") ?? smtpUser;
+var smtpFromName = Environment.GetEnvironmentVariable("SMTP_FROM_NAME") ?? "HRMS Payroll";
+
 if (!string.IsNullOrEmpty(smtpUser))
 {
-    builder.Configuration["Email:SmtpUser"] = smtpUser;
+    builder.Configuration["Email:SmtpUser"]     = smtpUser;
     builder.Configuration["Email:SmtpPassword"] = smtpPassword;
-    builder.Configuration["Email:FromEmail"] = smtpUser;
+    builder.Configuration["Email:FromEmail"]     = smtpFrom;
+    builder.Configuration["Email:FromName"]      = smtpFromName;
 }
+if (!string.IsNullOrEmpty(smtpHost))
+    builder.Configuration["Email:SmtpHost"] = smtpHost;
+if (!string.IsNullOrEmpty(smtpPort))
+    builder.Configuration["Email:SmtpPort"] = smtpPort;
 
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
