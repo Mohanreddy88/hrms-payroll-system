@@ -7,7 +7,7 @@ namespace HrmsApi.Services;
 public interface ITimesheetService
 {
     Task<Timesheet> GenerateTimesheetAsync(int employeeId, int month, int year);
-    Task<List<Timesheet>> GenerateTimesheetsForAllEmployeesAsync(int month, int year);
+    Task<(List<Timesheet> Generated, int Skipped, List<string> Errors)> GenerateTimesheetsForAllEmployeesAsync(int month, int year);
     Task<int> GetWorkingDaysInMonthAsync(int month, int year, string? state = null);
     Task<List<DateTime>> GetPublicHolidaysInMonthAsync(int month, int year, string? state = null);
 }
@@ -44,9 +44,9 @@ public class TimesheetService : ITimesheetService
         var employee = await _db.Employees.FindAsync(employeeId)
             ?? throw new KeyNotFoundException($"Employee {employeeId} not found");
 
-        // Calculate date range for the month
-        var startDate = new DateTime(year, month, 1);
-        var endDate = startDate.AddMonths(1).AddDays(-1);
+        // Calculate date range for the month (UTC Kind required by Npgsql)
+        var startDate = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
+        var endDate   = DateTime.SpecifyKind(startDate.AddMonths(1).AddDays(-1), DateTimeKind.Utc);
 
         // Get public holidays for the month (Malaysia)
         var publicHolidays = await GetPublicHolidaysInMonthAsync(month, year);
@@ -97,34 +97,40 @@ public class TimesheetService : ITimesheetService
     /// <summary>
     /// Generates timesheets for ALL active employees for a given month/year
     /// </summary>
-    public async Task<List<Timesheet>> GenerateTimesheetsForAllEmployeesAsync(int month, int year)
+    public async Task<(List<Timesheet> Generated, int Skipped, List<string> Errors)> GenerateTimesheetsForAllEmployeesAsync(int month, int year)
     {
         var activeEmployees = await _db.Employees
             .Where(e => e.IsActive)
             .ToListAsync();
 
-        var timesheets = new List<Timesheet>();
+        var generated = new List<Timesheet>();
+        var errors    = new List<string>();
+        int skipped   = 0;
 
         foreach (var employee in activeEmployees)
         {
             try
             {
                 var timesheet = await GenerateTimesheetAsync(employee.Id, month, year);
-                timesheets.Add(timesheet);
+                generated.Add(timesheet);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                _logger.LogWarning(ex, "Skipping Employee {EmployeeId}: {Message}", 
-                    employee.Id, ex.Message);
-                // Skip if already exists
-                continue;
+                // Already exists — skip silently
+                skipped++;
+            }
+            catch (Exception ex)
+            {
+                var msg = $"Employee {employee.Id} ({employee.Name}): {ex.Message}";
+                _logger.LogError(ex, "Error generating timesheet for Employee {EmployeeId}", employee.Id);
+                errors.Add(msg);
             }
         }
 
-        _logger.LogInformation("Generated {Count} timesheets for {Month}/{Year}", 
-            timesheets.Count, month, year);
+        _logger.LogInformation("Timesheets for {Month}/{Year}: generated={G}, skipped={S}, errors={E}",
+            month, year, generated.Count, skipped, errors.Count);
 
-        return timesheets;
+        return (generated, skipped, errors);
     }
 
     /// <summary>
@@ -133,8 +139,8 @@ public class TimesheetService : ITimesheetService
     /// </summary>
     public async Task<int> GetWorkingDaysInMonthAsync(int month, int year, string? state = null)
     {
-        var startDate = new DateTime(year, month, 1);
-        var endDate = startDate.AddMonths(1).AddDays(-1);
+        var startDate = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
+        var endDate   = DateTime.SpecifyKind(startDate.AddMonths(1).AddDays(-1), DateTimeKind.Utc);
 
         // Get public holidays for the month
         var publicHolidays = await GetPublicHolidaysInMonthAsync(month, year, state);
@@ -163,8 +169,8 @@ public class TimesheetService : ITimesheetService
     /// </summary>
     public async Task<List<DateTime>> GetPublicHolidaysInMonthAsync(int month, int year, string? state = null)
     {
-        var startDate = new DateTime(year, month, 1);
-        var endDate = startDate.AddMonths(1).AddDays(-1);
+        var startDate = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
+        var endDate   = DateTime.SpecifyKind(startDate.AddMonths(1).AddDays(-1), DateTimeKind.Utc);
 
         var query = _db.PublicHolidays
             .Where(h => h.Date >= startDate && h.Date <= endDate);

@@ -154,14 +154,28 @@ public class TimesheetsController : ControllerBase
     [HttpPost("generate-all")]
     public async Task<IActionResult> GenerateAllTimesheets([FromQuery] int month, [FromQuery] int year)
     {
-        var timesheets = await _timesheetService.GenerateTimesheetsForAllEmployeesAsync(month, year);
-        
-        return Ok(new
+        try
         {
-            message = $"Generated {timesheets.Count} timesheets for {month}/{year}",
-            count = timesheets.Count,
-            timesheets
-        });
+            if (month < 1 || month > 12)
+                return BadRequest(new { message = "Month must be between 1 and 12" });
+            if (year < 2020 || year > 2100)
+                return BadRequest(new { message = "Invalid year" });
+
+            var (generated, skipped, errors) = await _timesheetService.GenerateTimesheetsForAllEmployeesAsync(month, year);
+
+            return Ok(new
+            {
+                message = $"Processed timesheets for {new DateTime(year, month, 1):MMMM yyyy}",
+                generated = generated.Count,
+                skipped,
+                errors,
+                timesheets = generated
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to generate timesheets: {ex.Message}" });
+        }
     }
 
     /// <summary>
