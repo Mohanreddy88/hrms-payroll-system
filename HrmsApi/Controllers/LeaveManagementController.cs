@@ -291,17 +291,20 @@ public class LeaveManagementController : ControllerBase
                 approval.ApprovalRemarks ?? ""
             );
 
-            // Fire email in background — do NOT await so response returns immediately
-            var es = _emailService; var lg = _logger;
-            var em = leaveRequest.Employee.Email; var en = leaveRequest.Employee.Name;
-            var lt = leaveRequest.LeaveType.Name; var sd = leaveRequest.StartDate;
-            var ed = leaveRequest.EndDate; var td = leaveRequest.TotalDays;
-            var rm = leaveRequest.ApprovalRemarks ?? ""; var reqId = id;
-            _ = Task.Run(async () =>
+            // Send email directly — scoped service is still alive during request
+            try
             {
-                try { await es.SendLeaveApprovedEmailAsync(em, en, lt, sd, ed, td, rm); lg.LogInformation("Leave approved email sent to {Email} for request {Id}", em, reqId); }
-                catch (Exception ex) { lg.LogError(ex, "Failed to send leave approved email for request {Id}", reqId); }
-            });
+                await _emailService.SendLeaveApprovedEmailAsync(
+                    leaveRequest.Employee.Email, leaveRequest.Employee.Name,
+                    leaveRequest.LeaveType.Name, leaveRequest.StartDate,
+                    leaveRequest.EndDate, leaveRequest.TotalDays,
+                    leaveRequest.ApprovalRemarks ?? "");
+                _logger.LogInformation("Leave approved email sent to {Email} for request {Id}", leaveRequest.Employee.Email, id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send leave approved email for request {Id}", id);
+            }
 
             return Ok(new
             {
@@ -339,27 +342,24 @@ public class LeaveManagementController : ControllerBase
                 approval.ApprovalRemarks ?? ""
             );
 
-            // Fire email in background — do NOT await so response returns immediately
-            var es2 = _emailService; var lg2 = _logger; var reqId2 = id;
-            var empId = leaveRequest.EmployeeId; var ltId = leaveRequest.LeaveTypeId;
-            var sd2 = leaveRequest.StartDate; var ed2 = leaveRequest.EndDate;
-            var rm2 = leaveRequest.ApprovalRemarks ?? "";
-            _ = Task.Run(async () =>
+            // Send email directly — scoped service is still alive during request
+            try
             {
-                try
+                var employee = await _db.Employees.FindAsync(leaveRequest.EmployeeId);
+                var leaveType = await _db.LeaveTypes.FindAsync(leaveRequest.LeaveTypeId);
+                if (employee != null && leaveType != null)
                 {
-                    using var scope2 = HttpContext.RequestServices.CreateScope();
-                    var db2 = scope2.ServiceProvider.GetRequiredService<HrmsApi.Data.HrmsDbContext>();
-                    var emp2 = await db2.Employees.FindAsync(empId);
-                    var lt2  = await db2.LeaveTypes.FindAsync(ltId);
-                    if (emp2 != null && lt2 != null)
-                    {
-                        await es2.SendLeaveRejectedEmailAsync(emp2.Email, emp2.Name, lt2.Name, sd2, ed2, rm2);
-                        lg2.LogInformation("Leave rejected email sent to {Email} for request {Id}", emp2.Email, reqId2);
-                    }
+                    await _emailService.SendLeaveRejectedEmailAsync(
+                        employee.Email, employee.Name, leaveType.Name,
+                        leaveRequest.StartDate, leaveRequest.EndDate,
+                        leaveRequest.ApprovalRemarks ?? "");
+                    _logger.LogInformation("Leave rejected email sent to {Email} for request {Id}", employee.Email, id);
                 }
-                catch (Exception ex) { lg2.LogError(ex, "Failed to send leave rejected email for request {Id}", reqId2); }
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send leave rejected email for request {Id}", id);
+            }
 
             return Ok(new
             {

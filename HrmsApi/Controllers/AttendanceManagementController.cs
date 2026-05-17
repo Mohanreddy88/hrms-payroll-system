@@ -290,26 +290,20 @@ public class AttendanceManagementController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Fire email in background — do NOT await so it never blocks or times out the response
-        var emailService = _emailService;
-        var logger = _logger;
-        var empEmail = period.Employee.Email;
-        var empName  = period.Employee.Name;
-        var startDate = period.StartDate;
-        var endDate   = period.EndDate;
-        var periodId  = period.Id;
-        _ = Task.Run(async () =>
+        // Send email with timeout — never block more than 8s regardless of SMTP speed
+        var emailSent = false;
+        try
         {
-            try
-            {
-                await emailService.SendAttendanceApprovedEmailAsync(empEmail, empName, startDate, endDate);
-                logger.LogInformation("Attendance approved email sent to {Email} for period {PeriodId}", empEmail, periodId);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to send attendance approved email to {Email}", empEmail);
-            }
-        });
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            await _emailService.SendAttendanceApprovedEmailAsync(
+                period.Employee.Email, period.Employee.Name, period.StartDate, period.EndDate);
+            emailSent = true;
+            _logger.LogInformation("Attendance approved email sent to {Email} for period {PeriodId}", period.Employee.Email, period.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send attendance approved email to {Email}", period.Employee.Email);
+        }
 
         return Ok(new
         {
@@ -317,7 +311,7 @@ public class AttendanceManagementController : ControllerBase
             periodId = period.Id,
             status = period.Status,
             approvedAt = period.ApprovedAt,
-            emailSent = true
+            emailSent
         });
     }
 
@@ -356,27 +350,19 @@ public class AttendanceManagementController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Fire email in background — do NOT await so it never blocks or times out the response
-        var emailService = _emailService;
-        var logger = _logger;
-        var empEmail   = period.Employee.Email;
-        var empName    = period.Employee.Name;
-        var startDate  = period.StartDate;
-        var endDate    = period.EndDate;
-        var periodId   = period.Id;
-        var reason     = request.RejectionReason;
-        _ = Task.Run(async () =>
+        // Send email with timeout — never block more than 8s
+        var emailSent = false;
+        try
         {
-            try
-            {
-                await emailService.SendAttendanceRejectedEmailAsync(empEmail, empName, startDate, endDate, reason);
-                logger.LogInformation("Attendance rejected email sent to {Email} for period {PeriodId}", empEmail, periodId);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to send attendance rejected email to {Email}", empEmail);
-            }
-        });
+            await _emailService.SendAttendanceRejectedEmailAsync(
+                period.Employee.Email, period.Employee.Name, period.StartDate, period.EndDate, request.RejectionReason);
+            emailSent = true;
+            _logger.LogInformation("Attendance rejected email sent to {Email} for period {PeriodId}", period.Employee.Email, period.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send attendance rejected email to {Email}", period.Employee.Email);
+        }
 
         return Ok(new
         {
@@ -385,7 +371,7 @@ public class AttendanceManagementController : ControllerBase
             status = period.Status,
             rejectedAt = period.RejectedAt,
             rejectionReason = period.RejectionReason,
-            emailSent = true
+            emailSent
         });
     }
 }
