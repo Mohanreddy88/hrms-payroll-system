@@ -422,21 +422,43 @@ public class LeaveManagementController : ControllerBase
     }
 
     /// <summary>
-    /// DELETE /api/leavemanagement/requests/{id} - Delete leave request (only pending/rejected)
+    /// DELETE /api/leavemanagement/requests/{id} - Delete leave request
+    /// Admin can delete any status; if Approved, restores the leave balance
     /// </summary>
     [HttpDelete("requests/{id:int}")]
     public async Task<IActionResult> DeleteLeaveRequest(int id)
     {
+        var isAdmin = User.IsInRole("Admin") || User.IsInRole("Manager");
+
         var request = await _db.LeaveRequests.FindAsync(id)
             ?? throw new KeyNotFoundException($"Leave request {id} not found");
 
+        // Non-admin cannot delete approved requests
+        if (request.Status == "Approved" && !isAdmin)
+            return BadRequest(new { message = "Cannot delete approved leave request. Contact HR to correct it." });
+
+        // If approved, restore the leave balance before deleting
         if (request.Status == "Approved")
-            return BadRequest(new { message = "Cannot delete approved leave request. Cancel it instead." });
+        {
+            var balance = await _db.EmployeeLeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId  == request.EmployeeId
+                                       && b.LeaveTypeId == request.LeaveTypeId
+                                       && b.Year        == request.StartDate.Year);
+            if (balance != null)
+            {
+                balance.UsedDays    = Math.Max(0, balance.UsedDays - request.TotalDays);
+                balance.BalanceDays = balance.TotalDays + balance.CarryForwardDays - balance.UsedDays;
+                balance.UpdatedAt   = DateTime.UtcNow;
+                _logger.LogInformation(
+                    "Admin deleted approved leave {Id}: restored {Days} days to employee {EmpId} balance",
+                    id, request.TotalDays, request.EmployeeId);
+            }
+        }
 
         _db.LeaveRequests.Remove(request);
         await _db.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { message = "Leave request deleted" + (request.Status == "Approved" ? " and leave balance restored" : "") });
     }
 
     /// <summary>
