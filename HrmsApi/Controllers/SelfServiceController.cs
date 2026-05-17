@@ -19,18 +19,22 @@ public class SelfServiceController : ControllerBase
     private readonly ITimesheetService _timesheetService;
     private readonly IEmailService _emailService;
     private readonly IPdfService _pdfService;
+    private readonly IEmailQueue _emailQueue;
+
     public SelfServiceController(
         HrmsDbContext db,
         ILogger<SelfServiceController> logger,
         ITimesheetService timesheetService,
         IEmailService emailService,
-        IPdfService pdfService)
+        IPdfService pdfService,
+        IEmailQueue emailQueue)
     {
         _db = db;
         _logger = logger;
         _timesheetService = timesheetService;
         _emailService = emailService;
         _pdfService = pdfService;
+        _emailQueue = emailQueue;
     }
 
     /// <summary>
@@ -532,14 +536,22 @@ public class SelfServiceController : ControllerBase
 </body>
 </html>";
 
-            await _emailService.SendEmailWithAttachmentAsync(employee.Email, subject, body, pdfData, fileName);
+            // Enqueue — returns instantly, background service delivers the email
+            _emailQueue.Enqueue(new EmailJob
+            {
+                ToEmail        = employee.Email,
+                Subject        = subject,
+                Body           = body,
+                AttachmentData = pdfData,
+                AttachmentName = fileName
+            });
 
-            _logger.LogInformation("Payslip email sent to {Email} for payroll ID {PayrollId}", employee.Email, id);
+            _logger.LogInformation("Payslip email queued for {Email}, payroll {PayrollId}", employee.Email, id);
             return Ok(new { message = $"Payslip email with PDF sent successfully to {employee.Email}" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payslip email for payroll ID {PayrollId}", id);
+            _logger.LogError(ex, "Failed to prepare payslip email for payroll ID {PayrollId}", id);
             return StatusCode(500, new { message = $"Failed to send email: {ex.Message}" });
         }
     }

@@ -143,6 +143,13 @@ builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
 builder.Services.AddScoped<IPayrollCalculationService, PayrollCalculationService>();
+
+// Background email queue — singleton hosted service that survives request lifetime
+// Controllers inject IEmailQueue and call Enqueue() — returns instantly, no 504
+builder.Services.AddSingleton<BackgroundEmailService>();
+builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<BackgroundEmailService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundEmailService>());
+
 builder.Services.AddControllers();
 
 // ── Swagger/OpenAPI ───────────────────────────────────────

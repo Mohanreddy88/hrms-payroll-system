@@ -17,14 +17,16 @@ public class TimesheetsController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly IExportService _exportService;
     private readonly ILogger<TimesheetsController> _logger;
+    private readonly IEmailQueue _emailQueue;
 
-    public TimesheetsController(HrmsDbContext db, ITimesheetService timesheetService, IEmailService emailService, IExportService exportService, ILogger<TimesheetsController> logger)
+    public TimesheetsController(HrmsDbContext db, ITimesheetService timesheetService, IEmailService emailService, IExportService exportService, ILogger<TimesheetsController> logger, IEmailQueue emailQueue)
     {
         _db = db;
         _timesheetService = timesheetService;
         _emailService = emailService;
         _exportService = exportService;
         _logger = logger;
+        _emailQueue = emailQueue;
     }
 
     /// <summary>
@@ -449,14 +451,22 @@ public class TimesheetsController : ControllerBase
 </html>
 ";
 
-            await _emailService.SendEmailWithAttachmentAsync(timesheet.Employee.Email, subject, body, excelData, fileName);
+            // Enqueue — returns instantly, background service delivers the email
+            _emailQueue.Enqueue(new EmailJob
+            {
+                ToEmail        = timesheet.Employee.Email,
+                Subject        = subject,
+                Body           = body,
+                AttachmentData = excelData,
+                AttachmentName = fileName
+            });
 
-            _logger.LogInformation("Timesheet email sent to {Email} for timesheet {Id}", timesheet.Employee.Email, id);
+            _logger.LogInformation("Timesheet email queued for {Email}, timesheet {Id}", timesheet.Employee.Email, id);
             return Ok(new { message = $"Timesheet emailed to {timesheet.Employee.Email}" });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Failed to send email: {ex.Message}" });
+            return StatusCode(500, new { message = $"Failed to prepare timesheet email: {ex.Message}" });
         }
     }
 }
