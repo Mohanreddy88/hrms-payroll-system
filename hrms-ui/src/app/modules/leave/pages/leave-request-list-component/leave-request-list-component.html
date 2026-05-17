@@ -99,6 +99,7 @@
             </tr>
           }
           @for (req of filteredRequests; track req.id; let i = $index) {
+            @if (!isAdmin || req.status !== 'Cancelled') {
             <tr>
               <td>{{ i + 1 }}</td>
               @if (isAdmin) {
@@ -127,40 +128,43 @@
               </td>
               <td>{{ formatDate(req.requestedOn) }}</td>
               <td>
-                @if (req.status === 'Pending' && isAdmin) {
-                  <button class="btn btn-sm btn-success me-1" (click)="openApprovalModal(req, 'approve')" title="Approve">
-                    <i class="bi bi-check-circle"></i>
-                  </button>
-                  <button class="btn btn-sm btn-danger me-1" (click)="openApprovalModal(req, 'reject')" title="Reject">
-                    <i class="bi bi-x-circle"></i>
-                  </button>
-                  <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                }
-                @if (req.status === 'Pending' && !isAdmin) {
-                  <button class="btn btn-sm btn-warning me-1" (click)="cancelRequest(req)" title="Cancel">
-                    <i class="bi bi-x-circle"></i>
-                  </button>
-                  <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                }
-                @if (req.status === 'Rejected') {
-                  <button class="btn btn-sm btn-info me-1" [title]="req.approvalRemarks || 'No remarks'">
-                    <i class="bi bi-info-circle"></i>
-                  </button>
-                  <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                }
-                @if (req.status === 'Approved') {
-                  <button class="btn btn-sm btn-info" [title]="req.approvalRemarks || 'No remarks'">
-                    <i class="bi bi-info-circle"></i>
-                  </button>
-                }
+                <div class="action-btns">
+                  @if (req.status === 'Pending' && isAdmin) {
+                    <button class="btn btn-sm btn-success" (click)="openApprovalModal(req, 'approve')" title="Approve">
+                      <i class="bi bi-check-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="openApprovalModal(req, 'reject')" title="Reject">
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  }
+                  @if (req.status === 'Pending' && !isAdmin) {
+                    <button class="btn btn-sm btn-warning" (click)="cancelRequest(req)" title="Cancel">
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  }
+                  @if (req.status === 'Rejected') {
+                    <button class="btn btn-sm btn-info" [title]="req.approvalRemarks || 'No remarks'">
+                      <i class="bi bi-info-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" (click)="deleteRequest(req)" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  }
+                  @if (req.status === 'Approved') {
+                    <button class="btn btn-sm btn-info" [title]="req.approvalRemarks || 'No remarks'">
+                      <i class="bi bi-info-circle"></i>
+                    </button>
+                  }
+                </div>
               </td>
             </tr>
+            }
           }
         </tbody>
       </table>

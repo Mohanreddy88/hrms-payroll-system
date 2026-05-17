@@ -150,6 +150,14 @@ table tbody tr td {
   font-size: 12px;
 }
 
+.action-btns {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .status-badge {
   padding: 4px 12px;
   border-radius: 20px;
