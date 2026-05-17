@@ -17,13 +17,15 @@ public class LeaveManagementController : ControllerBase
     private readonly ILeaveService _leaveService;
     private readonly IEmailService _emailService;
     private readonly ILogger<LeaveManagementController> _logger;
+    private readonly IEmailQueue _emailQueue;
 
-    public LeaveManagementController(HrmsDbContext db, ILeaveService leaveService, IEmailService emailService, ILogger<LeaveManagementController> logger)
+    public LeaveManagementController(HrmsDbContext db, ILeaveService leaveService, IEmailService emailService, ILogger<LeaveManagementController> logger, IEmailQueue emailQueue)
     {
         _db = db;
         _leaveService = leaveService;
         _emailService = emailService;
         _logger = logger;
+        _emailQueue = emailQueue;
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -291,19 +293,24 @@ public class LeaveManagementController : ControllerBase
                 approval.ApprovalRemarks ?? ""
             );
 
-            // Send email directly — scoped service is still alive during request
+            // Queue email — returns instantly, no 504 risk
             try
             {
-                await _emailService.SendLeaveApprovedEmailAsync(
-                    leaveRequest.Employee.Email, leaveRequest.Employee.Name,
-                    leaveRequest.LeaveType.Name, leaveRequest.StartDate,
-                    leaveRequest.EndDate, leaveRequest.TotalDays,
-                    leaveRequest.ApprovalRemarks ?? "");
-                _logger.LogInformation("Leave approved email sent to {Email} for request {Id}", leaveRequest.Employee.Email, id);
+                var body = await BuildLeaveApprovedEmailBody(
+                    leaveRequest.Employee.Name, leaveRequest.LeaveType.Name,
+                    leaveRequest.StartDate, leaveRequest.EndDate,
+                    leaveRequest.TotalDays, leaveRequest.ApprovalRemarks ?? "");
+                _emailQueue.Enqueue(new EmailJob
+                {
+                    ToEmail = leaveRequest.Employee.Email,
+                    Subject = $"Leave Request Approved - {leaveRequest.LeaveType.Name}",
+                    Body    = body
+                });
+                _logger.LogInformation("Leave approved email queued for {Email}, request {Id}", leaveRequest.Employee.Email, id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send leave approved email for request {Id}", id);
+                _logger.LogError(ex, "Failed to queue leave approved email for request {Id}", id);
             }
 
             return Ok(new
@@ -342,23 +349,29 @@ public class LeaveManagementController : ControllerBase
                 approval.ApprovalRemarks ?? ""
             );
 
-            // Send email directly — scoped service is still alive during request
+            // Queue email — returns instantly, no 504 risk
             try
             {
-                var employee = await _db.Employees.FindAsync(leaveRequest.EmployeeId);
+                var employee  = await _db.Employees.FindAsync(leaveRequest.EmployeeId);
                 var leaveType = await _db.LeaveTypes.FindAsync(leaveRequest.LeaveTypeId);
                 if (employee != null && leaveType != null)
                 {
-                    await _emailService.SendLeaveRejectedEmailAsync(
-                        employee.Email, employee.Name, leaveType.Name,
+                    var body = await BuildLeaveRejectedEmailBody(
+                        employee.Name, leaveType.Name,
                         leaveRequest.StartDate, leaveRequest.EndDate,
                         leaveRequest.ApprovalRemarks ?? "");
-                    _logger.LogInformation("Leave rejected email sent to {Email} for request {Id}", employee.Email, id);
+                    _emailQueue.Enqueue(new EmailJob
+                    {
+                        ToEmail = employee.Email,
+                        Subject = $"Leave Request Rejected - {leaveType.Name}",
+                        Body    = body
+                    });
+                    _logger.LogInformation("Leave rejected email queued for {Email}, request {Id}", employee.Email, id);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send leave rejected email for request {Id}", id);
+                _logger.LogError(ex, "Failed to queue leave rejected email for request {Id}", id);
             }
 
             return Ok(new
@@ -445,6 +458,56 @@ public class LeaveManagementController : ControllerBase
             note = "Excluding weekends and public holidays"
         });
     }
+
+    // ── Email body helpers (build HTML locally, no SMTP call) ────────────────
+    private Task<string> BuildLeaveApprovedEmailBody(string name, string leaveType, DateTime start, DateTime end, decimal days, string remarks) =>
+        Task.FromResult($@"<!DOCTYPE html><html><head><style>
+          body{{font-family:Arial,sans-serif;color:#333;}}
+          .header{{background:linear-gradient(135deg,#10b981,#059669);color:white;padding:28px;text-align:center;border-radius:8px 8px 0 0;}}
+          .header h1{{margin:0;font-size:22px;}} .body{{background:#f8f9fa;padding:28px;border-radius:0 0 8px 8px;}}
+          .grid{{background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:16px 0;}}
+          .row{{display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;}}
+          .row:last-child{{border-bottom:none;}} .label{{color:#64748b;}} .value{{font-weight:600;color:#1e293b;}}
+          .notice{{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;}}
+          .footer{{text-align:center;font-size:12px;color:#888;margin-top:20px;}}
+        </style></head><body>
+          <div class=""header""><h1>✅ Leave Request Approved</h1></div>
+          <div class=""body"">
+            <p>Dear <strong>{name}</strong>, your leave request has been <strong>approved</strong>.</p>
+            <div class=""grid"">
+              <div class=""row""><span class=""label"">Leave Type</span><span class=""value"">{leaveType}</span></div>
+              <div class=""row""><span class=""label"">Period</span><span class=""value"">{start:dd MMM yyyy} – {end:dd MMM yyyy}</span></div>
+              <div class=""row""><span class=""label"">Total Days</span><span class=""value"">{days}</span></div>
+              {(string.IsNullOrEmpty(remarks) ? "" : $"<div class=\"row\"><span class=\"label\">Remarks</span><span class=\"value\">{remarks}</span></div>")}
+            </div>
+            <div class=""notice"">✉️ Your leave balance has been updated. No further action required.</div>
+          </div>
+          <div class=""footer"">© {DateTime.Now.Year} HRMS. This is an automated email.</div>
+        </body></html>");
+
+    private Task<string> BuildLeaveRejectedEmailBody(string name, string leaveType, DateTime start, DateTime end, string remarks) =>
+        Task.FromResult($@"<!DOCTYPE html><html><head><style>
+          body{{font-family:Arial,sans-serif;color:#333;}}
+          .header{{background:linear-gradient(135deg,#ef4444,#dc2626);color:white;padding:28px;text-align:center;border-radius:8px 8px 0 0;}}
+          .header h1{{margin:0;font-size:22px;}} .body{{background:#f8f9fa;padding:28px;border-radius:0 0 8px 8px;}}
+          .grid{{background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:16px 0;}}
+          .row{{display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;}}
+          .row:last-child{{border-bottom:none;}} .label{{color:#64748b;}} .value{{font-weight:600;color:#1e293b;}}
+          .notice{{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;}}
+          .footer{{text-align:center;font-size:12px;color:#888;margin-top:20px;}}
+        </style></head><body>
+          <div class=""header""><h1>❌ Leave Request Rejected</h1></div>
+          <div class=""body"">
+            <p>Dear <strong>{name}</strong>, unfortunately your leave request has been <strong>rejected</strong>.</p>
+            <div class=""grid"">
+              <div class=""row""><span class=""label"">Leave Type</span><span class=""value"">{leaveType}</span></div>
+              <div class=""row""><span class=""label"">Period</span><span class=""value"">{start:dd MMM yyyy} – {end:dd MMM yyyy}</span></div>
+              {(string.IsNullOrEmpty(remarks) ? "" : $"<div class=\"row\"><span class=\"label\">Reason</span><span class=\"value\">{remarks}</span></div>")}
+            </div>
+            <div class=""notice"">Please contact HR if you have any questions.</div>
+          </div>
+          <div class=""footer"">© {DateTime.Now.Year} HRMS. This is an automated email.</div>
+        </body></html>");
 }
 
 public class CancelRequest

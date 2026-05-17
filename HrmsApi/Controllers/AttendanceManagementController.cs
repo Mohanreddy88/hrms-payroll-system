@@ -16,12 +16,14 @@ public class AttendanceManagementController : ControllerBase
     private readonly HrmsDbContext _db;
     private readonly IEmailService _emailService;
     private readonly ILogger<AttendanceManagementController> _logger;
+    private readonly IEmailQueue _emailQueue;
 
-    public AttendanceManagementController(HrmsDbContext db, IEmailService emailService, ILogger<AttendanceManagementController> logger)
+    public AttendanceManagementController(HrmsDbContext db, IEmailService emailService, ILogger<AttendanceManagementController> logger, IEmailQueue emailQueue)
     {
         _db = db;
         _emailService = emailService;
         _logger = logger;
+        _emailQueue = emailQueue;
     }
 
     /// <summary>
@@ -290,19 +292,22 @@ public class AttendanceManagementController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Send email with timeout — never block more than 8s regardless of SMTP speed
+        // Queue email — returns instantly, no 504 risk
         var emailSent = false;
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-            await _emailService.SendAttendanceApprovedEmailAsync(
-                period.Employee.Email, period.Employee.Name, period.StartDate, period.EndDate);
+            _emailQueue.Enqueue(new EmailJob
+            {
+                ToEmail = period.Employee.Email,
+                Subject = $"Attendance Period Approved - {period.StartDate:dd MMM yyyy} to {period.EndDate:dd MMM yyyy}",
+                Body    = AttendanceEmailBodies.BuildAttendanceApprovedBody(period.Employee.Name, period.StartDate, period.EndDate)
+            });
             emailSent = true;
-            _logger.LogInformation("Attendance approved email sent to {Email} for period {PeriodId}", period.Employee.Email, period.Id);
+            _logger.LogInformation("Attendance approved email queued for {Email}, period {PeriodId}", period.Employee.Email, period.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send attendance approved email to {Email}", period.Employee.Email);
+            _logger.LogError(ex, "Failed to queue attendance approved email for {Email}", period.Employee.Email);
         }
 
         return Ok(new
@@ -350,18 +355,22 @@ public class AttendanceManagementController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Send email with timeout — never block more than 8s
+        // Queue email — returns instantly, no 504 risk
         var emailSent = false;
         try
         {
-            await _emailService.SendAttendanceRejectedEmailAsync(
-                period.Employee.Email, period.Employee.Name, period.StartDate, period.EndDate, request.RejectionReason);
+            _emailQueue.Enqueue(new EmailJob
+            {
+                ToEmail = period.Employee.Email,
+                Subject = $"Attendance Period Rejected - {period.StartDate:dd MMM yyyy} to {period.EndDate:dd MMM yyyy}",
+                Body    = AttendanceEmailBodies.BuildAttendanceRejectedBody(period.Employee.Name, period.StartDate, period.EndDate, request.RejectionReason)
+            });
             emailSent = true;
-            _logger.LogInformation("Attendance rejected email sent to {Email} for period {PeriodId}", period.Employee.Email, period.Id);
+            _logger.LogInformation("Attendance rejected email queued for {Email}, period {PeriodId}", period.Employee.Email, period.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send attendance rejected email to {Email}", period.Employee.Email);
+            _logger.LogError(ex, "Failed to queue attendance rejected email for {Email}", period.Employee.Email);
         }
 
         return Ok(new
@@ -382,4 +391,47 @@ public class AttendanceManagementController : ControllerBase
 public class RejectAttendanceRequest
 {
     public string RejectionReason { get; set; } = string.Empty;
+}
+
+// ── Email body helpers ────────────────────────────────────────────────────────
+public static partial class AttendanceEmailBodies
+{
+    public static string BuildAttendanceApprovedBody(string name, DateTime start, DateTime end) =>
+        $@"<!DOCTYPE html><html><head><style>
+          body{{font-family:Arial,sans-serif;color:#333;}}
+          .header{{background:linear-gradient(135deg,#10b981,#059669);color:white;padding:28px;text-align:center;border-radius:8px 8px 0 0;}}
+          .header h1{{margin:0;font-size:22px;}} .body{{background:#f8f9fa;padding:28px;border-radius:0 0 8px 8px;}}
+          .box{{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;font-size:14px;}}
+          .notice{{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;}}
+          .footer{{text-align:center;font-size:12px;color:#888;margin-top:20px;}}
+        </style></head><body>
+          <div class=""header""><h1>✅ Attendance Approved</h1></div>
+          <div class=""body"">
+            <p>Dear <strong>{name}</strong>, your attendance period has been <strong>approved</strong>.</p>
+            <div class=""box""><strong>Period:</strong> {start:dd MMM yyyy} – {end:dd MMM yyyy}</div>
+            <div class=""notice"">No further action is required.</div>
+          </div>
+          <div class=""footer"">© {DateTime.Now.Year} HRMS. This is an automated email.</div>
+        </body></html>";
+
+    public static string BuildAttendanceRejectedBody(string name, DateTime start, DateTime end, string reason) =>
+        $@"<!DOCTYPE html><html><head><style>
+          body{{font-family:Arial,sans-serif;color:#333;}}
+          .header{{background:linear-gradient(135deg,#ef4444,#dc2626);color:white;padding:28px;text-align:center;border-radius:8px 8px 0 0;}}
+          .header h1{{margin:0;font-size:22px;}} .body{{background:#f8f9fa;padding:28px;border-radius:0 0 8px 8px;}}
+          .box{{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;font-size:14px;}}
+          .notice{{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;}}
+          .footer{{text-align:center;font-size:12px;color:#888;margin-top:20px;}}
+        </style></head><body>
+          <div class=""header""><h1>⚠️ Attendance Rejected</h1></div>
+          <div class=""body"">
+            <p>Dear <strong>{name}</strong>, your attendance period has been <strong>rejected</strong>.</p>
+            <div class=""box"">
+              <p><strong>Period:</strong> {start:dd MMM yyyy} – {end:dd MMM yyyy}</p>
+              <p><strong>Reason:</strong> {reason}</p>
+            </div>
+            <div class=""notice"">Please amend your attendance and resubmit.</div>
+          </div>
+          <div class=""footer"">© {DateTime.Now.Year} HRMS. This is an automated email.</div>
+        </body></html>";
 }
