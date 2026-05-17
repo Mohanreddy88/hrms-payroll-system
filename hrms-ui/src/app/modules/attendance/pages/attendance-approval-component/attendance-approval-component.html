@@ -175,7 +175,8 @@
              [class.weekend]="isWeekend(day.date)"
              [class.holiday]="day.isPublicHoliday"
              [class.leave]="day.note"
-             [class.pending-leave]="isDayPendingLeave(day.date)">
+             [class.pending-leave]="isDayPendingLeave(day.date)"
+             [class.zero-hours]="day.hours === 0 && !day.isWeekend && !day.isPublicHoliday && !day.note && !isDayPendingLeave(day.date)">
           <div class="col-date">{{ formatDate(day.date) }}</div>
           <div class="col-day">{{ getDayName(day.date) }}</div>
           <div class="col-hours">{{ day.hours }}</div>

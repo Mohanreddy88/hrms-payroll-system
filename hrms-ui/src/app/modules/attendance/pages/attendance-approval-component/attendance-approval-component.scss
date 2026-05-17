@@ -429,6 +429,17 @@
           border-left: 4px solid #ff9800 !important;
         }
 
+        // 0-hour working day with no leave request — needs admin action
+        &.zero-hours {
+          background: #fff1f2 !important;
+          border-left: 4px solid #f43f5e !important;
+
+          .col-hours {
+            color: #f43f5e !important;
+            font-weight: 700;
+          }
+        }
+
         .col-hours {
           font-weight: 600;
           color: #14b8a6;
