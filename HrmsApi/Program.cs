@@ -41,24 +41,17 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
     builder.Configuration["Jwt:Key"] = jwtSecretKey;
 }
 
-var smtpUser     = Environment.GetEnvironmentVariable("SMTP_USER");
-var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
-var smtpHost     = Environment.GetEnvironmentVariable("SMTP_HOST");
-var smtpPort     = Environment.GetEnvironmentVariable("SMTP_PORT");
-var smtpFrom     = Environment.GetEnvironmentVariable("SMTP_FROM") ?? smtpUser;
-var smtpFromName = Environment.GetEnvironmentVariable("SMTP_FROM_NAME") ?? "HRMS Payroll";
+// ── Resend API config (replaces SMTP — works on Railway) ────────────────
+var resendApiKey  = Environment.GetEnvironmentVariable("RESEND_API_KEY");
+var resendFrom    = Environment.GetEnvironmentVariable("RESEND_FROM") ?? "onboarding@resend.dev";
+var smtpFromName  = Environment.GetEnvironmentVariable("SMTP_FROM_NAME") ?? "HRMS Payroll";
 
-if (!string.IsNullOrEmpty(smtpUser))
+if (!string.IsNullOrEmpty(resendApiKey))
 {
-    builder.Configuration["Email:SmtpUser"]     = smtpUser;
-    builder.Configuration["Email:SmtpPassword"] = smtpPassword;
-    builder.Configuration["Email:FromEmail"]     = smtpFrom;
-    builder.Configuration["Email:FromName"]      = smtpFromName;
+    builder.Configuration["Resend:ApiKey"]    = resendApiKey;
+    builder.Configuration["Resend:FromEmail"] = resendFrom;
+    builder.Configuration["Email:FromName"]   = smtpFromName;
 }
-if (!string.IsNullOrEmpty(smtpHost))
-    builder.Configuration["Email:SmtpHost"] = smtpHost;
-if (!string.IsNullOrEmpty(smtpPort))
-    builder.Configuration["Email:SmtpPort"] = smtpPort;
 
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -136,6 +129,7 @@ builder.Services.AddCors(options =>
 });
 
 // ── Services ─────────────────────────────────────────────
+builder.Services.AddHttpClient(); // Required by EmailService for Resend HTTP API
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IExportService, ExportService>();
