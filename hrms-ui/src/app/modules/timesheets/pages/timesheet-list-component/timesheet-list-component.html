@@ -121,27 +121,29 @@
                 </span>
               </td>
               <td>
-                @if (t.status === 'Draft' && (!isAdmin || t.employeeId === currentUserId)) {
-                  <button class="btn btn-sm btn-primary me-1" (click)="submitTimesheet(t.id)" title="Submit">
-                    <i class="bi bi-send"></i>
+                <div class="action-btns">
+                  @if (t.status === 'Draft' && (!isAdmin || t.employeeId === currentUserId)) {
+                    <button class="btn btn-sm btn-primary" (click)="submitTimesheet(t.id)" title="Submit">
+                      <i class="bi bi-send"></i>
+                    </button>
+                  }
+                  @if (t.status === 'Submitted' && isAdmin) {
+                    <button class="btn btn-sm btn-success" (click)="approveTimesheet(t.id)" title="Approve">
+                      <i class="bi bi-check-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="rejectTimesheet(t.id)" title="Reject">
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+                  }
+                  <button class="btn btn-sm btn-info" (click)="viewDetails(t)" title="View Details">
+                    <i class="bi bi-eye"></i>
                   </button>
-                }
-                @if (t.status === 'Submitted' && isAdmin) {
-                  <button class="btn btn-sm btn-success me-1" (click)="approveTimesheet(t.id)" title="Approve">
-                    <i class="bi bi-check-circle"></i>
-                  </button>
-                  <button class="btn btn-sm btn-danger me-1" (click)="rejectTimesheet(t.id)" title="Reject">
-                    <i class="bi bi-x-circle"></i>
-                  </button>
-                }
-                <button class="btn btn-sm btn-info me-1" (click)="viewDetails(t)" title="View Details">
-                  <i class="bi bi-eye"></i>
-                </button>
-                @if (t.status === 'Draft' && isAdmin) {
-                  <button class="btn btn-sm btn-secondary" (click)="deleteTimesheet(t.id)" title="Delete">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                }
+                  @if (t.status === 'Draft' && isAdmin) {
+                    <button class="btn btn-sm btn-secondary" (click)="deleteTimesheet(t.id)" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  }
+                </div>
               </td>
             </tr>
           }

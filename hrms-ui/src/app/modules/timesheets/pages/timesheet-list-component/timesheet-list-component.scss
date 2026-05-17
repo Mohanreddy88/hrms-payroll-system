@@ -2,6 +2,15 @@
   padding: 20px;
 }
 
+.action-btns {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .page-header {
   display: flex;
   align-items: center;
