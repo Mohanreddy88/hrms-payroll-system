@@ -162,7 +162,11 @@ public class HrmsDbContext : DbContext
         modelBuilder.Entity<Attendance>(e =>
         {
             e.Property(x => x.WorkHours).HasPrecision(10, 2);
-            
+
+            // DB columns are "TimeIn"/"TimeOut" but C# model uses CheckIn/CheckOut
+            e.Property(x => x.CheckIn).HasColumnName("TimeIn");
+            e.Property(x => x.CheckOut).HasColumnName("TimeOut");
+
             e.HasOne(x => x.Employee)
              .WithMany(emp => emp.Attendances)
              .HasForeignKey(x => x.EmployeeId)

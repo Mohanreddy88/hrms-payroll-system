@@ -155,7 +155,9 @@ export class TimesheetListComponent implements OnInit {
     this.generating = true;
     this.timesheetService.generateAll(this.generateMonth, this.generateYear).subscribe({
       next: (res) => {
-        this.toast.success('Generated', `Generated ${res.count} timesheets`);
+        const msg = `Generated: ${res.generated ?? 0}, Skipped: ${res.skipped ?? 0}` +
+                    (res.errors?.length ? `, Errors: ${res.errors.length}` : '');
+        this.toast.success('Timesheets Processed', msg);
         this.generating = false;
         // Update filters to match generated period to show new timesheets
         this.filterMonth = this.generateMonth;
