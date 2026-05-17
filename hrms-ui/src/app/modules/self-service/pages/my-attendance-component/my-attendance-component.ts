@@ -119,14 +119,18 @@ export class MyAttendanceComponent implements OnInit {
         // Generate local period templates
         const localPeriods = this.generateAllPeriods();
         
+        // Helper: compare dates by year/month/day only (ignore time & timezone)
+        const toDateKey = (d: Date) =>
+          `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
         // Merge API data with local templates
         this.periods = localPeriods.map(localPeriod => {
-          // Find matching period from API
+          // Find matching period from API using date-only comparison
           const apiPeriod = apiPeriods.find(ap => {
             const apiStart = new Date(ap.startDate);
-            const apiEnd = new Date(ap.endDate);
-            return apiStart.getTime() === localPeriod.startDate.getTime() &&
-                   apiEnd.getTime() === localPeriod.endDate.getTime();
+            const apiEnd   = new Date(ap.endDate);
+            return toDateKey(apiStart) === toDateKey(localPeriod.startDate) &&
+                   toDateKey(apiEnd)   === toDateKey(localPeriod.endDate);
           });
           
           if (apiPeriod) {
@@ -154,6 +158,36 @@ export class MyAttendanceComponent implements OnInit {
           }
         });
         
+        // Also add any API periods that don't match a local template
+        const unmatchedApiPeriods = apiPeriods.filter(ap => {
+          const apiStart = new Date(ap.startDate);
+          const apiEnd   = new Date(ap.endDate);
+          return !localPeriods.some(lp =>
+            toDateKey(apiStart) === toDateKey(lp.startDate) &&
+            toDateKey(apiEnd)   === toDateKey(lp.endDate)
+          );
+        });
+        unmatchedApiPeriods.forEach(ap => {
+          this.periods.push({
+            id: ap.id,
+            startDate: new Date(ap.startDate),
+            endDate:   new Date(ap.endDate),
+            status: ap.status as any,
+            rejectionReason: ap.rejectionReason,
+            days: (ap.days || []).map((d: any) => ({
+              date: new Date(d.date),
+              dayName: this.getDayName(new Date(d.date).getDay()),
+              dayNumber: new Date(d.date).getDate(),
+              hours: d.hours,
+              note: d.note || '',
+              remarks: d.remarks || '',
+              isPublicHoliday: d.isPublicHoliday,
+              isWeekend: d.isWeekend
+            }))
+          });
+        });
+        this.periods.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+
         // Find current period
         const today = new Date();
         this.currentPeriodIndex = this.findCurrentPeriodIndex(today);
