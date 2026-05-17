@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { LoadingService } from '../../../../core/services/loading.service';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -60,7 +61,8 @@ export class LeaveRequestListComponent implements OnInit {
     private http: HttpClient,
     private authService: AuthService,
     private toast: ToastService,
-    private router: Router
+    private router: Router,
+    private loadingService: LoadingService
   ) {
     const currentYear = new Date().getFullYear();
     for (let year = currentYear - 5; year <= currentYear + 1; year++) {
@@ -168,7 +170,11 @@ export class LeaveRequestListComponent implements OnInit {
         this.closeApprovalModal();
         this.loadRequests();
       },
-      error: () => this.toast.error('Error', `Failed to ${this.approvalAction} request`)
+      error: (err) => {
+        this.loadingService.reset();
+        const msg = err?.error?.message || `Failed to ${this.approvalAction} request`;
+        this.toast.error('Error', msg);
+      }
     });
   }
 
@@ -187,13 +193,17 @@ export class LeaveRequestListComponent implements OnInit {
   confirmCancel(): void {
     if (!this.selectedRequest) return;
 
-    this.http.post(`${environment.apiUrl}/leavemanagement/requests/${this.selectedRequest.id}/cancel`, {}).subscribe({
+    this.http.put(`${environment.apiUrl}/leavemanagement/requests/${this.selectedRequest.id}/cancel`, { reason: this.cancelReason }).subscribe({
       next: () => {
         this.toast.success('Success', 'Leave request cancelled');
         this.closeCancelModal();
         this.loadRequests();
       },
-      error: () => this.toast.error('Error', 'Failed to cancel request')
+      error: (err) => {
+        this.loadingService.reset();
+        const msg = err?.error?.message || 'Failed to cancel request';
+        this.toast.error('Error', msg);
+      }
     });
   }
 
@@ -218,7 +228,11 @@ export class LeaveRequestListComponent implements OnInit {
         this.closeDeleteModal();
         this.loadRequests();
       },
-      error: () => this.toast.error('Error', 'Failed to delete request')
+      error: (err) => {
+        this.loadingService.reset();
+        const msg = err?.error?.message || 'Failed to delete request';
+        this.toast.error('Error', msg);
+      }
     });
   }
 
