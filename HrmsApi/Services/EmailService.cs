@@ -11,6 +11,8 @@ public interface IEmailService
     Task SendEmailWithAttachmentAsync(string toEmail, string subject, string body, byte[] attachmentData, string attachmentName);
     Task SendAttendanceApprovedEmailAsync(string toEmail, string employeeName, DateTime startDate, DateTime endDate);
     Task SendAttendanceRejectedEmailAsync(string toEmail, string employeeName, DateTime startDate, DateTime endDate, string rejectionReason);
+    Task SendLeaveApprovedEmailAsync(string toEmail, string employeeName, string leaveTypeName, DateTime startDate, DateTime endDate, decimal totalDays, string remarks);
+    Task SendLeaveRejectedEmailAsync(string toEmail, string employeeName, string leaveTypeName, DateTime startDate, DateTime endDate, string remarks);
 }
 
 public class PayslipEmailData
@@ -195,6 +197,71 @@ public class EmailService : IEmailService
     {
         var subject = $"Attendance Period Rejected - {startDate:dd MMM yyyy} to {endDate:dd MMM yyyy}";
         var body = GenerateAttendanceRejectedEmailBody(employeeName, startDate, endDate, rejectionReason);
+        await SendEmailAsync(toEmail, subject, body);
+    }
+
+    /// <summary>Sends leave approved notification email</summary>
+    public async Task SendLeaveApprovedEmailAsync(string toEmail, string employeeName, string leaveTypeName, DateTime startDate, DateTime endDate, decimal totalDays, string remarks)
+    {
+        var subject = $"Leave Request Approved - {leaveTypeName} ({startDate:dd MMM} - {endDate:dd MMM yyyy})";
+        var body = $@"
+<!DOCTYPE html><html><head><style>
+  body{{font-family:Arial,sans-serif;line-height:1.6;color:#333;}}
+  .container{{max-width:600px;margin:0 auto;padding:20px;}}
+  .header{{background:#10b981;color:white;padding:20px;text-align:center;border-radius:8px 8px 0 0;}}
+  .content{{background:#f8f9fa;padding:30px;border-radius:0 0 8px 8px;}}
+  .info-box{{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #10b981;}}
+  .footer{{text-align:center;margin-top:20px;color:#888;font-size:12px;}}
+</style></head><body>
+  <div class=""container"">
+    <div class=""header""><h1>✅ Leave Request Approved</h1></div>
+    <div class=""content"">
+      <p>Dear <strong>{employeeName}</strong>,</p>
+      <p>Your leave request has been <strong>approved</strong>.</p>
+      <div class=""info-box"">
+        <p><strong>Leave Type:</strong> {leaveTypeName}</p>
+        <p><strong>Period:</strong> {startDate:dd MMM yyyy} - {endDate:dd MMM yyyy}</p>
+        <p><strong>Total Days:</strong> {totalDays}</p>
+        {(string.IsNullOrWhiteSpace(remarks) ? "" : $"<p><strong>Remarks:</strong> {remarks}</p>")}
+      </div>
+      <p>Your leave balance has been updated accordingly.</p>
+      <p style=""margin-top:20px;font-size:13px;color:#666;"">This is an automated email. Please do not reply.</p>
+    </div>
+    <div class=""footer""><p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p></div>
+  </div>
+</body></html>";
+        await SendEmailAsync(toEmail, subject, body);
+    }
+
+    /// <summary>Sends leave rejected notification email</summary>
+    public async Task SendLeaveRejectedEmailAsync(string toEmail, string employeeName, string leaveTypeName, DateTime startDate, DateTime endDate, string remarks)
+    {
+        var subject = $"Leave Request Rejected - {leaveTypeName} ({startDate:dd MMM} - {endDate:dd MMM yyyy})";
+        var body = $@"
+<!DOCTYPE html><html><head><style>
+  body{{font-family:Arial,sans-serif;line-height:1.6;color:#333;}}
+  .container{{max-width:600px;margin:0 auto;padding:20px;}}
+  .header{{background:#ef4444;color:white;padding:20px;text-align:center;border-radius:8px 8px 0 0;}}
+  .content{{background:#f8f9fa;padding:30px;border-radius:0 0 8px 8px;}}
+  .info-box{{background:white;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #ef4444;}}
+  .footer{{text-align:center;margin-top:20px;color:#888;font-size:12px;}}
+</style></head><body>
+  <div class=""container"">
+    <div class=""header""><h1>❌ Leave Request Rejected</h1></div>
+    <div class=""content"">
+      <p>Dear <strong>{employeeName}</strong>,</p>
+      <p>Unfortunately, your leave request has been <strong>rejected</strong>.</p>
+      <div class=""info-box"">
+        <p><strong>Leave Type:</strong> {leaveTypeName}</p>
+        <p><strong>Period:</strong> {startDate:dd MMM yyyy} - {endDate:dd MMM yyyy}</p>
+        {(string.IsNullOrWhiteSpace(remarks) ? "" : $"<p><strong>Reason:</strong> {remarks}</p>")}
+      </div>
+      <p>Please contact HR if you have any questions.</p>
+      <p style=""margin-top:20px;font-size:13px;color:#666;"">This is an automated email. Please do not reply.</p>
+    </div>
+    <div class=""footer""><p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p></div>
+  </div>
+</body></html>";
         await SendEmailAsync(toEmail, subject, body);
     }
 

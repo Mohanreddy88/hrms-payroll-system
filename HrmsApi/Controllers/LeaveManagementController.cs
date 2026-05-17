@@ -4,6 +4,7 @@ using HrmsApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace HrmsApi.Controllers;
 
@@ -14,11 +15,15 @@ public class LeaveManagementController : ControllerBase
 {
     private readonly HrmsDbContext _db;
     private readonly ILeaveService _leaveService;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<LeaveManagementController> _logger;
 
-    public LeaveManagementController(HrmsDbContext db, ILeaveService leaveService)
+    public LeaveManagementController(HrmsDbContext db, ILeaveService leaveService, IEmailService emailService, ILogger<LeaveManagementController> logger)
     {
         _db = db;
         _leaveService = leaveService;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -276,17 +281,37 @@ public class LeaveManagementController : ControllerBase
     {
         try
         {
-            // TODO: Get current user ID from JWT token
-            var currentUserId = 1; // Placeholder
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+            var adminUser = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var currentUserId = adminUser?.Id ?? 1;
 
             var leaveRequest = await _leaveService.ApproveLeaveRequestAsync(
-                id, 
-                currentUserId, 
+                id,
+                currentUserId,
                 approval.ApprovalRemarks ?? ""
             );
 
-            // Return DTO to avoid circular reference
-            var result = new
+            // Send email notification to employee
+            try
+            {
+                await _emailService.SendLeaveApprovedEmailAsync(
+                    leaveRequest.Employee.Email,
+                    leaveRequest.Employee.Name,
+                    leaveRequest.LeaveType.Name,
+                    leaveRequest.StartDate,
+                    leaveRequest.EndDate,
+                    leaveRequest.TotalDays,
+                    leaveRequest.ApprovalRemarks ?? ""
+                );
+                _logger.LogInformation("Leave approved email sent to {Email} for request {Id}", leaveRequest.Employee.Email, id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send leave approved email for request {Id}", id);
+                // Don't fail the approval if email fails
+            }
+
+            return Ok(new
             {
                 leaveRequest.Id,
                 leaveRequest.EmployeeId,
@@ -294,10 +319,9 @@ public class LeaveManagementController : ControllerBase
                 leaveRequest.Status,
                 leaveRequest.ApprovedBy,
                 leaveRequest.ApprovedOn,
-                leaveRequest.ApprovalRemarks
-            };
-
-            return Ok(result);
+                leaveRequest.ApprovalRemarks,
+                message = "Leave request approved and employee notified by email"
+            });
         }
         catch (InvalidOperationException ex)
         {
@@ -313,17 +337,40 @@ public class LeaveManagementController : ControllerBase
     {
         try
         {
-            // TODO: Get current user ID from JWT token
-            var currentUserId = 1; // Placeholder
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+            var adminUser = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var currentUserId = adminUser?.Id ?? 1;
 
             var leaveRequest = await _leaveService.RejectLeaveRequestAsync(
-                id, 
-                currentUserId, 
+                id,
+                currentUserId,
                 approval.ApprovalRemarks ?? ""
             );
 
-            // Return DTO to avoid circular reference
-            var result = new
+            // Send email notification to employee
+            try
+            {
+                var employee = await _db.Employees.FindAsync(leaveRequest.EmployeeId);
+                var leaveType = await _db.LeaveTypes.FindAsync(leaveRequest.LeaveTypeId);
+                if (employee != null && leaveType != null)
+                {
+                    await _emailService.SendLeaveRejectedEmailAsync(
+                        employee.Email,
+                        employee.Name,
+                        leaveType.Name,
+                        leaveRequest.StartDate,
+                        leaveRequest.EndDate,
+                        leaveRequest.ApprovalRemarks ?? ""
+                    );
+                    _logger.LogInformation("Leave rejected email sent to {Email} for request {Id}", employee.Email, id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send leave rejected email for request {Id}", id);
+            }
+
+            return Ok(new
             {
                 leaveRequest.Id,
                 leaveRequest.EmployeeId,
@@ -331,10 +378,9 @@ public class LeaveManagementController : ControllerBase
                 leaveRequest.Status,
                 leaveRequest.ApprovedBy,
                 leaveRequest.ApprovedOn,
-                leaveRequest.ApprovalRemarks
-            };
-
-            return Ok(result);
+                leaveRequest.ApprovalRemarks,
+                message = "Leave request rejected and employee notified by email"
+            });
         }
         catch (InvalidOperationException ex)
         {
