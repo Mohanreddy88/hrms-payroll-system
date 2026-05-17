@@ -267,9 +267,12 @@
         <i class="bi bi-x-circle"></i>
         Reject
       </button>
-      <button class="btn-approve" (click)="openApproveModal()">
+      <button class="btn-approve"
+              (click)="openApproveModal()"
+              [disabled]="selectedPeriod.hasPendingLeaves"
+              [title]="selectedPeriod.hasPendingLeaves ? 'Cannot approve: resolve pending leave requests first' : 'Approve attendance period'">
         <i class="bi bi-check-circle"></i>
-        Approve
+        {{ selectedPeriod.hasPendingLeaves ? 'Approve (Blocked)' : 'Approve' }}
       </button>
     </div>
   </div>
@@ -299,7 +302,11 @@
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" (click)="closeApproveModal()">Cancel</button>
-      <button class="btn-confirm-approve" (click)="confirmApprove()">Approve & Send Email</button>
+      <button class="btn-confirm-approve"
+              (click)="confirmApprove()"
+              [disabled]="selectedPeriod?.hasPendingLeaves">
+        Approve & Send Email
+      </button>
     </div>
   </div>
 </div>
