@@ -331,15 +331,32 @@ export class AttendanceApprovalComponent implements OnInit {
     });
   }
 
-  /** Returns days with 0 hours, not weekend, not holiday, no leave note — need a leave request */
+  /** Returns days with 0 hours, not weekend, not holiday, no leave note,
+   *  AND not already covered by an approved or pending leave request */
   getMissingLeaveDays(): PeriodDay[] {
     if (!this.selectedPeriod) return [];
-    return this.selectedPeriod.days.filter(d =>
-      d.hours === 0 &&
-      !d.isWeekend &&
-      !d.isPublicHoliday &&
-      !d.note
-    );
+
+    const allLeaves = [
+      ...(this.selectedPeriod.approvedLeaves || []),
+      ...(this.selectedPeriod.pendingLeaves  || [])
+    ];
+
+    return this.selectedPeriod.days.filter(d => {
+      if (d.hours !== 0)         return false;
+      if (d.isWeekend)           return false;
+      if (d.isPublicHoliday)     return false;
+      if (d.note)                return false; // has AL/EL/MC note set
+
+      // Check if an approved or pending leave request already covers this date
+      const dayDate = new Date(d.date);
+      const coveredByLeave = allLeaves.some(leave => {
+        const leaveStart = new Date(leave.startDate);
+        const leaveEnd   = new Date(leave.endDate);
+        return dayDate >= leaveStart && dayDate <= leaveEnd;
+      });
+
+      return !coveredByLeave; // only show if NOT covered
+    });
   }
 
   /** Sends an email to the employee listing the missing leave days */
