@@ -16,12 +16,15 @@ public class TimesheetsController : ControllerBase
     private readonly ITimesheetService _timesheetService;
     private readonly IEmailService _emailService;
     private readonly IExportService _exportService;
-    public TimesheetsController(HrmsDbContext db, ITimesheetService timesheetService, IEmailService emailService, IExportService exportService)
+    private readonly ILogger<TimesheetsController> _logger;
+
+    public TimesheetsController(HrmsDbContext db, ITimesheetService timesheetService, IEmailService emailService, IExportService exportService, ILogger<TimesheetsController> logger)
     {
         _db = db;
         _timesheetService = timesheetService;
         _emailService = emailService;
         _exportService = exportService;
+        _logger = logger;
     }
 
     /// <summary>
