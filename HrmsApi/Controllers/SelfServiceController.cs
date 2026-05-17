@@ -19,22 +19,18 @@ public class SelfServiceController : ControllerBase
     private readonly ITimesheetService _timesheetService;
     private readonly IEmailService _emailService;
     private readonly IPdfService _pdfService;
-    private readonly IServiceScopeFactory _scopeFactory;
-
     public SelfServiceController(
         HrmsDbContext db,
         ILogger<SelfServiceController> logger,
         ITimesheetService timesheetService,
         IEmailService emailService,
-        IPdfService pdfService,
-        IServiceScopeFactory scopeFactory)
+        IPdfService pdfService)
     {
         _db = db;
         _logger = logger;
         _timesheetService = timesheetService;
         _emailService = emailService;
         _pdfService = pdfService;
-        _scopeFactory = scopeFactory;
     }
 
     /// <summary>
@@ -536,31 +532,15 @@ public class SelfServiceController : ControllerBase
 </body>
 </html>";
 
-            // Send in background with its own scope to prevent 504 timeout
-            var scopeFactory = _scopeFactory;
-            var toEmail = employee.Email;
-            var payrollId = id;
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    using var scope = scopeFactory.CreateScope();
-                    var emailSvc = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                    await emailSvc.SendEmailWithAttachmentAsync(toEmail, subject, body, pdfData, fileName);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[EMAIL ERROR] Payslip {payrollId} to {toEmail}: {ex.Message}");
-                }
-            });
+            await _emailService.SendEmailWithAttachmentAsync(employee.Email, subject, body, pdfData, fileName);
 
-            _logger.LogInformation("Payslip email queued for {Email} for payroll ID {PayrollId}", employee.Email, id);
-            return Ok(new { message = $"Payslip email queued for {employee.Email}. It will arrive shortly." });
+            _logger.LogInformation("Payslip email sent to {Email} for payroll ID {PayrollId}", employee.Email, id);
+            return Ok(new { message = $"Payslip email with PDF sent successfully to {employee.Email}" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to prepare payslip email for payroll ID {PayrollId}", id);
-            return StatusCode(500, new { message = $"Failed to prepare email: {ex.Message}" });
+            _logger.LogError(ex, "Failed to send payslip email for payroll ID {PayrollId}", id);
+            return StatusCode(500, new { message = $"Failed to send email: {ex.Message}" });
         }
     }
 

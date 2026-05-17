@@ -39,22 +39,33 @@ public class EmailService : IEmailService
     /// <summary>
     /// Sends a generic email with custom subject and HTML body
     /// </summary>
+    // ── Shared SMTP builder ──────────────────────────────────────────────────
+    private (SmtpClient client, string fromEmail, string fromName) BuildSmtpClient()
+    {
+        var smtpHost  = _config["Email:SmtpHost"]     ?? "smtp.gmail.com";
+        var smtpPort  = int.Parse(_config["Email:SmtpPort"] ?? "587");
+        var smtpUser  = _config["Email:SmtpUser"]     ?? throw new InvalidOperationException("Email:SmtpUser not configured");
+        var smtpPass  = _config["Email:SmtpPassword"] ?? throw new InvalidOperationException("Email:SmtpPassword not configured");
+        var fromEmail = _config["Email:FromEmail"]    ?? smtpUser;
+        var fromName  = _config["Email:FromName"]     ?? "HRMS Payroll";
+
+        var client = new SmtpClient(smtpHost, smtpPort)
+        {
+            Credentials = new NetworkCredential(smtpUser, smtpPass),
+            EnableSsl   = true,
+            Timeout     = 30_000   // 30 seconds — prevents premature timeout on attachments
+        };
+
+        _logger.LogDebug("SMTP: {Host}:{Port} user={User}", smtpHost, smtpPort, smtpUser);
+        return (client, fromEmail, fromName);
+    }
+
     public async Task SendEmailAsync(string toEmail, string subject, string body)
     {
         try
         {
-            var smtpHost = _config["Email:SmtpHost"] ?? "smtp.gmail.com";
-            var smtpPort = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var smtpUser = _config["Email:SmtpUser"] ?? throw new InvalidOperationException("Email:SmtpUser not configured");
-            var smtpPass = _config["Email:SmtpPassword"] ?? throw new InvalidOperationException("Email:SmtpPassword not configured");
-            var fromEmail = _config["Email:FromEmail"] ?? smtpUser;
-            var fromName = _config["Email:FromName"] ?? "HRMS Payroll";
-
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
+            var (client, fromEmail, fromName) = BuildSmtpClient();
+            using var _ = client;
 
             var mailMessage = new MailMessage
             {
@@ -84,38 +95,14 @@ public class EmailService : IEmailService
     {
         try
         {
-            var smtpHost = _config["Email:SmtpHost"] ?? "smtp.gmail.com";
-            var smtpPort = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var smtpUser = _config["Email:SmtpUser"] ?? throw new InvalidOperationException("Email:SmtpUser not configured");
-            var smtpPass = _config["Email:SmtpPassword"] ?? throw new InvalidOperationException("Email:SmtpPassword not configured");
-            var fromEmail = _config["Email:FromEmail"] ?? smtpUser;
-            var fromName = _config["Email:FromName"] ?? "HRMS Payroll";
-
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(fromEmail, fromName),
-                Subject = $"Payslip for {month}/{year}",
-                Body = GeneratePayslipEmailBody(employeeName, month, year, netSalary),
-                IsBodyHtml = true
-            };
-
-            mailMessage.To.Add(toEmail);
-
-            await client.SendMailAsync(mailMessage);
-
+            var (client, fromEmail, fromName) = BuildSmtpClient();
+            using var _ = client;
+            var msg = new MailMessage { From = new MailAddress(fromEmail, fromName), Subject = $"Payslip for {month}/{year}", Body = GeneratePayslipEmailBody(employeeName, month, year, netSalary), IsBodyHtml = true };
+            msg.To.Add(toEmail);
+            await client.SendMailAsync(msg);
             _logger.LogInformation("Payslip email sent to {Email} for {Month}/{Year}", toEmail, month, year);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send payslip email to {Email}", toEmail);
-            throw;
-        }
+        catch (Exception ex) { _logger.LogError(ex, "Failed to send payslip email to {Email}", toEmail); throw; }
     }
 
     /// <summary>
@@ -138,18 +125,8 @@ public class EmailService : IEmailService
     {
         try
         {
-            var smtpHost = _config["Email:SmtpHost"] ?? "smtp.gmail.com";
-            var smtpPort = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var smtpUser = _config["Email:SmtpUser"] ?? throw new InvalidOperationException("Email:SmtpUser not configured");
-            var smtpPass = _config["Email:SmtpPassword"] ?? throw new InvalidOperationException("Email:SmtpPassword not configured");
-            var fromEmail = _config["Email:FromEmail"] ?? smtpUser;
-            var fromName = _config["Email:FromName"] ?? "HRMS Payroll";
-
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
+            var (client, fromEmail, fromName) = BuildSmtpClient();
+            using var _ = client;
 
             var mailMessage = new MailMessage
             {
@@ -161,12 +138,10 @@ public class EmailService : IEmailService
 
             mailMessage.To.Add(toEmail);
 
-            // Add attachment
             if (attachmentData != null && attachmentData.Length > 0)
             {
                 var stream = new MemoryStream(attachmentData);
-                var attachment = new Attachment(stream, attachmentName);
-                mailMessage.Attachments.Add(attachment);
+                mailMessage.Attachments.Add(new Attachment(stream, attachmentName));
             }
 
             await client.SendMailAsync(mailMessage);
