@@ -16,13 +16,15 @@ public class TimesheetsController : ControllerBase
     private readonly ITimesheetService _timesheetService;
     private readonly IEmailService _emailService;
     private readonly IExportService _exportService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public TimesheetsController(HrmsDbContext db, ITimesheetService timesheetService, IEmailService emailService, IExportService exportService)
+    public TimesheetsController(HrmsDbContext db, ITimesheetService timesheetService, IEmailService emailService, IExportService exportService, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _timesheetService = timesheetService;
         _emailService = emailService;
         _exportService = exportService;
+        _scopeFactory = scopeFactory;
     }
 
     /// <summary>
@@ -367,12 +369,11 @@ public class TimesheetsController : ControllerBase
                 return BadRequest(new { message = "Employee email address not found" });
 
             var monthName = new DateTime(timesheet.Year, timesheet.Month, 1).ToString("MMMM yyyy");
-            
-            // Generate Excel attachment
+
+            // Generate Excel BEFORE background task (ExportService uses scoped DB context)
             var excelData = await _exportService.ExportTimesheetToExcelAsync(id);
-            var fileName = $"Timesheet_{timesheet.Employee.Name.Replace(" ", "_")}_{monthName.Replace(" ", "_")}.xlsx";
-            
-            var subject = $"Your Timesheet for {monthName}";
+            var fileName  = $"Timesheet_{timesheet.Employee.Name.Replace(" ", "_")}_{monthName.Replace(" ", "_")}.xlsx";
+            var subject   = $"Your Timesheet for {monthName}";
             var body = $@"
 <!DOCTYPE html>
 <html>
@@ -448,13 +449,30 @@ public class TimesheetsController : ControllerBase
 </html>
 ";
 
-            await _emailService.SendEmailWithAttachmentAsync(timesheet.Employee.Email, subject, body, excelData, fileName);
+            // Send email in background with its OWN scope so scoped services are not disposed
+            var scopeFactory = _scopeFactory;
+            var toEmail  = timesheet.Employee.Email;
+            var timesheetId = id;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = scopeFactory.CreateScope();
+                    var emailSvc = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                    await emailSvc.SendEmailWithAttachmentAsync(toEmail, subject, body, excelData, fileName);
+                }
+                catch (Exception ex)
+                {
+                    // Log only — don't crash background thread
+                    Console.WriteLine($"[EMAIL ERROR] Timesheet {timesheetId} to {toEmail}: {ex.Message}");
+                }
+            });
 
-            return Ok(new { message = $"Timesheet emailed to {timesheet.Employee.Email}" });
+            return Ok(new { message = $"Timesheet email queued for {toEmail}. It will arrive shortly." });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Failed to send email: {ex.Message}" });
+            return StatusCode(500, new { message = $"Failed to prepare timesheet email: {ex.Message}" });
         }
     }
 }
