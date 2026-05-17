@@ -175,8 +175,8 @@
 
 <!-- Approval Modal -->
 @if (showApprovalModal && selectedRequest) {
-  <div class="modal-backdrop" (click)="closeApprovalModal()"></div>
-  <div class="approval-modal">
+  <div class="modal-backdrop"></div>
+  <div class="approval-modal" (click)="$event.stopPropagation()">
     <!-- Coloured banner -->
     <div class="modal-banner" [class.approve-banner]="approvalAction==='approve'" [class.reject-banner]="approvalAction==='reject'">
       <div class="banner-icon">

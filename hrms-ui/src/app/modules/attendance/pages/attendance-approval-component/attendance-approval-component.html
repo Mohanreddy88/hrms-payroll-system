@@ -279,9 +279,9 @@
 </div>
 
 <!-- Approve Confirmation Modal -->
-<div class="modal" [class.show]="showApproveModal" *ngIf="showApproveModal">
-  <div class="modal-backdrop" (click)="closeApproveModal()"></div>
-  <div class="modal-dialog approve-modal">
+<div class="modal" [class.show]="showApproveModal" *ngIf="showApproveModal" (click)="closeApproveModal()">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog approve-modal" (click)="$event.stopPropagation()">
     <!-- Coloured top banner -->
     <div class="modal-banner approve-banner">
       <div class="banner-icon"><i class="bi bi-check-circle-fill"></i></div>
@@ -333,9 +333,9 @@
 </div>
 
 <!-- Reject Modal -->
-<div class="modal" [class.show]="showRejectModal" *ngIf="showRejectModal">
-  <div class="modal-backdrop" (click)="closeRejectModal()"></div>
-  <div class="modal-dialog reject-modal">
+<div class="modal" [class.show]="showRejectModal" *ngIf="showRejectModal" (click)="closeRejectModal()">
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog reject-modal" (click)="$event.stopPropagation()">
     <!-- Coloured top banner -->
     <div class="modal-banner reject-banner">
       <div class="banner-icon"><i class="bi bi-x-circle-fill"></i></div>
