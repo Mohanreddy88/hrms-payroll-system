@@ -332,8 +332,8 @@ export class AttendanceApprovalComponent implements OnInit {
   }
 
   /** Returns days where employee set a leave note (AL/EL/MC) but has NO
-   *  matching approved or pending leave request for that date.
-   *  Days with 0 hours and NO note are just absent days — no action needed. */
+   *  Any 0-hour working day (not weekend, not holiday) with no approved/pending
+   *  leave request = unresolved — admin must act before approving attendance. */
   getMissingLeaveDays(): PeriodDay[] {
     if (!this.selectedPeriod) return [];
 
@@ -343,10 +343,13 @@ export class AttendanceApprovalComponent implements OnInit {
     ];
 
     return this.selectedPeriod.days.filter(d => {
-      // Only flag days where employee explicitly set a leave note (AL/EL/MC)
-      if (!d.note) return false;
+      // Only check working days (not weekends, not public holidays)
+      if (d.isWeekend)       return false;
+      if (d.isPublicHoliday) return false;
+      // Must have 0 hours
+      if (d.hours !== 0)     return false;
 
-      // Check if a leave request (any status) already covers this date
+      // Check if any leave request (approved or pending) covers this date
       const dayDate = new Date(d.date);
       const coveredByLeave = allLeaves.some(leave => {
         const leaveStart = new Date(leave.startDate);
@@ -354,7 +357,7 @@ export class AttendanceApprovalComponent implements OnInit {
         return dayDate >= leaveStart && dayDate <= leaveEnd;
       });
 
-      return !coveredByLeave; // note set but NO leave request exists
+      return !coveredByLeave; // 0-hour working day with NO leave request
     });
   }
 

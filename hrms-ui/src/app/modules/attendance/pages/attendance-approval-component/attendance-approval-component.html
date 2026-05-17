@@ -265,7 +265,7 @@
     <div class="missing-leave-section" *ngIf="getMissingLeaveDays().length > 0">
       <div class="missing-leave-header">
         <i class="bi bi-exclamation-circle-fill"></i>
-        <span>{{ getMissingLeaveDays().length }} day(s) marked as leave ({{ getNotesForMissingDays() }}) but no leave request submitted</span>
+        <span>{{ getMissingLeaveDays().length }} working day(s) with 0 hours and no leave request — resolve before approving</span>
       </div>
       <div class="missing-days-list">
         <span class="missing-day-chip" *ngFor="let d of getMissingLeaveDays()">
@@ -295,16 +295,22 @@
 
     <!-- Action Buttons - Only show for Submitted status -->
     <div class="action-buttons" *ngIf="selectedPeriod.status === 'Submitted'">
-      <button class="btn-reject" (click)="openRejectModal(selectedPeriod.id)">
+      <button class="btn-reject"
+              (click)="openRejectModal(selectedPeriod.id)"
+              [disabled]="getMissingLeaveDays().length > 0 || selectedPeriod.hasPendingLeaves"
+              [title]="getMissingLeaveDays().length > 0 ? 'Resolve ' + getMissingLeaveDays().length + ' unresolved day(s) first' :
+                       selectedPeriod.hasPendingLeaves ? 'Approve or reject pending leave requests first' : 'Reject attendance period'">
         <i class="bi bi-x-circle"></i>
         Reject
       </button>
       <button class="btn-approve"
               (click)="openApproveModal()"
-              [disabled]="selectedPeriod.hasPendingLeaves"
-              [title]="selectedPeriod.hasPendingLeaves ? 'Cannot approve: resolve pending leave requests first' : 'Approve attendance period'">
+              [disabled]="getMissingLeaveDays().length > 0 || selectedPeriod.hasPendingLeaves"
+              [title]="getMissingLeaveDays().length > 0 ? 'Resolve ' + getMissingLeaveDays().length + ' unresolved day(s) first' :
+                       selectedPeriod.hasPendingLeaves ? 'Approve or reject pending leave requests first' : 'Approve attendance period'">
         <i class="bi bi-check-circle"></i>
-        {{ selectedPeriod.hasPendingLeaves ? 'Approve (Blocked)' : 'Approve' }}
+        {{ getMissingLeaveDays().length > 0 ? 'Blocked (' + getMissingLeaveDays().length + ' unresolved)' :
+           selectedPeriod.hasPendingLeaves ? 'Approve (Blocked)' : 'Approve' }}
       </button>
     </div>
   </div>
