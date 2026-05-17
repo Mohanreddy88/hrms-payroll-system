@@ -383,6 +383,153 @@ public class AttendanceManagementController : ControllerBase
             emailSent
         });
     }
+
+    /// <summary>
+    /// POST /api/attendancemanagement/{id}/notify-missing-leaves
+    /// Sends an email to the employee listing days with 0 hours and no leave request
+    /// </summary>
+    [HttpPost("{id}/notify-missing-leaves")]
+    public async Task<IActionResult> NotifyMissingLeaves(int id)
+    {
+        var period = await _db.AttendancePeriods
+            .Include(p => p.Employee)
+            .Include(p => p.Days)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (period == null)
+            return NotFound(new { message = "Attendance period not found" });
+
+        // Find 0-hour working days (not weekend, not public holiday) with no leave note
+        var missingDays = period.Days
+            .Where(d => d.Hours == 0 && !d.IsWeekend && !d.IsPublicHoliday && string.IsNullOrEmpty(d.Note))
+            .OrderBy(d => d.Date)
+            .ToList();
+
+        if (!missingDays.Any())
+            return BadRequest(new { message = "No missing leave days found for this period" });
+
+        var daysList = string.Join("", missingDays.Select(d =>
+            $"<li style='padding:4px 0'><strong>{d.Date:dd MMM yyyy (ddd)}</strong> — 0 hours, no leave type recorded</li>"));
+
+        var body = $@"<!DOCTYPE html><html><head><style>
+          body{{font-family:Arial,sans-serif;color:#333;}}
+          .header{{background:linear-gradient(135deg,#f59e0b,#d97706);color:white;padding:26px;text-align:center;border-radius:8px 8px 0 0;}}
+          .header h1{{margin:0;font-size:20px;}} .body{{background:#f8f9fa;padding:24px;border-radius:0 0 8px 8px;}}
+          ul{{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px 16px 16px 32px;margin:14px 0;}}
+          .notice{{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;padding:12px 14px;border-radius:8px;font-size:13px;margin-top:14px;}}
+          .footer{{text-align:center;font-size:12px;color:#888;margin-top:18px;}}
+        </style></head><body>
+          <div class=""header""><h1>⚠️ Action Required: Missing Leave Request</h1></div>
+          <div class=""body"">
+            <p>Dear <strong>{period.Employee.Name}</strong>,</p>
+            <p>Your attendance submission for <strong>{period.StartDate:dd MMM yyyy} – {period.EndDate:dd MMM yyyy}</strong> has <strong>{missingDays.Count} day(s)</strong> with 0 hours and no leave type recorded.</p>
+            <p><strong>Days requiring a leave request:</strong></p>
+            <ul>{daysList}</ul>
+            <div class=""notice"">
+              📋 Please log in to <strong>Employee Self-Service → My Leaves</strong> and submit a leave request for the above dates before your attendance can be approved.
+            </div>
+          </div>
+          <div class=""footer"">© {DateTime.Now.Year} HRMS. This is an automated notification.</div>
+        </body></html>";
+
+        _emailQueue.Enqueue(new EmailJob
+        {
+            ToEmail = period.Employee.Email,
+            Subject = $"Action Required: Missing Leave Request — {period.StartDate:dd MMM} to {period.EndDate:dd MMM yyyy}",
+            Body    = body
+        });
+
+        _logger.LogInformation("Missing leave notification sent to {Email} for period {Id}", period.Employee.Email, id);
+        return Ok(new { message = $"Notification sent to {period.Employee.Email}", missingDays = missingDays.Count });
+    }
+
+    /// <summary>
+    /// POST /api/attendancemanagement/{id}/create-leave-on-behalf
+    /// Admin creates and auto-approves a leave request for 0-hour days on behalf of employee
+    /// </summary>
+    [HttpPost("{id}/create-leave-on-behalf")]
+    public async Task<IActionResult> CreateLeaveOnBehalf(int id, [FromBody] CreateLeaveOnBehalfRequest request)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        var adminUser = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (adminUser == null) return Unauthorized();
+
+        var period = await _db.AttendancePeriods
+            .Include(p => p.Employee)
+            .Include(p => p.Days)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (period == null)
+            return NotFound(new { message = "Attendance period not found" });
+
+        var leaveType = await _db.LeaveTypes
+            .FirstOrDefaultAsync(lt => lt.Code == request.LeaveTypeCode && lt.IsActive);
+        if (leaveType == null)
+            return BadRequest(new { message = $"Leave type '{request.LeaveTypeCode}' not found" });
+
+        var startDate = DateTime.SpecifyKind(request.StartDate.Date, DateTimeKind.Utc);
+        var endDate   = DateTime.SpecifyKind(request.EndDate.Date,   DateTimeKind.Utc);
+
+        // Check if leave request already exists for this range
+        var existing = await _db.LeaveRequests
+            .FirstOrDefaultAsync(lr => lr.EmployeeId == period.EmployeeId
+                                    && lr.StartDate == startDate
+                                    && lr.EndDate == endDate
+                                    && lr.LeaveTypeId == leaveType.Id);
+        if (existing != null)
+            return BadRequest(new { message = "A leave request already exists for these dates" });
+
+        // Count working days in range
+        decimal totalDays = 0;
+        for (var d = startDate; d <= endDate; d = d.AddDays(1))
+        {
+            var dayName = d.DayOfWeek;
+            if (dayName != DayOfWeek.Saturday && dayName != DayOfWeek.Sunday)
+                totalDays++;
+        }
+
+        var leaveRequest = new LeaveRequest
+        {
+            EmployeeId       = period.EmployeeId,
+            LeaveTypeId      = leaveType.Id,
+            StartDate        = startDate,
+            EndDate          = endDate,
+            TotalDays        = totalDays,
+            Reason           = request.Reason ?? $"Created by admin on behalf of employee for attendance period {period.StartDate:dd MMM} - {period.EndDate:dd MMM yyyy}",
+            Status           = "Approved",
+            RequestedOn      = DateTime.UtcNow,
+            ApprovedBy       = adminUser.Id,
+            ApprovedOn       = DateTime.UtcNow,
+            ApprovalRemarks  = $"Auto-approved by {adminUser.Username} on behalf of employee"
+        };
+
+        _db.LeaveRequests.Add(leaveRequest);
+
+        // Deduct from leave balance
+        var balance = await _db.EmployeeLeaveBalances
+            .FirstOrDefaultAsync(b => b.EmployeeId == period.EmployeeId
+                                   && b.LeaveTypeId == leaveType.Id
+                                   && b.Year == startDate.Year);
+        if (balance != null)
+        {
+            balance.UsedDays    += totalDays;
+            balance.BalanceDays  = balance.TotalDays + balance.CarryForwardDays - balance.UsedDays;
+            balance.UpdatedAt    = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {Admin} created leave on behalf of employee {EmpId}: {Type} {Start}-{End}",
+            adminUser.Username, period.EmployeeId, request.LeaveTypeCode, startDate, endDate);
+
+        return Ok(new
+        {
+            message      = $"{leaveType.Name} leave created and approved on behalf of {period.Employee.Name}",
+            leaveRequestId = leaveRequest.Id,
+            totalDays,
+            leaveType    = leaveType.Name
+        });
+    }
 }
 
 /// <summary>
@@ -391,6 +538,14 @@ public class AttendanceManagementController : ControllerBase
 public class RejectAttendanceRequest
 {
     public string RejectionReason { get; set; } = string.Empty;
+}
+
+public class CreateLeaveOnBehalfRequest
+{
+    public string   LeaveTypeCode { get; set; } = "AL";
+    public DateTime StartDate     { get; set; }
+    public DateTime EndDate       { get; set; }
+    public string?  Reason        { get; set; }
 }
 
 // ── Email body helpers ────────────────────────────────────────────────────────

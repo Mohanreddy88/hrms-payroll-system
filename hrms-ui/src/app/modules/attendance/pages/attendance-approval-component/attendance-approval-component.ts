@@ -94,6 +94,9 @@ export class AttendanceApprovalComponent implements OnInit {
   showRejectModal: boolean = false;
   showApproveModal: boolean = false;
   rejectionReason: string = '';
+  notifying: boolean = false;
+  creatingLeave: boolean = false;
+  onBehalfLeaveType: string = 'AL';
   
   // Filters
   filterStatus: string = 'Submitted';
@@ -320,12 +323,72 @@ export class AttendanceApprovalComponent implements OnInit {
 
   isDayPendingLeave(dateString: string): boolean {
     if (!this.selectedPeriod || !this.selectedPeriod.pendingLeaves) return false;
-    const date = new Date(dateString).toDateString();
     return this.selectedPeriod.pendingLeaves.some(leave => {
       const leaveStart = new Date(leave.startDate);
-      const leaveEnd = new Date(leave.endDate);
-      const dayDate = new Date(dateString);
+      const leaveEnd   = new Date(leave.endDate);
+      const dayDate    = new Date(dateString);
       return dayDate >= leaveStart && dayDate <= leaveEnd;
     });
-}
+  }
+
+  /** Returns days with 0 hours, not weekend, not holiday, no leave note — need a leave request */
+  getMissingLeaveDays(): PeriodDay[] {
+    if (!this.selectedPeriod) return [];
+    return this.selectedPeriod.days.filter(d =>
+      d.hours === 0 &&
+      !d.isWeekend &&
+      !d.isPublicHoliday &&
+      !d.note
+    );
+  }
+
+  /** Sends an email to the employee listing the missing leave days */
+  notifyEmployee(): void {
+    if (!this.selectedPeriod) return;
+    this.notifying = true;
+    this.http.post(`${environment.apiUrl}/attendancemanagement/${this.selectedPeriod.id}/notify-missing-leaves`, {})
+      .subscribe({
+        next: (res: any) => {
+          this.notifying = false;
+          this.toast.success('Notified', `Email sent to ${this.selectedPeriod!.employeeEmail} for ${res.missingDays} missing day(s)`);
+        },
+        error: (err) => {
+          this.notifying = false;
+          this.toast.error('Failed', err?.error?.message || 'Could not send notification');
+        }
+      });
+  }
+
+  /** Admin creates and auto-approves a leave request on behalf of the employee */
+  createLeaveOnBehalf(): void {
+    if (!this.selectedPeriod) return;
+    const missing = this.getMissingLeaveDays();
+    if (missing.length === 0) {
+      this.toast.warning('No Missing Days', 'All days already have leave notes or hours');
+      return;
+    }
+
+    // Use first and last missing day as the date range
+    const startDate = missing[0].date;
+    const endDate   = missing[missing.length - 1].date;
+
+    this.creatingLeave = true;
+    this.http.post(`${environment.apiUrl}/attendancemanagement/${this.selectedPeriod.id}/create-leave-on-behalf`, {
+      leaveTypeCode: this.onBehalfLeaveType,
+      startDate,
+      endDate,
+      reason: `Leave taken — recorded by admin on behalf of employee`
+    }).subscribe({
+      next: (res: any) => {
+        this.creatingLeave = false;
+        this.toast.success('Leave Created', `${res.leaveType} (${res.totalDays} day(s)) created and approved`);
+        // Reload period details to reflect new leave
+        this.viewPeriodDetails(this.selectedPeriod!.id);
+      },
+      error: (err) => {
+        this.creatingLeave = false;
+        this.toast.error('Failed', err?.error?.message || 'Could not create leave');
+      }
+    });
+  }
 }

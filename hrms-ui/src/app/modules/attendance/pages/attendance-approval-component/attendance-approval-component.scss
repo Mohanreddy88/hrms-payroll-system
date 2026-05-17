@@ -4,6 +4,102 @@
   margin: 0 auto;
 }
 
+// ── Missing Leave Warning Section ────────────────────────────────────────────
+.missing-leave-section {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+
+  .missing-leave-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #92400e;
+    font-size: 14px;
+    margin-bottom: 12px;
+
+    i { font-size: 16px; color: #f59e0b; }
+  }
+
+  .missing-days-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+
+    .missing-day-chip {
+      background: white;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+  }
+
+  .missing-leave-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .btn-notify {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: white;
+      border: 1.5px solid #f59e0b;
+      color: #92400e;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      &:hover:not(:disabled) { background: #fef3c7; }
+      &:disabled { opacity: 0.6; cursor: not-allowed; }
+    }
+
+    .create-leave-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .leave-type-select {
+        padding: 7px 10px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #1e293b;
+        background: white;
+        &:focus { outline: none; border-color: #10b981; }
+      }
+
+      .btn-create-leave {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 3px 8px rgba(16,185,129,0.3);
+        transition: all 0.2s;
+        &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(16,185,129,0.4); }
+        &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+      }
+    }
+  }
+}
+
 .leave-breakdown {
   display: inline-flex;
   gap: 4px;

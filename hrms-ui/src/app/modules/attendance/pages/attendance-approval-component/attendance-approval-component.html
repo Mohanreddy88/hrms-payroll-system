@@ -261,6 +261,38 @@
         </div>
       </div>
     </div>
+    <!-- Missing Leave Warning + Admin Actions -->
+    <div class="missing-leave-section" *ngIf="getMissingLeaveDays().length > 0">
+      <div class="missing-leave-header">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span>{{ getMissingLeaveDays().length }} day(s) have 0 hours with no leave request</span>
+      </div>
+      <div class="missing-days-list">
+        <span class="missing-day-chip" *ngFor="let d of getMissingLeaveDays()">
+          {{ formatDate(d.date) }}
+        </span>
+      </div>
+      <div class="missing-leave-actions">
+        <!-- Notify Employee -->
+        <button class="btn-notify" (click)="notifyEmployee()" [disabled]="notifying">
+          <i class="bi bi-envelope"></i>
+          {{ notifying ? 'Sending...' : 'Notify Employee' }}
+        </button>
+        <!-- Create Leave on Behalf -->
+        <div class="create-leave-inline">
+          <select [(ngModel)]="onBehalfLeaveType" class="leave-type-select">
+            <option value="AL">Annual Leave</option>
+            <option value="EL">Emergency Leave</option>
+            <option value="MC">Medical Leave</option>
+          </select>
+          <button class="btn-create-leave" (click)="createLeaveOnBehalf()" [disabled]="creatingLeave">
+            <i class="bi bi-plus-circle"></i>
+            {{ creatingLeave ? 'Creating...' : 'Create & Approve Leave' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Action Buttons - Only show for Submitted status -->
     <div class="action-buttons" *ngIf="selectedPeriod.status === 'Submitted'">
       <button class="btn-reject" (click)="openRejectModal(selectedPeriod.id)">
