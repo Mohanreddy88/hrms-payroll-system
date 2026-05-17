@@ -78,9 +78,20 @@
             <span class="label">Total Hours:</span>
             <span class="value hours">{{ period.totalHours }}h</span>
           </div>
-          <div class="info-row">
+          <div class="info-row" *ngIf="period.leaveCount > 0">
             <span class="label">Leave Days:</span>
-            <span class="value">{{ period.leaveCount }}</span>
+            <span class="value">
+              {{ period.leaveCount }} day(s)
+              <span class="leave-breakdown">
+                <span *ngIf="period.alCount > 0" class="leave-tag al">AL:{{ period.alCount }}</span>
+                <span *ngIf="period.elCount > 0" class="leave-tag el">EL:{{ period.elCount }}</span>
+                <span *ngIf="period.mcCount > 0" class="leave-tag mc">MC:{{ period.mcCount }}</span>
+              </span>
+            </span>
+          </div>
+          <div class="info-row" *ngIf="period.leaveCount === 0">
+            <span class="label">Leave Days:</span>
+            <span class="value">0</span>
           </div>
         </div>
         <div class="card-footer">

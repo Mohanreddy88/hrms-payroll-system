@@ -46,8 +46,12 @@ public class AttendanceManagementController : ControllerBase
                 p.Status,
                 p.SubmittedAt,
                 p.Remarks,
-                totalHours = p.Days.Sum(d => d.Hours),
-                leaveCount = p.Days.Count(d => d.Note != null && d.Note != ""),
+                // Exclude leave days from total hours (days with a note have 0 working hours)
+                totalHours = p.Days.Where(d => string.IsNullOrEmpty(d.Note)).Sum(d => d.Hours),
+                leaveCount = p.Days.Count(d => !string.IsNullOrEmpty(d.Note)),
+                alCount = p.Days.Count(d => d.Note == "AL"),
+                elCount = p.Days.Count(d => d.Note == "EL"),
+                mcCount = p.Days.Count(d => d.Note == "MC"),
                 dayCount = p.Days.Count
             })
             .ToListAsync();
@@ -89,8 +93,11 @@ public class AttendanceManagementController : ControllerBase
                 p.RejectedAt,
                 p.RejectionReason,
                 p.Remarks,
-                totalHours = p.Days.Sum(d => d.Hours),
-                leaveCount = p.Days.Count(d => d.Note != null && d.Note != "")
+                totalHours = p.Days.Where(d => string.IsNullOrEmpty(d.Note)).Sum(d => d.Hours),
+                leaveCount = p.Days.Count(d => !string.IsNullOrEmpty(d.Note)),
+                alCount = p.Days.Count(d => d.Note == "AL"),
+                elCount = p.Days.Count(d => d.Note == "EL"),
+                mcCount = p.Days.Count(d => d.Note == "MC")
             })
             .ToListAsync();
 
@@ -240,6 +247,46 @@ public class AttendanceManagementController : ControllerBase
         period.Status = "Approved";
         period.ApprovedAt = DateTime.UtcNow;
         period.ApprovedBy = adminUser.Id;
+
+        // Deduct leave balances based on day notes (AL/EL/MC)
+        var days = await _db.AttendancePeriodDays
+            .Where(d => d.AttendancePeriodId == id && !string.IsNullOrEmpty(d.Note))
+            .ToListAsync();
+
+        if (days.Any())
+        {
+            var year = period.StartDate.Year;
+
+            // Group leave days by note type and deduct from corresponding leave balance
+            var leaveGroups = days
+                .Where(d => d.Note == "AL" || d.Note == "EL" || d.Note == "MC")
+                .GroupBy(d => d.Note);
+
+            foreach (var group in leaveGroups)
+            {
+                var leaveCode = group.Key; // AL, EL, MC
+                var daysCount = group.Count();
+
+                var leaveType = await _db.LeaveTypes
+                    .FirstOrDefaultAsync(lt => lt.Code == leaveCode && lt.IsActive);
+
+                if (leaveType == null) continue;
+
+                var balance = await _db.EmployeeLeaveBalances
+                    .FirstOrDefaultAsync(b => b.EmployeeId == period.EmployeeId
+                                           && b.LeaveTypeId == leaveType.Id
+                                           && b.Year == year);
+
+                if (balance != null)
+                {
+                    balance.UsedDays += daysCount;
+                    balance.BalanceDays = balance.TotalDays + balance.CarryForwardDays - balance.UsedDays;
+                    balance.UpdatedAt = DateTime.UtcNow;
+                    _logger.LogInformation("Deducted {Days} {Code} days from employee {EmployeeId} balance for year {Year}",
+                        daysCount, leaveCode, period.EmployeeId, year);
+                }
+            }
+        }
 
         await _db.SaveChangesAsync();
 

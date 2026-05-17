@@ -18,6 +18,9 @@ interface AttendancePeriod {
   submittedAt: string;
   totalHours: number;
   leaveCount: number;
+  alCount: number;
+  elCount: number;
+  mcCount: number;
   dayCount: number;
   rejectionReason?: string;
 }
