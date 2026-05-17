@@ -175,38 +175,70 @@
 
 <!-- Approval Modal -->
 @if (showApprovalModal && selectedRequest) {
-  <div class="modal-backdrop"></div>
+  <div class="modal-backdrop" (click)="closeApprovalModal()"></div>
   <div class="approval-modal">
-    <div class="modal-header">
-      <h5>{{ approvalAction === 'approve' ? 'Approve' : 'Reject' }} Leave Request</h5>
-      <button class="close-btn" (click)="closeApprovalModal()">
-        <i class="bi bi-x-lg"></i>
-      </button>
+    <!-- Coloured banner -->
+    <div class="modal-banner" [class.approve-banner]="approvalAction==='approve'" [class.reject-banner]="approvalAction==='reject'">
+      <div class="banner-icon">
+        <i [class]="approvalAction==='approve' ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"></i>
+      </div>
+      <h5>{{ approvalAction === 'approve' ? 'Approve Leave Request' : 'Reject Leave Request' }}</h5>
+      <p>{{ approvalAction === 'approve' ? 'Review details and confirm approval' : 'Provide a reason for rejection' }}</p>
+      <button class="btn-close-banner" (click)="closeApprovalModal()"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="modal-body">
-      <p><strong>Employee:</strong> {{ selectedRequest.employeeName }}</p>
-      <p><strong>Leave Type:</strong> {{ selectedRequest.leaveTypeName }}</p>
-      <p><strong>Period:</strong> {{ formatDate(selectedRequest.startDate) }} - {{ formatDate(selectedRequest.endDate) }}</p>
-      <p><strong>Total Days:</strong> {{ selectedRequest.totalDays }}</p>
-      <p><strong>Reason:</strong> {{ selectedRequest.reason }}</p>
-      
-      <div class="form-group mt-3">
-        <label>Remarks {{ approvalAction === 'reject' ? '(Required)' : '(Optional)' }}</label>
-        <textarea 
-          [(ngModel)]="approvalRemarks" 
-          rows="3" 
-          placeholder="Add your remarks here..."
-          class="form-control">
+      <!-- Info grid -->
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-person-fill"></i> Employee</span>
+          <span class="info-value">{{ selectedRequest.employeeName }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-tag-fill"></i> Leave Type</span>
+          <span class="info-value">{{ selectedRequest.leaveTypeName }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-calendar-range"></i> Period</span>
+          <span class="info-value">{{ formatDate(selectedRequest.startDate) }} – {{ formatDate(selectedRequest.endDate) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-calendar-check"></i> Total Days</span>
+          <span class="info-value days-value">{{ selectedRequest.totalDays }} day(s)</span>
+        </div>
+        <div class="info-item" *ngIf="selectedRequest.reason">
+          <span class="info-label"><i class="bi bi-chat-left-text"></i> Reason</span>
+          <span class="info-value reason-value">{{ selectedRequest.reason }}</span>
+        </div>
+      </div>
+
+      <div class="form-group remark-group">
+        <label>Remarks <span *ngIf="approvalAction==='reject'" class="required">*</span>
+          <span class="label-hint">{{ approvalAction === 'reject' ? '(Required — will be emailed to employee)' : '(Optional)' }}</span>
+        </label>
+        <textarea
+          [(ngModel)]="approvalRemarks"
+          rows="3"
+          placeholder="{{ approvalAction === 'reject' ? 'Provide a clear reason for rejection...' : 'Add optional remarks...' }}"
+          class="form-control"
+          [class.reject-textarea]="approvalAction==='reject'">
         </textarea>
+      </div>
+
+      <div class="email-notice" [class.reject-notice]="approvalAction==='reject'">
+        <i [class]="approvalAction==='approve' ? 'bi bi-envelope-check-fill' : 'bi bi-envelope-exclamation-fill'"></i>
+        {{ approvalAction === 'approve' ? 'An approval email will be sent to the employee.' : 'A rejection email with your remarks will be sent to the employee.' }}
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="closeApprovalModal()">Cancel</button>
-      <button 
-        class="btn" 
-        [ngClass]="approvalAction === 'approve' ? 'btn-success' : 'btn-danger'"
-        (click)="confirmApproval()">
-        {{ approvalAction === 'approve' ? 'Approve' : 'Reject' }}
+      <button class="btn-modal-cancel" (click)="closeApprovalModal()">
+        <i class="bi bi-x"></i> Cancel
+      </button>
+      <button class="btn-modal-action"
+              [class.approve-action]="approvalAction==='approve'"
+              [class.reject-action]="approvalAction==='reject'"
+              (click)="confirmApproval()">
+        <i [class]="approvalAction==='approve' ? 'bi bi-check-circle' : 'bi bi-x-circle'"></i>
+        {{ approvalAction === 'approve' ? 'Approve & Send Email' : 'Reject & Send Email' }}
       </button>
     </div>
   </div>

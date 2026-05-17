@@ -166,6 +166,7 @@ export class LeaveRequestListComponent implements OnInit {
 
     this.http.put(url, payload).subscribe({
       next: () => {
+        this.loadingService.reset();
         this.toast.success('Success', `Leave request ${this.approvalAction}d successfully`);
         this.closeApprovalModal();
         this.loadRequests();
