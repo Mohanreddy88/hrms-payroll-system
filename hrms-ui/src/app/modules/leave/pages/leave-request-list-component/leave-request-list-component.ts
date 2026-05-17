@@ -162,11 +162,16 @@ export class LeaveRequestListComponent implements OnInit {
 
     const payload = this.approvalAction === 'approve'
       ? { approvalRemarks: this.approvalRemarks }
-      : { rejectionReason: this.rejectionReason };
+      : { approvalRemarks: this.approvalRemarks };  // backend uses approvalRemarks for both
 
     this.http.put(url, payload).subscribe({
       next: () => {
         this.loadingService.reset();
+        // Immediately update local row so buttons disappear without waiting for reload
+        if (this.selectedRequest) {
+          this.selectedRequest.status = this.approvalAction === 'approve' ? 'Approved' : 'Rejected';
+          this.applyFilters();
+        }
         this.toast.success('Success', `Leave request ${this.approvalAction}d successfully`);
         this.closeApprovalModal();
         this.loadRequests();
