@@ -162,7 +162,7 @@ export class LeaveRequestListComponent implements OnInit {
       ? { approvalRemarks: this.approvalRemarks }
       : { rejectionReason: this.rejectionReason };
 
-    this.http.post(url, payload).subscribe({
+    this.http.put(url, payload).subscribe({
       next: () => {
         this.toast.success('Success', `Leave request ${this.approvalAction}d successfully`);
         this.closeApprovalModal();
