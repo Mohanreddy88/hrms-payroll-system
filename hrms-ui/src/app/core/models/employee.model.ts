@@ -17,6 +17,7 @@ export interface Employee {
   accountNumber: string;          // Bank account number for salary
   bankName?: string;              // Resolved bank name (joined in API response)
   profilePicture: string;         // Profile picture URL or path
+  gender: string;                 // Male / Female / Other
 }
 
 /** Payload sent when creating or updating an employee */
@@ -34,4 +35,5 @@ export interface EmployeeRequest {
   bankId: number | null;
   accountNumber: string;
   profilePicture: string;         // Profile picture URL or path
+  gender: string;                 // Male / Female / Other
 }

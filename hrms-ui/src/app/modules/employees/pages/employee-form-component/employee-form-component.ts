@@ -62,7 +62,8 @@ export class EmployeeFormComponent implements OnInit {
       taxNumber:      [''],    // Tax Identification Number
       bankId:         [null],  // FK to BankMaster
       accountNumber:  [''],    // Bank account number
-      profilePicture: ['']     // Profile picture URL/path
+      profilePicture: [''],    // Profile picture URL/path
+      gender:         ['']     // Male / Female / Other
     });
 
     // Load active departments and banks for the dropdowns regardless of add/edit mode
@@ -119,7 +120,8 @@ export class EmployeeFormComponent implements OnInit {
           // Ensure null FKs are handled correctly
           departmentId:   emp.departmentId ?? null,
           bankId:         emp.bankId ?? null,
-          profilePicture: emp.profilePicture ?? ''
+          profilePicture: emp.profilePicture ?? '',
+          gender:         emp.gender ?? ''
         });
         // Set preview URL for existing profile picture
         this.profilePictureUrl = emp.profilePicture || null;
@@ -164,7 +166,8 @@ export class EmployeeFormComponent implements OnInit {
       taxNumber:      raw.taxNumber      ?? '',
       bankId:         raw.bankId         ?? null,
       accountNumber:  raw.accountNumber  ?? '',
-      profilePicture: raw.profilePicture ?? ''
+      profilePicture: raw.profilePicture ?? '',
+      gender:         raw.gender         ?? ''
     };
 
     // Shared success/error handlers

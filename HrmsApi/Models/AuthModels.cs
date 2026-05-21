@@ -25,7 +25,8 @@ public record EmployeeRequest(
     string   TaxNumber,
     int?     BankId,
     string   AccountNumber,
-    string   ProfilePicture     // New field for profile picture URL/path
+    string   ProfilePicture,    // Profile picture URL/path
+    string?  Gender             // Male / Female / Other
 );
 
 // ── Attendance ────────────────────────────────────────────────────────────────

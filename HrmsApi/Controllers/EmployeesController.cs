@@ -36,7 +36,7 @@ public class EmployeesController : ControllerBase
                 e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.ProfilePicture
+                e.ProfilePicture, e.Gender
             })
             .ToListAsync();
 
@@ -71,7 +71,7 @@ public class EmployeesController : ControllerBase
                 e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.ProfilePicture
+                e.ProfilePicture, e.Gender
             })
             .ToListAsync();
 
@@ -105,7 +105,7 @@ public class EmployeesController : ControllerBase
                 e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.ProfilePicture
+                e.ProfilePicture, e.Gender
             })
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Employee {id} not found.");
@@ -183,7 +183,8 @@ public class EmployeesController : ControllerBase
             TaxNumber      = req.TaxNumber,
             BankId         = req.BankId,
             AccountNumber  = req.AccountNumber,
-            ProfilePicture = req.ProfilePicture ?? string.Empty
+            ProfilePicture = req.ProfilePicture ?? string.Empty,
+            Gender         = req.Gender ?? string.Empty
         };
 
         _db.Employees.Add(emp);
@@ -274,6 +275,7 @@ public class EmployeesController : ControllerBase
         emp.BankId         = req.BankId;
         emp.AccountNumber  = req.AccountNumber;
         emp.ProfilePicture = req.ProfilePicture ?? string.Empty;
+        emp.Gender         = req.Gender ?? string.Empty;
 
         await _db.SaveChangesAsync();
         return NoContent();

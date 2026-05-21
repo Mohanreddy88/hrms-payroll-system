@@ -36,6 +36,9 @@ public class Employee
     /// <summary>Bank account number for salary disbursement</summary>
     public string   AccountNumber { get; set; } = string.Empty;
 
+    /// <summary>Gender: Male / Female / Other</summary>
+    public string   Gender        { get; set; } = string.Empty;
+
     // ── Navigation properties ────────────────────────────────
     public Department?              Department  { get; set; }
     public BankMaster?              Bank        { get; set; }

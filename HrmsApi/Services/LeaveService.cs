@@ -297,6 +297,11 @@ public class LeaveService : ILeaveService
 
         foreach (var leaveType in activeLeaveTypes)
         {
+            // Skip gender-specific leave types that don't apply to this employee
+            var gender = (employee.Gender ?? "").ToLower();
+            if (leaveType.Code == "MTL" && gender != "female") continue; // Maternity = Female only
+            if (leaveType.Code == "PTL" && gender != "male")   continue; // Paternity = Male only
+
             // Check if balance already exists
             var existing = await _db.EmployeeLeaveBalances
                 .AnyAsync(b => b.EmployeeId == employeeId 

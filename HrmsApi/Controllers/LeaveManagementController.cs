@@ -95,29 +95,40 @@ public class LeaveManagementController : ControllerBase
     {
         var currentYear = year ?? DateTime.Now.Year;
         
+        var employee = await _db.Employees.FindAsync(employeeId);
+        if (employee == null) return NotFound(new { message = "Employee not found." });
+
+        var gender = (employee.Gender ?? "").ToLower();
+
         var balances = await _leaveService.GetEmployeeLeaveBalancesAsync(employeeId, currentYear);
 
         if (balances.Count == 0)
         {
-            // Initialize if not exists
             await _leaveService.InitializeLeaveBalancesAsync(employeeId, currentYear);
             balances = await _leaveService.GetEmployeeLeaveBalancesAsync(employeeId, currentYear);
         }
 
-        var result = balances.Select(b => new
-        {
-            b.Id,
-            b.EmployeeId,
-            b.LeaveTypeId,
-            leaveTypeName = b.LeaveType.Name,
-            leaveTypeCode = b.LeaveType.Code,
-            b.Year,
-            b.TotalDays,
-            b.UsedDays,
-            b.BalanceDays,
-            b.CarryForwardDays,
-            b.UpdatedAt
-        });
+        // Filter gender-specific leave types
+        var result = balances
+            .Where(b => {
+                if (b.LeaveType.Code == "MTL") return gender == "female"; // Maternity: Female only
+                if (b.LeaveType.Code == "PTL") return gender == "male";   // Paternity: Male only
+                return true;
+            })
+            .Select(b => new
+            {
+                b.Id,
+                b.EmployeeId,
+                b.LeaveTypeId,
+                leaveTypeName = b.LeaveType.Name,
+                leaveTypeCode = b.LeaveType.Code,
+                b.Year,
+                b.TotalDays,
+                b.UsedDays,
+                b.BalanceDays,
+                b.CarryForwardDays,
+                b.UpdatedAt
+            });
 
         return Ok(result);
     }

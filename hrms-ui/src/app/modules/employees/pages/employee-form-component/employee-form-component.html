@@ -79,6 +79,24 @@
 
         <div class="form-row">
 
+          <!-- Gender -->
+          <div class="form-group">
+            <label>Gender <span class="req">*</span></label>
+            <select formControlName="gender">
+              <option value="">— Select Gender —</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <small class="field-hint">Determines Maternity / Paternity leave entitlement</small>
+          </div>
+
+          <div class="form-group"><!-- spacer --></div>
+
+        </div>
+
+        <div class="form-row">
+
           <!-- Tax Identification Number -->
           <div class="form-group">
             <label>Tax Identification No. (TIN)</label>
