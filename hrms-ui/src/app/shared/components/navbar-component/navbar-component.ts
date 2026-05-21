@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
@@ -12,7 +12,8 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule, RouterModule, NotificationCenterComponent],
   templateUrl: './navbar-component.html',
-  styleUrl: './navbar-component.scss'
+  styleUrl: './navbar-component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NavbarComponent implements OnInit {
   username = 'ADMIN';
@@ -25,7 +26,8 @@ export class NavbarComponent implements OnInit {
   constructor(
     private authService: AuthService,
     private http: HttpClient,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -46,11 +48,12 @@ export class NavbarComponent implements OnInit {
             next: (employee) => {
               this.username = employee.name.toUpperCase();
               this.avatarChar = employee.name.charAt(0).toUpperCase();
+              this.cdr.markForCheck();
             },
             error: () => {
-              // Fallback to email if fetch fails
               this.username = user.username.toUpperCase();
               this.avatarChar = user.username.charAt(0).toUpperCase();
+              this.cdr.markForCheck();
             }
           });
         }

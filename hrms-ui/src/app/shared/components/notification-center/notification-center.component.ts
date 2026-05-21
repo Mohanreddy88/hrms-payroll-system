@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { NotificationService, Notification } from '../../../core/services/notification.service';
@@ -9,7 +9,8 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './notification-center.component.html',
-  styleUrls: ['./notification-center.component.scss']
+  styleUrls: ['./notification-center.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationCenterComponent implements OnInit, OnDestroy {
   notifications: Notification[] = [];
@@ -21,21 +22,26 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
 
   constructor(
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadNotifications();
 
-    // Subscribe to unread count changes
+    // Subscribe to unread count — OnPush: only mark dirty when value actually changes
     const countSub = this.notificationService.unreadCount$.subscribe(count => {
-      this.unreadCount = count;
+      if (this.unreadCount !== count) {
+        this.unreadCount = count;
+        this.cdr.markForCheck();
+      }
     });
     this.subscriptions.push(countSub);
 
-    // Subscribe to notifications changes
+    // Subscribe to notifications — only re-render when list actually changes
     const notifSub = this.notificationService.notifications$.subscribe(notifications => {
       this.notifications = notifications;
+      this.cdr.markForCheck();
     });
     this.subscriptions.push(notifSub);
 
