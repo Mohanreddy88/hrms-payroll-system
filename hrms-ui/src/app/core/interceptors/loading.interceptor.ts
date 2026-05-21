@@ -3,15 +3,26 @@ import { inject } from '@angular/core';
 import { finalize } from 'rxjs/operators';
 import { LoadingService } from '../services/loading.service';
 
+// URLs that poll silently in the background — never show the global spinner for these
+const SILENT_URLS = [
+  '/api/notification/unread-count',
+  '/api/notification',
+  '/api/publicholidays'
+];
+
 export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
   const loadingService = inject(LoadingService);
-  
-  // Show loading spinner
+
+  // Skip spinner for background polling requests
+  const isSilent = SILENT_URLS.some(url => req.url.includes(url));
+  if (isSilent) {
+    return next(req);
+  }
+
   loadingService.show();
 
   return next(req).pipe(
     finalize(() => {
-      // Hide loading spinner when request completes (success or error)
       loadingService.hide();
     })
   );
