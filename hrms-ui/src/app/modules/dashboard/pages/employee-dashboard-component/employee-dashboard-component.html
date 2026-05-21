@@ -25,7 +25,7 @@
         <p class="employee-code">Employee ID: {{ dashboardData.employee.employeeCode }}</p>
       </div>
       <div class="quick-actions">
-        <button class="action-btn" (click)="navigateTo('/attendance/my-attendance')">
+        <button class="action-btn" (click)="navigateTo('/self-service/my-attendance')">
           <i class="bi bi-calendar-check"></i>
           <span>Submit Attendance</span>
         </button>
@@ -189,7 +189,7 @@
       <div class="dashboard-card">
         <div class="card-header">
           <h2><i class="bi bi-clipboard-check"></i> Recent Attendance</h2>
-          <button class="btn-link" (click)="navigateTo('/attendance/my-attendance')">View All →</button>
+          <button class="btn-link" (click)="navigateTo('/self-service/my-attendance')">View All →</button>
         </div>
         <div class="card-body">
           <div class="attendance-list" *ngIf="dashboardData.recentAttendance.length > 0">
@@ -255,7 +255,7 @@
                 <h4>{{ dashboardData.pendingCounts.attendancePeriods }}</h4>
                 <p>Attendance Periods Submitted</p>
               </div>
-              <button class="btn btn-sm btn-primary" (click)="navigateTo('/attendance/my-attendance')">View</button>
+              <button class="btn btn-sm btn-primary" (click)="navigateTo('/self-service/my-attendance')">View</button>
             </div>
           </div>
         </div>
