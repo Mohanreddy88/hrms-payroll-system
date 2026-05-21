@@ -24,6 +24,7 @@ public class Notification
     public string Type { get; set; } = string.Empty; // leave_approved, leave_rejected, attendance_approved, etc.
 
     [MaxLength(200)]
+    [Column("link")]
     public string? Link { get; set; }
 
     public bool IsRead { get; set; } = false;
