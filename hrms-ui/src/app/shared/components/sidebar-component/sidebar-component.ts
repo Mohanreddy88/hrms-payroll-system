@@ -1,8 +1,10 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { filter } from 'rxjs/operators';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-sidebar-component',
@@ -21,15 +23,22 @@ export class SidebarComponent implements OnInit {
   selfServiceMenuOpen = false;
 
   @Input() isMobileMenuOpen = false;
+  pendingLeaveCount = 0;
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
     const user = this.authService.getUser();
     this.isAdmin = user?.role === 'Admin';
+
+    // Load pending leave count for admin badge
+    if (this.isAdmin) {
+      this.loadPendingLeaveCount();
+    }
 
     // Auto-expand menu based on current route
     this.updateMenuStateFromRoute(this.router.url);
@@ -40,6 +49,15 @@ export class SidebarComponent implements OnInit {
       .subscribe((event: any) => {
         this.updateMenuStateFromRoute(event.url);
       });
+  }
+
+  private loadPendingLeaveCount(): void {
+    this.http.get<any[]>(`${environment.apiUrl}/leavemanagement/requests`).subscribe({
+      next: (data) => {
+        this.pendingLeaveCount = data.filter(r => r.status === 'Pending').length;
+      },
+      error: () => { this.pendingLeaveCount = 0; }
+    });
   }
 
   private updateMenuStateFromRoute(url: string): void {

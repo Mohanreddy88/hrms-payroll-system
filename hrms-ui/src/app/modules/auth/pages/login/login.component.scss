@@ -171,6 +171,20 @@
   to { transform: rotate(360deg); }
 }
 
+.forgot-link {
+  text-align: right;
+  margin-bottom: 16px;
+  margin-top: -10px;
+
+  a {
+    color: #2563eb;
+    font-size: 12px;
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
 // Mobile responsive
 @media (max-width: 768px) {
   .login-wrapper {

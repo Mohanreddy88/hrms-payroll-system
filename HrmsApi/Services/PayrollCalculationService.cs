@@ -25,14 +25,13 @@ public class PayrollCalculationService : IPayrollCalculationService
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
-        // Check if payroll already exists
+        // Check if payroll already exists — warn but don't block (admin can regenerate)
         var existingPayroll = await _db.Payrolls
             .AnyAsync(p => p.EmployeeId == employeeId && p.Month == month && p.Year == year);
 
         if (existingPayroll)
         {
-            result.Errors.Add($"Payroll already exists for {new DateTime(year, month, 1):MMMM yyyy}");
-            return result;
+            result.Warnings.Add($"Payroll already exists for {new DateTime(year, month, 1):MMMM yyyy}. Generating will create a new record.");
         }
 
         // Check attendance periods (find periods that overlap with the month)
@@ -123,17 +122,33 @@ public class PayrollCalculationService : IPayrollCalculationService
             BasicSalary = employee.Salary
         };
 
-        // Calculate working days (exclude weekends)
+        // Total calendar days in the month — used as divisor for daily rate
+        var totalCalendarDays = DateTime.DaysInMonth(year, month);
+
+        // Fetch public holidays for this month (national + any state)
+        var publicHolidayDates = await _db.PublicHolidays
+            .Where(h => h.Year == year && h.Date.Month == month)
+            .Select(h => h.Date.Date)
+            .ToListAsync();
+        var publicHolidaySet = publicHolidayDates.ToHashSet();
+
+        // Working days = weekdays excluding public holidays (for attendance tracking / ExpectedHours)
         var workingDays = 0;
         for (var date = startDate; date <= endDate; date = date.AddDays(1))
         {
-            if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+            if (date.DayOfWeek != DayOfWeek.Saturday
+                && date.DayOfWeek != DayOfWeek.Sunday
+                && !publicHolidaySet.Contains(date.Date))
             {
                 workingDays++;
             }
         }
         result.WorkingDays = workingDays;
         result.ExpectedHours = workingDays * STANDARD_HOURS_PER_DAY;
+
+        // Daily rate = BasicSalary / total calendar days in month
+        // Public holidays are paid — employees are not penalised for them
+        result.DailyRate = employee.Salary / totalCalendarDays;
 
         // Get approved attendance periods (find periods that overlap with the month)
         var attendancePeriods = await _db.AttendancePeriods
@@ -178,7 +193,7 @@ public class PayrollCalculationService : IPayrollCalculationService
         foreach (var leave in leaveRequests)
         {
             var isPaid = leave.LeaveType.Code != "UL"; // UL = Unpaid Leave
-            var leaveDaysInMonth = CalculateLeaveDaysInMonth(leave.StartDate, leave.EndDate, startDate, endDate);
+            var leaveDaysInMonth = CalculateLeaveDaysInMonth(leave.StartDate, leave.EndDate, startDate, endDate, publicHolidaySet);
 
             if (isPaid)
             {
@@ -205,20 +220,19 @@ public class PayrollCalculationService : IPayrollCalculationService
         result.PaidLeaveDays = paidLeaveDays;
         result.UnpaidLeaveDays = unpaidLeaveDays;
 
-        // Calculate hourly rate (based on expected hours for the month)
-        result.HourlyRate = result.ExpectedHours > 0
-            ? result.BasicSalary / result.ExpectedHours
-            : 0;
+        // Hourly rate derived from daily rate (kept for attendance-based calculations)
+        result.HourlyRate = result.DailyRate / STANDARD_HOURS_PER_DAY;
 
-        // Calculate unpaid leave deduction
-        result.UnpaidLeaveDeduction = unpaidLeaveDays * STANDARD_HOURS_PER_DAY * result.HourlyRate;
+        // Unpaid leave deduction = number of unpaid days × daily rate
+        // (salary / total calendar days — public holidays are paid, so no deduction for them)
+        result.UnpaidLeaveDeduction = unpaidLeaveDays * result.DailyRate;
 
         // Update leave request deductions
         foreach (var leaveSummary in result.LeaveRequests)
         {
             if (!leaveSummary.IsPaid)
             {
-                leaveSummary.DeductionAmount = leaveSummary.TotalDays * STANDARD_HOURS_PER_DAY * result.HourlyRate;
+                leaveSummary.DeductionAmount = leaveSummary.TotalDays * result.DailyRate;
             }
         }
 
@@ -243,24 +257,26 @@ public class PayrollCalculationService : IPayrollCalculationService
         return result;
     }
 
-    private decimal CalculateLeaveDaysInMonth(DateTime leaveStart, DateTime leaveEnd, DateTime monthStart, DateTime monthEnd)
+    private decimal CalculateLeaveDaysInMonth(DateTime leaveStart, DateTime leaveEnd,
+        DateTime monthStart, DateTime monthEnd, HashSet<DateTime> publicHolidaySet)
     {
-        // Calculate overlap between leave period and the month
         var overlapStart = leaveStart > monthStart ? leaveStart : monthStart;
-        var overlapEnd = leaveEnd < monthEnd ? leaveEnd : monthEnd;
+        var overlapEnd   = leaveEnd   < monthEnd   ? leaveEnd   : monthEnd;
 
         if (overlapStart > overlapEnd) return 0;
 
-        // Count working days (exclude weekends)
+        // Count weekdays that are NOT public holidays
+        // (a leave day on a public holiday doesn't consume a leave day)
         decimal days = 0;
         for (var date = overlapStart; date <= overlapEnd; date = date.AddDays(1))
         {
-            if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+            if (date.DayOfWeek != DayOfWeek.Saturday
+                && date.DayOfWeek != DayOfWeek.Sunday
+                && !publicHolidaySet.Contains(date.Date))
             {
                 days++;
             }
         }
-
         return days;
     }
 
@@ -300,6 +316,23 @@ public class PayrollCalculationService : IPayrollCalculationService
             GeneratedOn = DateTime.UtcNow,
             Remarks = $"Auto-generated from {calculation.AttendancePeriods.Count} attendance period(s) and {calculation.LeaveRequests.Count} leave request(s)"
         };
+
+        // If a payroll already exists for this month, remove it before inserting the new one
+        // (unique constraint on EmployeeId+Month+Year)
+        var existing = await _db.Payrolls
+            .Include(p => p.AttendancePeriods)
+            .Include(p => p.LeaveRequests)
+            .Include(p => p.Adjustments)
+            .FirstOrDefaultAsync(p => p.EmployeeId == employeeId && p.Month == month && p.Year == year);
+
+        if (existing != null)
+        {
+            _db.PayrollAttendancePeriods.RemoveRange(existing.AttendancePeriods);
+            _db.PayrollLeaveRequests.RemoveRange(existing.LeaveRequests);
+            _db.PayrollAdjustments.RemoveRange(existing.Adjustments);
+            _db.Payrolls.Remove(existing);
+            await _db.SaveChangesAsync();
+        }
 
         _db.Payrolls.Add(payroll);
         await _db.SaveChangesAsync();

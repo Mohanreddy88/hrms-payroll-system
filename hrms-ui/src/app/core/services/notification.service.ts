@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, interval } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { AuthService } from './auth.service';
 
 export interface Notification {
   id: number;
@@ -19,15 +21,18 @@ export interface Notification {
 })
 export class NotificationService {
   private unreadCountSubject = new BehaviorSubject<number>(0);
-  public unreadCount$ = this.unreadCountSubject.asObservable();
+  // distinctUntilChanged ensures badge only re-renders when count actually changes
+  public unreadCount$ = this.unreadCountSubject.asObservable().pipe(distinctUntilChanged());
 
   private notificationsSubject = new BehaviorSubject<Notification[]>([]);
   public notifications$ = this.notificationsSubject.asObservable();
 
-  constructor(private http: HttpClient) {
-    // Poll for notifications every 30 seconds
+  constructor(private http: HttpClient, private auth: AuthService) {
+    // Poll every 30 seconds — only when user is logged in
     interval(30000).subscribe(() => {
-      this.refreshUnreadCount();
+      if (this.auth.isLoggedIn()) {
+        this.refreshUnreadCount();
+      }
     });
   }
 
@@ -60,16 +65,25 @@ export class NotificationService {
         const unreadCount = notifications.filter(n => !n.isRead).length;
         this.unreadCountSubject.next(unreadCount);
       },
-      error: (err) => console.error('Failed to refresh notifications:', err)
+      error: (err) => { if (err.status !== 0) console.error('Failed to refresh notifications:', err); }
     });
   }
 
   refreshUnreadCount(): void {
+    if (!this.auth.isLoggedIn()) return;
     this.getUnreadCount().subscribe({
       next: (data) => {
-        this.unreadCountSubject.next(data.count);
+        // Only emit if count changed — prevents badge re-render on every poll
+        if (data.count !== this.unreadCountSubject.getValue()) {
+          this.unreadCountSubject.next(data.count);
+        }
       },
-      error: (err) => console.error('Failed to refresh unread count:', err)
+      error: (err) => {
+        // status 0 = API unreachable (restarting/offline) — suppress console noise
+        if (err.status !== 0) {
+          console.error('Failed to refresh unread count:', err);
+        }
+      }
     });
   }
 

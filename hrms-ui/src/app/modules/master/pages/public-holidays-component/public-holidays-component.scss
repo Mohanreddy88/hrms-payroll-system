@@ -1,0 +1,251 @@
+.holidays-page {
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+
+  h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 4px;
+  }
+
+  p {
+    color: #6b7280;
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.year-select {
+  padding: 8px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+
+  &:focus { border-color: #2563eb; }
+}
+
+// Summary cards
+.summary-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 160px;
+
+  .card-icon {
+    font-size: 28px;
+    &.blue   { color: #2563eb; }
+    &.green  { color: #10b981; }
+    &.orange { color: #f59e0b; }
+  }
+
+  .card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1;
+  }
+
+  .card-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+}
+
+.holidays-table-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.holiday-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .holiday-icon {
+    font-size: 18px;
+    color: #2563eb;
+  }
+}
+
+.day-badge {
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.national {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  &.state {
+    background: #fef3c7;
+    color: #92400e;
+  }
+}
+
+// Modal
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header-row {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h5 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+
+  &:hover { color: #1f2937; }
+}
+
+.modal-form {
+  padding: 24px;
+
+  .form-group {
+    margin-bottom: 18px;
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .required { color: #ef4444; }
+
+    input[type="text"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+      background: white;
+      box-sizing: border-box;
+
+      &:focus { border-color: #2563eb; }
+    }
+  }
+}
+
+.type-toggle {
+  display: flex;
+  gap: 10px;
+}
+
+.toggle-option {
+  flex: 1;
+  padding: 10px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  &:hover { border-color: #2563eb; color: #2563eb; }
+
+  &.selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #2563eb;
+  }
+}
+
+.modal-footer-row {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

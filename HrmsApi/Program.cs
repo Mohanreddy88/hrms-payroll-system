@@ -249,9 +249,19 @@ using (var scope = app.Services.CreateScope())
 // ── Middleware Pipeline ───────────────────────────────────
 app.UseGlobalExceptionHandler();   // Custom exception middleware
 
-// Enable Swagger for both Development and Production
-app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "HRMS API v1"));
+// Swagger — local dev only, disabled in production
+if (!app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HRMS API v1");
+        c.RoutePrefix = "swagger";
+    });
+
+    // Redirect root / to /swagger/index.html in dev
+    app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
+}
 
 // app.UseHttpsRedirection(); // Disabled — use HTTP for local dev to avoid cert issues
 

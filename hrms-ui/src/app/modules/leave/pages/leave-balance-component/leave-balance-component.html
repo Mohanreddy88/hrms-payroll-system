@@ -3,15 +3,64 @@
   <div class="page-header">
     <div>
       <h3>Leave Balance</h3>
-      <p>{{ isAdmin ? 'View employee leave balances' : 'View your available leave balances for ' + currentYear }}</p>
+      <p>{{ isAdmin ? 'View and adjust employee leave balances' : 'View your available leave balances for ' + currentYear }}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-back" (click)="backToHome()">
         <i class="bi bi-house"></i>
         Home
       </button>
+</div>
+
+<!-- Edit Balance Modal -->
+@if (showEditModal) {
+  <div class="modal-overlay" (click)="closeEdit()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header-row">
+        <h5><i class="bi bi-pencil-square me-2"></i>Adjust Leave Balance</h5>
+        <button class="btn-close-modal" (click)="closeEdit()"><i class="bi bi-x-lg"></i></button>
+      </div>
+
+      <div class="modal-body-content">
+        <div class="edit-info">
+          <span class="edit-type-badge">{{ editingBalance?.leaveTypeName }}</span>
+          <span class="edit-used-note">Used: <strong>{{ editingBalance?.usedDays }} days</strong> (cannot be changed)</span>
+        </div>
+
+        @if (editError) {
+          <div class="alert alert-danger py-2 mb-3">{{ editError }}</div>
+        }
+
+        <div class="form-group">
+          <label>Total Days Entitlement</label>
+          <input type="number" [(ngModel)]="editForm.totalDays" min="0" step="0.5" class="form-control" />
+          <small class="text-muted">Default from leave type. Override for this employee.</small>
+        </div>
+
+        <div class="form-group mt-3">
+          <label>Carry Forward Days</label>
+          <input type="number" [(ngModel)]="editForm.carryForwardDays" min="0" step="0.5" class="form-control" />
+          <small class="text-muted">Days carried over from previous year.</small>
+        </div>
+
+        <div class="edit-calc-preview">
+          <span>New Balance = {{ editForm.totalDays }} + {{ editForm.carryForwardDays }} - {{ editingBalance?.usedDays }} =
+            <strong>{{ editForm.totalDays + editForm.carryForwardDays - (editingBalance?.usedDays || 0) }} days</strong>
+          </span>
+        </div>
+      </div>
+
+      <div class="modal-footer-row">
+        <button class="btn btn-secondary" (click)="closeEdit()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveEdit()" [disabled]="saving">
+          @if (saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+          Save Changes
+        </button>
+      </div>
     </div>
   </div>
+}
+</div>
 
   <!-- Admin Filters -->
   @if (isAdmin) {
@@ -72,7 +121,14 @@
               <i class="bi bi-{{ getLeaveIcon(balance.leaveTypeCode) }}"></i>
             </div>
             <div class="card-content">
-              <h5 class="leave-type-name">{{ balance.leaveTypeName }}</h5>
+              <div class="card-title-row">
+                <h5 class="leave-type-name">{{ balance.leaveTypeName }}</h5>
+                @if (isAdmin) {
+                  <button class="btn-edit-balance" (click)="openEdit(balance)" title="Adjust balance">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                }
+              </div>
               <div class="leave-stats">
                 <div class="stat-item">
                   <span class="stat-label">Total</span>

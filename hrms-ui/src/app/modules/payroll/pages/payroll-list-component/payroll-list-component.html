@@ -277,17 +277,66 @@
       </div>
 
       <!-- Adjustments -->
-      <div class="detail-section" *ngIf="(selectedPayroll.adjustments && selectedPayroll.adjustments.length > 0)">
-        <h5><i class="bi bi-sliders"></i> Manual Adjustments ({{ selectedPayroll.adjustments.length }})</h5>
-        <div class="adjustment-list">
+      <div class="detail-section">
+        <div class="section-header-row">
+          <h5><i class="bi bi-sliders"></i> Manual Adjustments
+            <span *ngIf="selectedPayroll.adjustments?.length">({{ selectedPayroll.adjustments.length }})</span>
+          </h5>
+          <button
+            *ngIf="selectedPayroll.status !== 'Processed'"
+            class="btn btn-sm btn-outline-primary"
+            (click)="openAddAdjustment()">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
+        </div>
+
+        <!-- Add Adjustment Form -->
+        <div class="adjustment-form" *ngIf="showAddAdjustment">
+          <div class="adj-form-row">
+            <select [(ngModel)]="adjForm.adjustmentType" class="form-control adj-select">
+              <option value="">— Type —</option>
+              <option value="Allowance">Allowance</option>
+              <option value="Bonus">Bonus</option>
+              <option value="Deduction">Deduction</option>
+              <option value="Overtime">Overtime</option>
+            </select>
+            <input type="text" [(ngModel)]="adjForm.description" placeholder="Description" class="form-control" />
+            <input type="number" [(ngModel)]="adjForm.amount" placeholder="Amount (RM)" class="form-control adj-amount" min="0.01" step="0.01" />
+            <button class="btn btn-sm btn-success" (click)="saveAdjustment()" [disabled]="savingAdj || !adjForm.adjustmentType || !adjForm.description.trim() || adjForm.amount <= 0">
+              <span *ngIf="savingAdj" class="spinner-border spinner-border-sm me-1"></span>
+              Save
+            </button>
+            <button class="btn btn-sm btn-secondary" (click)="cancelAddAdjustment()">Cancel</button>
+          </div>
+          <div class="adj-form-error" *ngIf="adjError">{{ adjError }}</div>
+        </div>
+
+        <div class="adjustment-list" *ngIf="selectedPayroll.adjustments?.length > 0">
           <div class="adjustment-item" *ngFor="let adj of selectedPayroll.adjustments">
             <div class="adjustment-info">
-              <div class="adjustment-type">{{ adj.adjustmentType }}</div>
+              <div class="adjustment-type">
+                <span class="adj-type-pill" [class]="'adj-' + adj.adjustmentType.toLowerCase()">{{ adj.adjustmentType }}</span>
+              </div>
               <div class="adjustment-desc">{{ adj.description }}</div>
               <div class="adjustment-meta">By {{ adj.createdBy }} on {{ adj.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
             </div>
-            <div class="adjustment-amount">RM {{ adj.amount | number:'1.2-2' }}</div>
+            <div class="adjustment-right">
+              <div class="adjustment-amount" [class.negative]="adj.adjustmentType === 'Deduction'">
+                {{ adj.adjustmentType === 'Deduction' ? '-' : '+' }}RM {{ adj.amount | number:'1.2-2' }}
+              </div>
+              <button
+                *ngIf="selectedPayroll.status !== 'Processed'"
+                class="btn-icon btn-delete adj-delete"
+                (click)="deleteAdjustment(adj.id)"
+                title="Remove adjustment">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
+        </div>
+
+        <div *ngIf="!selectedPayroll.adjustments?.length && !showAddAdjustment" class="adj-empty">
+          No adjustments added yet.
         </div>
       </div>
 

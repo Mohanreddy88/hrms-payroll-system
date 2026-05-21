@@ -38,8 +38,8 @@ export class PayrollGenerateComponent implements OnInit {
   // Month/Year selection
   currentMonth = new Date().getMonth() + 1;
   currentYear = new Date().getFullYear();
-  selectedMonth = this.currentMonth === 1 ? 12 : this.currentMonth - 1; // Default to last month
-  selectedYear = this.currentMonth === 1 ? this.currentYear - 1 : this.currentYear;
+  selectedMonth = this.currentMonth; // Default to current month
+  selectedYear = this.currentYear;
   
   months = [
     { value: 1,  name: 'January'   }, { value: 2,  name: 'February'  },

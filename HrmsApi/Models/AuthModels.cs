@@ -50,6 +50,12 @@ public record PayrollRequest(
     decimal Deductions
 );
 
+// ── Password Reset ────────────────────────────────────────────────────────────
+
+public record ForgotPasswordRequest(string Email);
+
+public record ResetPasswordRequest(string Token, string NewPassword);
+
 // ── User Management ───────────────────────────────────────────────────────────
 
 public record UserRequest(

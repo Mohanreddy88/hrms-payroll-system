@@ -64,6 +64,9 @@
           <li routerLink="/leave/requests" routerLinkActive="active-submenu">
             <i class="bi bi-list-check"></i>
             <span>Leave Approvals</span>
+            @if (pendingLeaveCount > 0) {
+              <span class="pending-badge">{{ pendingLeaveCount }}</span>
+            }
           </li>
           <li routerLink="/leave/balance" routerLinkActive="active-submenu">
             <i class="bi bi-wallet2"></i>
@@ -154,6 +157,10 @@
           <li routerLink="/master/banks" routerLinkActive="active-submenu">
             <i class="bi bi-bank"></i>
             <span>Banks</span>
+          </li>
+          <li routerLink="/master/public-holidays" routerLinkActive="active-submenu">
+            <i class="bi bi-calendar2-check-fill"></i>
+            <span>Public Holidays</span>
           </li>
         </ul>
       }

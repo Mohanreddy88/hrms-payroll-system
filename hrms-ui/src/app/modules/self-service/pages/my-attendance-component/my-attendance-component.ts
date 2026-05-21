@@ -70,11 +70,8 @@ export class MyAttendanceComponent implements OnInit {
   showDeleteModal: boolean = false;
   hasClickedAnyInput: boolean = false;
 
-  // Public holidays (should come from API - hardcoded for now)
-  publicHolidays: string[] = [
-    '2026-05-01', // Example: Labour Day
-    '2026-05-25'  // Example: Vesak Day
-  ];
+  // Public holidays loaded from API — keyed as 'YYYY-MM-DD' strings
+  publicHolidays: string[] = [];
 
   constructor(
     private http: HttpClient,
@@ -87,7 +84,22 @@ export class MyAttendanceComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEmployeeInfo();
-    this.loadPeriods();
+    this.loadPublicHolidays();
+  }
+
+  loadPublicHolidays(): void {
+    const year = new Date().getFullYear();
+    this.http.get<any[]>(`${environment.apiUrl}/publicholidays?year=${year}`).subscribe({
+      next: (holidays) => {
+        // Use substring(0,10) to get 'YYYY-MM-DD' without timezone conversion
+        this.publicHolidays = holidays.map(h => h.date.substring(0, 10));
+        this.loadPeriods();
+      },
+      error: () => {
+        // If API fails, still load periods (just no holiday highlights)
+        this.loadPeriods();
+      }
+    });
   }
 
   loadEmployeeInfo(): void {

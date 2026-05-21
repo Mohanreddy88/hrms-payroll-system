@@ -62,6 +62,10 @@
         </div>
       }
 
+      <div class="forgot-link">
+        <a routerLink="/forgot-password">Forgot password?</a>
+      </div>
+
       <button type="submit" class="btn-login" [disabled]="loading">
         @if (loading) {
           <span class="spinner"></span> Signing in...

@@ -59,6 +59,7 @@ public class PayrollCalculationResult
     public int Month { get; set; }
     public int Year { get; set; }
     public decimal BasicSalary { get; set; }
+    public decimal DailyRate { get; set; }
     public decimal HourlyRate { get; set; }
     public decimal ExpectedHours { get; set; }
     public decimal AttendanceHours { get; set; }

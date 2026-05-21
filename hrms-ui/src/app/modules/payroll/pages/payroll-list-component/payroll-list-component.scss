@@ -815,4 +815,70 @@
   }
 }
 
+// Adjustment enhancements
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 
+  h5 { margin: 0; }
+}
+
+.adjustment-form {
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.adj-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  .adj-select { flex: 0 0 140px; }
+  .adj-amount  { flex: 0 0 130px; }
+  input, select { flex: 1; min-width: 100px; }
+}
+
+.adj-form-error {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.adjustment-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adj-delete {
+  font-size: 13px;
+  padding: 3px 7px;
+}
+
+.adj-type-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &.adj-allowance { background: #dbeafe; color: #1d4ed8; }
+  &.adj-bonus     { background: #d1fae5; color: #065f46; }
+  &.adj-deduction { background: #fee2e2; color: #991b1b; }
+  &.adj-overtime  { background: #fef3c7; color: #92400e; }
+}
+
+.adjustment-amount.negative { color: #dc2626; }
+
+.adj-empty {
+  color: #94a3b8;
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+}

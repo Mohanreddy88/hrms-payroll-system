@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 
@@ -42,10 +44,53 @@ public class EmailService : IEmailService
     }
 
     // ── Core Resend HTTP sender ───────────────────────────────────────────────
+    // ── SMTP fallback (used locally when Resend:ApiKey is absent) ────────────
+    private async Task SendViaSmtpAsync(string toEmail, string subject, string htmlBody,
+        byte[]? attachmentData = null, string? attachmentName = null)
+    {
+        var host     = _config["Email:SmtpHost"]     ?? throw new InvalidOperationException("Email:SmtpHost not configured");
+        var port     = int.Parse(_config["Email:SmtpPort"] ?? "587");
+        var user     = _config["Email:SmtpUser"]     ?? throw new InvalidOperationException("Email:SmtpUser not configured");
+        var password = _config["Email:SmtpPassword"] ?? throw new InvalidOperationException("Email:SmtpPassword not configured");
+        var fromEmail= _config["Email:FromEmail"]    ?? user;
+        var fromName = _config["Email:FromName"]     ?? "HRMS";
+
+        using var smtp = new SmtpClient(host, port)
+        {
+            Credentials = new NetworkCredential(user, password),
+            EnableSsl = true
+        };
+
+        using var message = new MailMessage
+        {
+            From       = new MailAddress(fromEmail, fromName),
+            Subject    = subject,
+            Body       = htmlBody,
+            IsBodyHtml = true
+        };
+        message.To.Add(toEmail);
+
+        if (attachmentData != null && attachmentData.Length > 0 && !string.IsNullOrEmpty(attachmentName))
+        {
+            var stream = new System.IO.MemoryStream(attachmentData);
+            message.Attachments.Add(new Attachment(stream, attachmentName, "application/pdf"));
+        }
+
+        await smtp.SendMailAsync(message);
+        _logger.LogInformation("Email sent via SMTP to {Email} | subject: {Subject}", toEmail, subject);
+    }
+
     private async Task SendViaResendAsync(string toEmail, string subject, string htmlBody,
         byte[]? attachmentData = null, string? attachmentName = null)
     {
-        var apiKey   = _config["Resend:ApiKey"] ?? throw new InvalidOperationException("Resend:ApiKey not configured");
+        // Fall back to SMTP if Resend API key is not configured (local dev)
+        var apiKey = _config["Resend:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _logger.LogInformation("Resend:ApiKey not configured — falling back to SMTP");
+            await SendViaSmtpAsync(toEmail, subject, htmlBody, attachmentData, attachmentName);
+            return;
+        }
         var fromName = _config["Email:FromName"]  ?? "HRMS Payroll";
         var fromEmail= _config["Resend:FromEmail"] ?? "onboarding@resend.dev";
 

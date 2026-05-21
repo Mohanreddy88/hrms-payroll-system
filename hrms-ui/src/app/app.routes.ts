@@ -3,6 +3,8 @@ import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from './core/guards/admin.guard';
 import { AdminLayoutComponent } from './layouts/admin-layout-component/admin-layout-component';
 import { LoginComponent } from './modules/auth/pages/login/login.component';
+import { ForgotPasswordComponent } from './modules/auth/pages/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './modules/auth/pages/reset-password/reset-password.component';
 import { DashboardComponent } from './modules/dashboard/pages/dashboard-component/dashboard-component';
 import { HomeComponent } from './modules/dashboard/pages/home-component/home-component';
 import { EmployeeListComponent } from './modules/employees/pages/employee-list-component/employee-list-component';
@@ -31,11 +33,21 @@ import { ChangePasswordComponent } from './modules/self-service/pages/change-pas
 import { EmployeeDashboardComponent } from './modules/dashboard/pages/employee-dashboard-component/employee-dashboard-component';
 import { AdminDashboardComponent } from './modules/dashboard/pages/admin-dashboard-component/admin-dashboard-component';
 import { AnalyticsComponent } from './modules/analytics/pages/analytics-component/analytics-component';
+import { PublicHolidaysComponent } from './modules/master/pages/public-holidays-component/public-holidays-component';
+import { NotificationsPageComponent } from './modules/notifications/pages/notifications-page/notifications-page.component';
 
 export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent
+  },
+  {
+    path: 'forgot-password',
+    component: ForgotPasswordComponent
+  },
+  {
+    path: 'reset-password',
+    component: ResetPasswordComponent
   },
   {
     path: '',
@@ -83,10 +95,14 @@ export const routes: Routes = [
       { path: 'self-service',                  redirectTo: 'self-service/dashboard', pathMatch: 'full' },
       
       // Master submenu (Admin only)
-      { path: 'master/departments', component: DepartmentListComponent, canActivate: [adminGuard] },
-      { path: 'master/users',       component: UserListComponent, canActivate: [adminGuard] },
-      { path: 'master/banks',       component: BankListComponent, canActivate: [adminGuard] },
+      { path: 'master/departments',      component: DepartmentListComponent,   canActivate: [adminGuard] },
+      { path: 'master/users',            component: UserListComponent,         canActivate: [adminGuard] },
+      { path: 'master/banks',            component: BankListComponent,         canActivate: [adminGuard] },
+      { path: 'master/public-holidays',  component: PublicHolidaysComponent,   canActivate: [adminGuard] },
       
+      // Notifications
+      { path: 'notifications', component: NotificationsPageComponent },
+
       // Legacy route redirect
       { path: 'users',              redirectTo: 'master/users', pathMatch: 'full' },
     ]

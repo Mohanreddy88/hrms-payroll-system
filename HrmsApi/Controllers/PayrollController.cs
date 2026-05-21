@@ -358,6 +358,41 @@ public class PayrollController : ControllerBase
         });
     }
 
+    /// <summary>DELETE /api/payroll/{id}/adjustment/{adjustmentId} — remove an adjustment</summary>
+    [HttpDelete("{id:int}/adjustment/{adjustmentId:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteAdjustment(int id, int adjustmentId)
+    {
+        var payroll = await _db.Payrolls.FindAsync(id);
+        if (payroll == null) return NotFound(new { message = $"Payroll {id} not found" });
+
+        if (payroll.Status == "Processed")
+            return BadRequest(new { message = "Cannot modify adjustments on a processed payroll." });
+
+        var adjustment = await _db.PayrollAdjustments
+            .FirstOrDefaultAsync(a => a.Id == adjustmentId && a.PayrollId == id);
+
+        if (adjustment == null) return NotFound(new { message = "Adjustment not found." });
+
+        // Reverse the effect on payroll totals
+        if (adjustment.AdjustmentType == "Allowance" || adjustment.AdjustmentType == "Bonus")
+        {
+            payroll.Allowances  -= adjustment.Amount;
+            payroll.GrossIncome -= adjustment.Amount;
+        }
+        else if (adjustment.AdjustmentType == "Deduction")
+        {
+            payroll.Deductions -= adjustment.Amount;
+        }
+
+        payroll.NetSalary = payroll.GrossIncome - payroll.EpfAmount - payroll.SocsoAmount - payroll.TaxAmount - payroll.Deductions;
+
+        _db.PayrollAdjustments.Remove(adjustment);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Adjustment removed successfully.", newNetSalary = payroll.NetSalary });
+    }
+
     /// <summary>DELETE /api/payroll/{id} — delete payroll record</summary>
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)

@@ -27,6 +27,13 @@ export class LeaveBalanceComponent implements OnInit {
   selectedYear: number = this.currentYear;
   years: number[] = [];
 
+  // Edit modal
+  showEditModal = false;
+  saving = false;
+  editError = '';
+  editingBalance: any = null;
+  editForm = { totalDays: 0, carryForwardDays: 0 };
+
   constructor(
     private leaveService: LeaveService,
     private authService: AuthService,
@@ -131,6 +138,48 @@ export class LeaveBalanceComponent implements OnInit {
       'RL': 'arrow-repeat'
     };
     return icons[code] || 'calendar';
+  }
+
+  openEdit(balance: any): void {
+    this.editingBalance = balance;
+    this.editForm = { totalDays: balance.totalDays, carryForwardDays: balance.carryForwardDays };
+    this.editError = '';
+    this.showEditModal = true;
+  }
+
+  closeEdit(): void {
+    this.showEditModal = false;
+    this.editingBalance = null;
+    this.editError = '';
+  }
+
+  saveEdit(): void {
+    if (!this.editingBalance) return;
+    if (this.editForm.totalDays < 0 || this.editForm.carryForwardDays < 0) {
+      this.editError = 'Days cannot be negative.';
+      return;
+    }
+    this.saving = true;
+    this.editError = '';
+
+    this.http.put<any>(`${environment.apiUrl}/leavemanagement/balances/${this.editingBalance.id}`, {
+      totalDays: this.editForm.totalDays,
+      carryForwardDays: this.editForm.carryForwardDays
+    }).subscribe({
+      next: (updated) => {
+        this.saving = false;
+        // Update in place
+        const idx = this.balances.findIndex(b => b.id === updated.id);
+        if (idx !== -1) this.balances[idx] = updated;
+        this.toast.success('Updated', `${updated.leaveTypeName} balance updated successfully.`);
+        this.closeEdit();
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.saving = false;
+        this.editError = err?.error?.message ?? 'Failed to update balance.';
+      }
+    });
   }
 
   backToHome(): void {

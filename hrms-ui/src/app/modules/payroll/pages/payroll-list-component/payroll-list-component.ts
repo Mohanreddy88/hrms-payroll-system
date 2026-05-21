@@ -49,6 +49,12 @@ export class PayrollListComponent implements OnInit {
   rejectionReason = '';
   approvalRemarks = '';
 
+  // Adjustments
+  showAddAdjustment = false;
+  savingAdj = false;
+  adjError = '';
+  adjForm = { adjustmentType: '', description: '', amount: 0 };
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -135,6 +141,62 @@ export class PayrollListComponent implements OnInit {
   closeDetailModal(): void {
     this.showDetailModal = false;
     this.selectedPayroll = null;
+    this.showAddAdjustment = false;
+    this.adjError = '';
+  }
+
+  openAddAdjustment(): void {
+    this.adjForm = { adjustmentType: '', description: '', amount: 0 };
+    this.adjError = '';
+    this.showAddAdjustment = true;
+  }
+
+  cancelAddAdjustment(): void {
+    this.showAddAdjustment = false;
+    this.adjError = '';
+  }
+
+  saveAdjustment(): void {
+    if (!this.selectedPayroll) return;
+    if (!this.adjForm.adjustmentType || !this.adjForm.description.trim() || this.adjForm.amount <= 0) {
+      this.adjError = 'All fields are required and amount must be positive.';
+      return;
+    }
+    this.savingAdj = true;
+    this.adjError = '';
+
+    this.http.post<any>(`${environment.apiUrl}/payroll/${this.selectedPayroll.id}/adjustment`, {
+      adjustmentType: this.adjForm.adjustmentType,
+      description: this.adjForm.description.trim(),
+      amount: this.adjForm.amount
+    }).subscribe({
+      next: (res) => {
+        this.savingAdj = false;
+        this.showAddAdjustment = false;
+        this.toast.success('Adjustment Added', `${this.adjForm.adjustmentType} of RM ${this.adjForm.amount} added.`);
+        // Refresh detail
+        this.viewDetails(this.selectedPayroll.id);
+        this.loadPayrolls();
+      },
+      error: (err: any) => {
+        this.savingAdj = false;
+        this.adjError = err?.error?.message ?? 'Failed to add adjustment.';
+      }
+    });
+  }
+
+  deleteAdjustment(adjustmentId: number): void {
+    if (!this.selectedPayroll) return;
+    this.http.delete<any>(`${environment.apiUrl}/payroll/${this.selectedPayroll.id}/adjustment/${adjustmentId}`).subscribe({
+      next: () => {
+        this.toast.success('Removed', 'Adjustment removed.');
+        this.viewDetails(this.selectedPayroll.id);
+        this.loadPayrolls();
+      },
+      error: (err: any) => {
+        this.toast.error('Error', err?.error?.message ?? 'Failed to remove adjustment.');
+      }
+    });
   }
 
   openApproveModal(id: number): void {
@@ -198,7 +260,7 @@ export class PayrollListComponent implements OnInit {
   }
 
   emailPayslip(id: number): void {
-    this.http.post(`${environment.apiUrl}/payroll/${id}/email`, {}).subscribe({
+    this.http.post(`${environment.apiUrl}/payroll/email/${id}`, {}).subscribe({
       next: () => this.toast.success('Success', 'Payslip emailed successfully'),
       error: () => this.toast.error('Error', 'Failed to email payslip')
     });

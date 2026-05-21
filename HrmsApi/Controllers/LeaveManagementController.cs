@@ -140,6 +140,101 @@ public class LeaveManagementController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// PUT /api/leavemanagement/balances/{id} — Admin adjusts a specific employee leave balance
+    /// </summary>
+    [HttpPut("balances/{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateLeaveBalance(int id, [FromBody] LeaveBalanceUpdateRequest request)
+    {
+        var balance = await _db.EmployeeLeaveBalances
+            .Include(b => b.LeaveType)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (balance == null) return NotFound(new { message = "Leave balance not found." });
+
+        balance.TotalDays       = request.TotalDays;
+        balance.CarryForwardDays = request.CarryForwardDays;
+        balance.BalanceDays     = request.TotalDays + request.CarryForwardDays - balance.UsedDays;
+        balance.UpdatedAt       = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            balance.Id,
+            balance.EmployeeId,
+            balance.LeaveTypeId,
+            leaveTypeName    = balance.LeaveType.Name,
+            leaveTypeCode    = balance.LeaveType.Code,
+            balance.Year,
+            balance.TotalDays,
+            balance.UsedDays,
+            balance.BalanceDays,
+            balance.CarryForwardDays,
+            balance.UpdatedAt,
+            message = "Leave balance updated successfully."
+        });
+    }
+
+    /// <summary>
+    /// PUT /api/leavemanagement/leave-types/{id} — Admin updates leave type defaults
+    /// </summary>
+    [HttpPut("leave-types/{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateLeaveType(int id, [FromBody] LeaveTypeRequest request)
+    {
+        var leaveType = await _db.LeaveTypes.FindAsync(id);
+        if (leaveType == null) return NotFound(new { message = "Leave type not found." });
+
+        leaveType.Name               = request.Name;
+        leaveType.Code               = request.Code;
+        leaveType.Description        = request.Description;
+        leaveType.DefaultDaysPerYear = request.DefaultDaysPerYear;
+        leaveType.IsActive           = request.IsActive;
+        leaveType.RequiresApproval   = request.RequiresApproval;
+        leaveType.IsPaid             = request.IsPaid;
+
+        await _db.SaveChangesAsync();
+        return Ok(leaveType);
+    }
+
+    /// <summary>
+    /// GET /api/leavemanagement/balances/all?year=2026 — Admin gets all employees' balances
+    /// </summary>
+    [HttpGet("balances/all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllLeaveBalances([FromQuery] int? year)
+    {
+        var currentYear = year ?? DateTime.Now.Year;
+
+        var balances = await _db.EmployeeLeaveBalances
+            .Include(b => b.Employee)
+            .Include(b => b.LeaveType)
+            .Where(b => b.Year == currentYear)
+            .OrderBy(b => b.Employee.Name)
+            .ThenBy(b => b.LeaveType.Name)
+            .Select(b => new
+            {
+                b.Id,
+                b.EmployeeId,
+                employeeName     = b.Employee.Name,
+                employeeCode     = b.Employee.EmployeeCode,
+                b.LeaveTypeId,
+                leaveTypeName    = b.LeaveType.Name,
+                leaveTypeCode    = b.LeaveType.Code,
+                b.Year,
+                b.TotalDays,
+                b.UsedDays,
+                b.BalanceDays,
+                b.CarryForwardDays,
+                b.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(balances);
+    }
+
     // ══════════════════════════════════════════════════════════════════════════════
     // LEAVE REQUESTS
     // ══════════════════════════════════════════════════════════════════════════════
@@ -535,4 +630,10 @@ public class LeaveManagementController : ControllerBase
 public class CancelRequest
 {
     public string? Reason { get; set; }
+}
+
+public class LeaveBalanceUpdateRequest
+{
+    public decimal TotalDays        { get; set; }
+    public decimal CarryForwardDays { get; set; }
 }
