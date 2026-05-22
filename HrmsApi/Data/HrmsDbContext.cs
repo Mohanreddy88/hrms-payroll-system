@@ -39,6 +39,9 @@ public class HrmsDbContext : DbContext
         // ── User ──────────────────────────────────────────────
         modelBuilder.Entity<User>(e =>
         {
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+
             e.Property(x => x.Email)
              .HasMaxLength(255);
             
@@ -51,11 +54,16 @@ public class HrmsDbContext : DbContext
         modelBuilder.Entity<Department>(e =>
         {
             e.ToTable("Departments");
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
         });
 
         // ── Employee ──────────────────────────────────────────
         modelBuilder.Entity<Employee>(e =>
         {
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+
             // EmployeeCode configuration
             e.Property(x => x.EmployeeCode)
              .IsRequired()
@@ -110,6 +118,9 @@ public class HrmsDbContext : DbContext
         {
             e.Property(x => x.HoursWorked).HasPrecision(10, 2);
 
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+
             e.HasOne(x => x.Payroll)
              .WithMany(p => p.AttendancePeriods)
              .HasForeignKey(x => x.PayrollId)
@@ -128,6 +139,9 @@ public class HrmsDbContext : DbContext
         {
             e.Property(x => x.LeaveDays).HasPrecision(5, 2);
             e.Property(x => x.DeductionAmount).HasPrecision(10, 2);
+
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
 
             e.HasOne(x => x.Payroll)
              .WithMany(p => p.LeaveRequests)
@@ -197,6 +211,20 @@ public class HrmsDbContext : DbContext
             .HasIndex(p => new { p.EmployeeId, p.Month, p.Year })
             .IsUnique();
 
+        // ── PublicHoliday ─────────────────────────────────────
+        modelBuilder.Entity<PublicHoliday>(e =>
+        {
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+        });
+
+        // ── Notification ──────────────────────────────────────
+        modelBuilder.Entity<Notification>(e =>
+        {
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+        });
+
         // ── Timesheet ─────────────────────────────────────────
         modelBuilder.Entity<Timesheet>(e =>
         {
@@ -212,8 +240,18 @@ public class HrmsDbContext : DbContext
         });
 
         // ── Leave Management ──────────────────────────────────
+        modelBuilder.Entity<LeaveType>(e =>
+        {
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+        });
+
         modelBuilder.Entity<EmployeeLeaveBalance>(e =>
         {
+            // CreatedAt/UpdatedAt columns do not exist in the live DB — ignore them
+            e.Ignore(x => x.CreatedAt);
+            e.Ignore(x => x.UpdatedAt);
+
             e.Property(x => x.TotalDays).HasPrecision(5, 2);
             e.Property(x => x.UsedDays).HasPrecision(5, 2);
             e.Property(x => x.BalanceDays).HasPrecision(5, 2);
