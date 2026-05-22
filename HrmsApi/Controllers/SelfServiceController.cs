@@ -125,6 +125,8 @@ public class SelfServiceController : ControllerBase
             employee.Name,
             employee.Email,
             employee.Phone,
+            employee.IcPassport,
+            employee.TaxNumber,
             departmentId = employee.DepartmentId,
             departmentName = employee.Department?.Name,
             employee.Designation,
@@ -133,7 +135,9 @@ public class SelfServiceController : ControllerBase
             bankId = employee.BankId,
             bankName = employee.Bank?.Name,
             employee.AccountNumber,
-            employee.IsActive
+            employee.ProfilePicture,
+            employee.IsActive,
+            employee.CreatedAt
         });
     }
 
@@ -591,7 +595,8 @@ public class SelfServiceController : ControllerBase
                 a.CheckIn,
                 a.CheckOut,
                 a.WorkHours,
-                a.Remarks
+                a.Remarks,
+                a.CreatedAt
             })
             .ToListAsync();
 
@@ -655,7 +660,9 @@ public class SelfServiceController : ControllerBase
                 lb.TotalDays,
                 lb.UsedDays,
                 lb.BalanceDays,
-                lb.CarryForwardDays
+                lb.CarryForwardDays,
+                lb.CreatedAt,
+                lb.UpdatedAt
             })
             .ToListAsync();
 
@@ -707,6 +714,7 @@ public class SelfServiceController : ControllerBase
                 ap.StartDate,
                 ap.EndDate,
                 ap.Status,
+                ap.CreatedAt,
                 ap.SubmittedAt,
                 ap.ApprovedAt,
                 ap.RejectedAt,
@@ -930,7 +938,9 @@ public class SelfServiceController : ControllerBase
                 lr.RequestedOn,
                 lr.ApprovedBy,
                 lr.ApprovedOn,
-                lr.ApprovalRemarks
+                lr.ApprovalRemarks,
+                lr.CancelledOn,
+                lr.CancellationReason
             })
             .ToListAsync();
 

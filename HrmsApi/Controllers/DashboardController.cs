@@ -72,7 +72,7 @@ public class DashboardController : ControllerBase
         // 4. Recent Attendance Submissions (Last 10)
         var recentAttendance = await _db.AttendancePeriods
             .Include(ap => ap.Employee)
-            .OrderByDescending(ap => ap.SubmittedAt)
+            .OrderByDescending(ap => ap.SubmittedAt ?? ap.CreatedAt)
             .Take(10)
             .Select(ap => new
             {
@@ -83,7 +83,7 @@ public class DashboardController : ControllerBase
                 ap.EndDate,
                 periodLabel = ap.StartDate.ToString("MMM dd") + " - " + ap.EndDate.ToString("MMM dd, yyyy"),
                 ap.Status,
-                submittedAt = ap.SubmittedAt
+                submittedAt = ap.SubmittedAt ?? ap.CreatedAt
             })
             .ToListAsync();
 

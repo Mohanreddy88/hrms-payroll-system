@@ -42,7 +42,7 @@ public class NotificationController : ControllerBase
             query = query.Where(n => !n.IsRead);
 
         var notifications = await query
-            .OrderByDescending(n => n.Id)
+            .OrderByDescending(n => n.CreatedAt)
             .Take(50)
             .Select(n => new
             {
@@ -52,6 +52,7 @@ public class NotificationController : ControllerBase
                 n.Type,
                 n.Link,
                 n.IsRead,
+                n.CreatedAt,
                 n.ReadAt
             })
             .ToListAsync();
@@ -153,7 +154,7 @@ public class NotificationController : ControllerBase
             Message = request.Message,
             Type = request.Type,
             Link = request.Link,
-            // CreatedAt not mapped — column does not exist in live DB
+            CreatedAt = DateTime.UtcNow
         };
 
         _db.Notifications.Add(notification);

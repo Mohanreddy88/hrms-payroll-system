@@ -287,7 +287,9 @@ public class LeaveManagementController : ControllerBase
                 lr.RequestedOn,
                 lr.ApprovedBy,
                 lr.ApprovedOn,
-                lr.ApprovalRemarks
+                lr.ApprovalRemarks,
+                lr.CancelledOn,
+                lr.CancellationReason
             })
             .ToListAsync();
 
@@ -512,7 +514,9 @@ public class LeaveManagementController : ControllerBase
                 leaveRequest.Id,
                 leaveRequest.EmployeeId,
                 leaveRequest.LeaveTypeId,
-                leaveRequest.Status
+                leaveRequest.Status,
+                leaveRequest.CancelledOn,
+                leaveRequest.CancellationReason
             };
             
             return Ok(result);

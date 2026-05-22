@@ -33,9 +33,10 @@ public class EmployeesController : ControllerBase
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
                 e.JoinDate, e.Salary, e.IsActive,
+                e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.Gender
+                e.ProfilePicture, e.Gender
             })
             .ToListAsync();
 
@@ -67,9 +68,10 @@ public class EmployeesController : ControllerBase
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
                 e.JoinDate, e.Salary, e.IsActive,
+                e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.Gender
+                e.ProfilePicture, e.Gender
             })
             .ToListAsync();
 
@@ -100,9 +102,10 @@ public class EmployeesController : ControllerBase
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
                 e.JoinDate, e.Salary, e.IsActive,
+                e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.Gender
+                e.ProfilePicture, e.Gender
             })
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Employee {id} not found.");
@@ -176,8 +179,11 @@ public class EmployeesController : ControllerBase
             JoinDate       = joinDateUtc,
             Salary         = req.Salary,
             IsActive       = req.IsActive,
+            IcPassport     = req.IcPassport,
+            TaxNumber      = req.TaxNumber,
             BankId         = req.BankId,
             AccountNumber  = req.AccountNumber,
+            ProfilePicture = req.ProfilePicture ?? string.Empty,
             Gender         = req.Gender ?? string.Empty
         };
 
@@ -210,6 +216,8 @@ public class EmployeesController : ControllerBase
                     emp.JoinDate,
                     emp.Salary,
                     emp.IsActive,
+                    emp.IcPassport,
+                    emp.TaxNumber,
                     emp.BankId,
                     emp.AccountNumber
                 }
@@ -262,8 +270,11 @@ public class EmployeesController : ControllerBase
         emp.JoinDate       = joinDateUtc;
         emp.Salary         = req.Salary;
         emp.IsActive       = req.IsActive;
+        emp.IcPassport     = req.IcPassport;
+        emp.TaxNumber      = req.TaxNumber;
         emp.BankId         = req.BankId;
         emp.AccountNumber  = req.AccountNumber;
+        emp.ProfilePicture = req.ProfilePicture ?? string.Empty;
         emp.Gender         = req.Gender ?? string.Empty;
 
         await _db.SaveChangesAsync();

@@ -174,7 +174,8 @@ public class PayrollController : ControllerBase
                 a.AdjustmentType,
                 a.Description,
                 a.Amount,
-                createdBy = a.Creator.Username
+                createdBy = a.Creator.Username,
+                a.CreatedAt
             })
         });
     }
@@ -227,27 +228,14 @@ public class PayrollController : ControllerBase
     [HttpPost("generate")]
     public async Task<IActionResult> GenerateSingle([FromBody] PayrollGenerateRequest request)
     {
-        try
+        var userId = GetCurrentUserId();
+        var payroll = await _payrollService.GeneratePayrollAsync(request.EmployeeId, request.Month, request.Year, userId);
+        return Ok(new
         {
-            var userId = GetCurrentUserId();
-            var payroll = await _payrollService.GeneratePayrollAsync(request.EmployeeId, request.Month, request.Year, userId);
-            return Ok(new
-            {
-                message = $"Payroll generated successfully for {new DateTime(request.Year, request.Month, 1):MMMM yyyy}",
-                payrollId = payroll.Id,
-                netSalary = payroll.NetSalary
-            });
-        }
-        catch (Exception ex)
-        {
-            var inner = ex.InnerException?.Message ?? "";
-            return StatusCode(500, new
-            {
-                error = ex.Message,
-                inner,
-                stackTrace = ex.StackTrace
-            });
-        }
+            message = $"Payroll generated successfully for {new DateTime(request.Year, request.Month, 1):MMMM yyyy}",
+            payrollId = payroll.Id,
+            netSalary = payroll.NetSalary
+        });
     }
 
     /// <summary>POST /api/payroll/generate-bulk — generate payroll for multiple employees</summary>
