@@ -37,8 +37,7 @@ public class PublicHolidaysController : ControllerBase
                 h.Year,
                 h.IsNational,
                 h.State,
-                h.Description,
-                h.CreatedAt
+                h.Description
             })
             .ToListAsync();
 
@@ -70,7 +69,7 @@ public class PublicHolidaysController : ControllerBase
             IsNational  = request.IsNational,
             State       = request.IsNational ? null : request.State?.Trim(),
             Description = request.Description?.Trim(),
-            CreatedAt   = DateTime.UtcNow
+            // CreatedAt not mapped — column does not exist in live DB
         };
 
         _db.PublicHolidays.Add(holiday);

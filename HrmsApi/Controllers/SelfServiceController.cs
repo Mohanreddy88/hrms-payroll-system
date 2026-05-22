@@ -136,8 +136,7 @@ public class SelfServiceController : ControllerBase
             bankName = employee.Bank?.Name,
             employee.AccountNumber,
             employee.ProfilePicture,
-            employee.IsActive,
-            employee.CreatedAt
+            employee.IsActive
         });
     }
 
@@ -595,8 +594,7 @@ public class SelfServiceController : ControllerBase
                 a.CheckIn,
                 a.CheckOut,
                 a.WorkHours,
-                a.Remarks,
-                a.CreatedAt
+                a.Remarks
             })
             .ToListAsync();
 
@@ -660,9 +658,7 @@ public class SelfServiceController : ControllerBase
                 lb.TotalDays,
                 lb.UsedDays,
                 lb.BalanceDays,
-                lb.CarryForwardDays,
-                lb.CreatedAt,
-                lb.UpdatedAt
+                lb.CarryForwardDays
             })
             .ToListAsync();
 
@@ -714,7 +710,6 @@ public class SelfServiceController : ControllerBase
                 ap.StartDate,
                 ap.EndDate,
                 ap.Status,
-                ap.CreatedAt,
                 ap.SubmittedAt,
                 ap.ApprovedAt,
                 ap.RejectedAt,

@@ -51,7 +51,6 @@ public class DepartmentsController : ControllerBase
                 d.Name,
                 d.Description,
                 d.IsActive,
-                d.CreatedAt,
                 EmployeeCount = d.Employees.Count(e => e.IsActive)
             })
             .ToListAsync();
@@ -97,7 +96,7 @@ public class DepartmentsController : ControllerBase
             Name = request.Name.Trim(),
             Description = request.Description?.Trim() ?? string.Empty,
             IsActive = request.IsActive,
-            CreatedAt = DateTime.UtcNow
+            // CreatedAt not mapped — column does not exist in live DB
         };
 
         _db.Departments.Add(department);
