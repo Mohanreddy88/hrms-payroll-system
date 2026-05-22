@@ -7,7 +7,7 @@ public class HrmsDbContext : DbContext
 {
     public HrmsDbContext(DbContextOptions<HrmsDbContext> options) : base(options) { }
 
-    // ── DbSets ────────────────────────────────────────────────
+    // ── DbSets ───────────────────────────────────────��────────
     public DbSet<User>                  Users                 => Set<User>();
     public DbSet<Department>            Departments           => Set<Department>();
     public DbSet<BankMaster>            BankMasters           => Set<BankMaster>();
@@ -37,50 +37,52 @@ public class HrmsDbContext : DbContext
         });
 
         // ── User ──────────────────────────────────────────────
+        // DB has: Id, Username, Email, PasswordHash, Role, IsActive, CreatedAt
+        // Model has extra: PasswordResetToken, PasswordResetTokenExpiry — ignore them
         modelBuilder.Entity<User>(e =>
         {
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
+            e.Ignore(x => x.PasswordResetToken);
+            e.Ignore(x => x.PasswordResetTokenExpiry);
 
-            e.Property(x => x.Email)
-             .HasMaxLength(255);
-            
+            e.Property(x => x.Email).HasMaxLength(255);
             e.HasIndex(x => x.Email)
              .IsUnique()
              .HasFilter("\"Email\" IS NOT NULL AND \"Email\" <> ''");
         });
 
         // ── Department ────────────────────────────────────────
+        // DB has: Id, Name, Description, IsActive, CreatedAt — all match
         modelBuilder.Entity<Department>(e =>
         {
             e.ToTable("Departments");
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
         });
 
         // ── Employee ──────────────────────────────────────────
+        // DB columns: FirstName, LastName, PhoneNumber, JoiningDate, BankAccountNumber
+        // Model uses: Name, Phone, JoinDate, AccountNumber — map them
+        // DB has no: ProfilePicture, IcPassport, TaxNumber — ignore them
         modelBuilder.Entity<Employee>(e =>
         {
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
-
-            // EmployeeCode configuration
-            e.Property(x => x.EmployeeCode)
-             .IsRequired()
-             .HasMaxLength(20);
-            
-            e.HasIndex(x => x.EmployeeCode)
-             .IsUnique();
-
+            e.Property(x => x.EmployeeCode).IsRequired().HasMaxLength(20);
+            e.HasIndex(x => x.EmployeeCode).IsUnique();
             e.Property(x => x.Salary).HasPrecision(18, 2);
 
-            // DepartmentId is a nullable FK — employee may not have a department assigned yet
+            // Column name mappings
+            e.Property(x => x.Name).HasColumnName("FirstName");
+            e.Property(x => x.Phone).HasColumnName("PhoneNumber");
+            e.Property(x => x.JoinDate).HasColumnName("JoiningDate");
+            e.Property(x => x.AccountNumber).HasColumnName("BankAccountNumber");
+
+            // Properties not in live DB — ignore
+            e.Ignore(x => x.ProfilePicture);
+            e.Ignore(x => x.IcPassport);
+            e.Ignore(x => x.TaxNumber);
+
             e.HasOne(x => x.Department)
              .WithMany(d => d.Employees)
              .HasForeignKey(x => x.DepartmentId)
              .OnDelete(DeleteBehavior.SetNull);
 
-            // BankId is a nullable FK — employee may not have a bank assigned yet
             e.HasOne(x => x.Bank)
              .WithMany(b => b.Employees)
              .HasForeignKey(x => x.BankId)
@@ -88,6 +90,8 @@ public class HrmsDbContext : DbContext
         });
 
         // ── Payroll ───────────────────────────────────────────
+        // DB columns: ProcessedDate, ApprovedDate (NOT ProcessedOn, ApprovedOn)
+        // DB has no: GeneratedOn, PaidLeaveDays, UnpaidLeaveDays — ignore them
         modelBuilder.Entity<Payroll>(e =>
         {
             e.Property(x => x.BasicSalary).HasPrecision(18, 2);
@@ -101,7 +105,15 @@ public class HrmsDbContext : DbContext
             e.Property(x => x.AttendanceHours).HasPrecision(10, 2);
             e.Property(x => x.ExpectedHours).HasPrecision(10, 2);
 
-            // Foreign keys for approvers
+            // Column name mappings
+            e.Property(x => x.ApprovedOn).HasColumnName("ApprovedDate");
+            e.Property(x => x.ProcessedOn).HasColumnName("ProcessedDate");
+
+            // Properties not in live DB — ignore
+            e.Ignore(x => x.GeneratedOn);
+            e.Ignore(x => x.PaidLeaveDays);
+            e.Ignore(x => x.UnpaidLeaveDays);
+
             e.HasOne(x => x.Approver)
              .WithMany()
              .HasForeignKey(x => x.ApprovedBy)
@@ -113,12 +125,22 @@ public class HrmsDbContext : DbContext
              .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Payroll>()
+            .HasOne(p => p.Employee)
+            .WithMany(e => e.Payrolls)
+            .HasForeignKey(p => p.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // One payroll record per employee per month/year
+        modelBuilder.Entity<Payroll>()
+            .HasIndex(p => new { p.EmployeeId, p.Month, p.Year })
+            .IsUnique();
+
         // ── PayrollAttendancePeriod ───────────────────────────
+        // DB has: Id, PayrollId, AttendancePeriodId, HoursWorked — no CreatedAt
         modelBuilder.Entity<PayrollAttendancePeriod>(e =>
         {
             e.Property(x => x.HoursWorked).HasPrecision(10, 2);
-
-            // CreatedAt column does not exist in the live DB — ignore it
             e.Ignore(x => x.CreatedAt);
 
             e.HasOne(x => x.Payroll)
@@ -135,12 +157,12 @@ public class HrmsDbContext : DbContext
         });
 
         // ── PayrollLeaveRequest ───────────────────────────────
+        // DB has: Id, PayrollId, LeaveRequestId, LeaveDays, DeductionAmount — no IsPaid, no CreatedAt
         modelBuilder.Entity<PayrollLeaveRequest>(e =>
         {
             e.Property(x => x.LeaveDays).HasPrecision(5, 2);
             e.Property(x => x.DeductionAmount).HasPrecision(10, 2);
-
-            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.IsPaid);
             e.Ignore(x => x.CreatedAt);
 
             e.HasOne(x => x.Payroll)
@@ -157,12 +179,12 @@ public class HrmsDbContext : DbContext
         });
 
         // ── PayrollAdjustment ─────────────────────────────────
+        // DB has: Id, PayrollId, Type, Description, Amount, CreatedBy, CreatedAt
+        // Model uses AdjustmentType — map to "Type"
         modelBuilder.Entity<PayrollAdjustment>(e =>
         {
             e.Property(x => x.Amount).HasPrecision(10, 2);
-
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
+            e.Property(x => x.AdjustmentType).HasColumnName("Type");
 
             e.HasOne(x => x.Payroll)
              .WithMany(p => p.Adjustments)
@@ -176,16 +198,12 @@ public class HrmsDbContext : DbContext
         });
 
         // ── Attendance ────────────────────────────────────────
+        // DB has: Id, EmployeeId, Date, TimeIn, TimeOut, WorkHours, Status, Remarks, CreatedAt
         modelBuilder.Entity<Attendance>(e =>
         {
             e.Property(x => x.WorkHours).HasPrecision(10, 2);
-
-            // DB columns are "TimeIn"/"TimeOut" but C# model uses CheckIn/CheckOut
             e.Property(x => x.CheckIn).HasColumnName("TimeIn");
             e.Property(x => x.CheckOut).HasColumnName("TimeOut");
-
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
 
             e.HasOne(x => x.Employee)
              .WithMany(emp => emp.Attendances)
@@ -193,65 +211,87 @@ public class HrmsDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Payroll>()
-            .HasOne(p => p.Employee)
-            .WithMany(e => e.Payrolls)
-            .HasForeignKey(p => p.EmployeeId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // ── Unique constraints ────────────────────────────────
-
         // One attendance record per employee per calendar day
         modelBuilder.Entity<Attendance>()
             .HasIndex(a => new { a.EmployeeId, a.Date })
             .IsUnique();
 
-        // One payroll record per employee per month/year
-        modelBuilder.Entity<Payroll>()
-            .HasIndex(p => new { p.EmployeeId, p.Month, p.Year })
-            .IsUnique();
-
-        // ── PublicHoliday ─────────────────────────────────────
-        modelBuilder.Entity<PublicHoliday>(e =>
+        // ── AttendancePeriod ──────────────────────────────────
+        // DB has: Id, EmployeeId, StartDate, EndDate, TotalDays, WorkingDays,
+        //         PresentDays, AbsentDays, LeaveDays, HolidayDays, TotalHours, CreatedAt
+        // Model has extra: Status, SubmittedAt, ApprovedAt, RejectedAt, ApprovedBy,
+        //                  RejectedBy, RejectionReason, Remarks — ignore them all
+        modelBuilder.Entity<AttendancePeriod>(e =>
         {
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
+            e.Ignore(x => x.Status);
+            e.Ignore(x => x.SubmittedAt);
+            e.Ignore(x => x.ApprovedAt);
+            e.Ignore(x => x.RejectedAt);
+            e.Ignore(x => x.ApprovedBy);
+            e.Ignore(x => x.RejectedBy);
+            e.Ignore(x => x.RejectionReason);
+            e.Ignore(x => x.Remarks);
+
+            e.HasOne(x => x.Employee)
+             .WithMany()
+             .HasForeignKey(x => x.EmployeeId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.EmployeeId, x.StartDate, x.EndDate }).IsUnique();
         });
 
+        // ── AttendancePeriodDay ───────────────────────────────
+        // DB has: Id, AttendancePeriodId, Date, DayType, Hours, Remarks
+        // Model has extra: Note, IsPublicHoliday, IsWeekend — ignore them
+        modelBuilder.Entity<AttendancePeriodDay>(e =>
+        {
+            e.Property(x => x.Hours).HasPrecision(5, 2);
+            e.Ignore(x => x.Note);
+            e.Ignore(x => x.IsPublicHoliday);
+            e.Ignore(x => x.IsWeekend);
+
+            e.HasOne(x => x.AttendancePeriod)
+             .WithMany(ap => ap.Days)
+             .HasForeignKey(x => x.AttendancePeriodId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.AttendancePeriodId, x.Date }).IsUnique();
+        });
+
+        // ── PublicHoliday ─────────────────────────────────────
+        // DB has: Id, Name, Date, Year, IsNational, State, Description, CreatedAt — all match
+        // (no ignores needed)
+
         // ── Notification ──────────────────────────────────────
+        // DB has: Id, UserId, Title, Message, Type, IsRead, CreatedAt, ReadAt
+        // Model has: Link (with [Column("link")]) — not in DB, ignore it
         modelBuilder.Entity<Notification>(e =>
         {
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
+            e.Ignore(x => x.Link);
         });
 
         // ── Timesheet ─────────────────────────────────────────
         modelBuilder.Entity<Timesheet>(e =>
         {
             e.Property(x => x.TotalWorkHours).HasPrecision(10, 2);
-            
+
             e.HasOne(x => x.Employee)
              .WithMany()
              .HasForeignKey(x => x.EmployeeId)
              .OnDelete(DeleteBehavior.Cascade);
 
-            // One timesheet per employee per month/year
             e.HasIndex(x => new { x.EmployeeId, x.Year, x.Month }).IsUnique();
         });
 
-        // ── Leave Management ──────────────────────────────────
-        modelBuilder.Entity<LeaveType>(e =>
-        {
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
-        });
+        // ── LeaveType ─────────────────────────────────────────
+        // DB has: Id, Name, Code, Description, DefaultDaysPerYear, IsActive,
+        //         RequiresApproval, IsPaid, CreatedAt — all match
 
+        // ── EmployeeLeaveBalance ──────────────────────────────
+        // DB has: Id, EmployeeId, LeaveTypeId, Year, TotalDays, UsedDays,
+        //         BalanceDays, CarryForwardDays, CreatedAt, UpdatedAt — all match
         modelBuilder.Entity<EmployeeLeaveBalance>(e =>
         {
-            // CreatedAt/UpdatedAt columns do not exist in the live DB — ignore them
-            e.Ignore(x => x.CreatedAt);
-            e.Ignore(x => x.UpdatedAt);
-
             e.Property(x => x.TotalDays).HasPrecision(5, 2);
             e.Property(x => x.UsedDays).HasPrecision(5, 2);
             e.Property(x => x.BalanceDays).HasPrecision(5, 2);
@@ -267,13 +307,23 @@ public class HrmsDbContext : DbContext
              .HasForeignKey(x => x.LeaveTypeId)
              .OnDelete(DeleteBehavior.Cascade);
 
-            // One balance record per employee per leave type per year
             e.HasIndex(x => new { x.EmployeeId, x.LeaveTypeId, x.Year }).IsUnique();
         });
 
+        // ── LeaveRequest ──────────────────────────────────────
+        // DB has: Id, EmployeeId, LeaveTypeId, StartDate, EndDate, TotalDays,
+        //         Reason, Status, ApprovedBy, ApprovedDate, ApproverRemarks, CreatedAt
+        // Model has: RequestedOn, ApprovedOn, ApprovalRemarks, CancelledOn, CancellationReason
+        // Map: ApprovedOn→ApprovedDate, ApprovalRemarks→ApproverRemarks
+        // Ignore: RequestedOn, CancelledOn, CancellationReason
         modelBuilder.Entity<LeaveRequest>(e =>
         {
             e.Property(x => x.TotalDays).HasPrecision(5, 2);
+            e.Property(x => x.ApprovedOn).HasColumnName("ApprovedDate");
+            e.Property(x => x.ApprovalRemarks).HasColumnName("ApproverRemarks");
+            e.Ignore(x => x.RequestedOn);
+            e.Ignore(x => x.CancelledOn);
+            e.Ignore(x => x.CancellationReason);
 
             e.HasOne(x => x.Employee)
              .WithMany()
@@ -284,34 +334,6 @@ public class HrmsDbContext : DbContext
              .WithMany(lt => lt.LeaveRequests)
              .HasForeignKey(x => x.LeaveTypeId)
              .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // ── Attendance Period ─────────────────────────────────
-        modelBuilder.Entity<AttendancePeriod>(e =>
-        {
-            // CreatedAt column does not exist in the live DB — ignore it
-            e.Ignore(x => x.CreatedAt);
-
-            e.HasOne(x => x.Employee)
-             .WithMany()
-             .HasForeignKey(x => x.EmployeeId)
-             .OnDelete(DeleteBehavior.Cascade);
-
-            // One period per employee per date range (prevent overlapping periods)
-            e.HasIndex(x => new { x.EmployeeId, x.StartDate, x.EndDate }).IsUnique();
-        });
-
-        modelBuilder.Entity<AttendancePeriodDay>(e =>
-        {
-            e.Property(x => x.Hours).HasPrecision(5, 2);
-
-            e.HasOne(x => x.AttendancePeriod)
-             .WithMany(ap => ap.Days)
-             .HasForeignKey(x => x.AttendancePeriodId)
-             .OnDelete(DeleteBehavior.Cascade);
-
-            // One day entry per period per date
-            e.HasIndex(x => new { x.AttendancePeriodId, x.Date }).IsUnique();
         });
     }
 }
