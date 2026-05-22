@@ -174,8 +174,7 @@ public class PayrollController : ControllerBase
                 a.AdjustmentType,
                 a.Description,
                 a.Amount,
-                createdBy = a.Creator.Username,
-                a.CreatedAt
+                createdBy = a.Creator.Username
             })
         });
     }

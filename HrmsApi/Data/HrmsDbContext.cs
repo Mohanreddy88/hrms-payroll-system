@@ -147,6 +147,9 @@ public class HrmsDbContext : DbContext
         {
             e.Property(x => x.Amount).HasPrecision(10, 2);
 
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+
             e.HasOne(x => x.Payroll)
              .WithMany(p => p.Adjustments)
              .HasForeignKey(x => x.PayrollId)
@@ -166,6 +169,9 @@ public class HrmsDbContext : DbContext
             // DB columns are "TimeIn"/"TimeOut" but C# model uses CheckIn/CheckOut
             e.Property(x => x.CheckIn).HasColumnName("TimeIn");
             e.Property(x => x.CheckOut).HasColumnName("TimeOut");
+
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
 
             e.HasOne(x => x.Employee)
              .WithMany(emp => emp.Attendances)
@@ -245,6 +251,9 @@ public class HrmsDbContext : DbContext
         // ── Attendance Period ─────────────────────────────────
         modelBuilder.Entity<AttendancePeriod>(e =>
         {
+            // CreatedAt column does not exist in the live DB — ignore it
+            e.Ignore(x => x.CreatedAt);
+
             e.HasOne(x => x.Employee)
              .WithMany()
              .HasForeignKey(x => x.EmployeeId)
