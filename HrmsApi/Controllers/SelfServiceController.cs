@@ -125,8 +125,6 @@ public class SelfServiceController : ControllerBase
             employee.Name,
             employee.Email,
             employee.Phone,
-            employee.IcPassport,
-            employee.TaxNumber,
             departmentId = employee.DepartmentId,
             departmentName = employee.Department?.Name,
             employee.Designation,
@@ -135,7 +133,6 @@ public class SelfServiceController : ControllerBase
             bankId = employee.BankId,
             bankName = employee.Bank?.Name,
             employee.AccountNumber,
-            employee.ProfilePicture,
             employee.IsActive
         });
     }
@@ -933,9 +930,7 @@ public class SelfServiceController : ControllerBase
                 lr.RequestedOn,
                 lr.ApprovedBy,
                 lr.ApprovedOn,
-                lr.ApprovalRemarks,
-                lr.CancelledOn,
-                lr.CancellationReason
+                lr.ApprovalRemarks
             })
             .ToListAsync();
 

@@ -321,7 +321,8 @@ public class HrmsDbContext : DbContext
             e.Property(x => x.TotalDays).HasPrecision(5, 2);
             e.Property(x => x.ApprovedOn).HasColumnName("ApprovedDate");
             e.Property(x => x.ApprovalRemarks).HasColumnName("ApproverRemarks");
-            e.Ignore(x => x.RequestedOn);
+            // RequestedOn maps to CreatedAt in DB (the timestamp when leave was requested)
+            e.Property(x => x.RequestedOn).HasColumnName("CreatedAt");
             e.Ignore(x => x.CancelledOn);
             e.Ignore(x => x.CancellationReason);
 
