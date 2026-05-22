@@ -83,11 +83,14 @@ public class EmailService : IEmailService
     private async Task SendViaResendAsync(string toEmail, string subject, string htmlBody,
         byte[]? attachmentData = null, string? attachmentName = null)
     {
-        // Fall back to SMTP if Resend API key is not configured (local dev)
+        // Use SMTP directly — Resend API is not used
+        await SendViaSmtpAsync(toEmail, subject, htmlBody, attachmentData, attachmentName);
+        return;
+
+        // Resend API path kept for reference but bypassed
         var apiKey = _config["Resend:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogInformation("Resend:ApiKey not configured — falling back to SMTP");
             await SendViaSmtpAsync(toEmail, subject, htmlBody, attachmentData, attachmentName);
             return;
         }
