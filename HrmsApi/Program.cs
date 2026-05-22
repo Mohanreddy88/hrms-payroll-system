@@ -53,6 +53,19 @@ if (!string.IsNullOrEmpty(resendApiKey))
     builder.Configuration["Email:FromName"]   = smtpFromName;
 }
 
+// ── SMTP Environment Variables Override (Railway SMTP_* variables) ──────
+var smtpHost     = Environment.GetEnvironmentVariable("SMTP_HOST");
+var smtpPort     = Environment.GetEnvironmentVariable("SMTP_PORT");
+var smtpUser     = Environment.GetEnvironmentVariable("SMTP_USER");
+var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+var smtpFrom     = Environment.GetEnvironmentVariable("SMTP_FROM");
+
+if (!string.IsNullOrEmpty(smtpHost))     builder.Configuration["Email:SmtpHost"]     = smtpHost;
+if (!string.IsNullOrEmpty(smtpPort))     builder.Configuration["Email:SmtpPort"]     = smtpPort;
+if (!string.IsNullOrEmpty(smtpUser))     builder.Configuration["Email:SmtpUser"]     = smtpUser;
+if (!string.IsNullOrEmpty(smtpPassword)) builder.Configuration["Email:SmtpPassword"] = smtpPassword;
+if (!string.IsNullOrEmpty(smtpFrom))     builder.Configuration["Email:FromEmail"]    = smtpFrom;
+
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var usePostgres = builder.Configuration.GetValue<bool>("UsePostgreSQL");
