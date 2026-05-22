@@ -129,6 +129,10 @@ public class HrmsDbContext : DbContext
             e.Property(x => x.LeaveDays).HasPrecision(5, 2);
             e.Property(x => x.DeductionAmount).HasPrecision(10, 2);
 
+            // IsPaid and CreatedAt do not exist in the live PayrollLeaveRequests table
+            e.Ignore(x => x.IsPaid);
+            e.Ignore(x => x.CreatedAt);
+
             e.HasOne(x => x.Payroll)
              .WithMany(p => p.LeaveRequests)
              .HasForeignKey(x => x.PayrollId)
