@@ -165,7 +165,6 @@ public class PayrollController : ControllerBase
                 startDate = lr.LeaveRequest.StartDate,
                 endDate = lr.LeaveRequest.EndDate,
                 lr.LeaveDays,
-                lr.IsPaid,
                 lr.DeductionAmount
             }),
             adjustments = payroll.Adjustments.Select(a => new
