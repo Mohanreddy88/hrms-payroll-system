@@ -66,6 +66,9 @@ if (!string.IsNullOrEmpty(smtpUser))     builder.Configuration["Email:SmtpUser"]
 if (!string.IsNullOrEmpty(smtpPassword)) builder.Configuration["Email:SmtpPassword"] = smtpPassword;
 if (!string.IsNullOrEmpty(smtpFrom))     builder.Configuration["Email:FromEmail"]    = smtpFrom;
 
+// ── SMTP config diagnostic log ──────────────────────────
+Console.WriteLine($"[SMTP] Host={smtpHost ?? "NOT SET"} Port={smtpPort ?? "NOT SET"} User={smtpUser ?? "NOT SET"} From={smtpFrom ?? "NOT SET"} PasswordSet={!string.IsNullOrEmpty(smtpPassword)}");
+
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var usePostgres = builder.Configuration.GetValue<bool>("UsePostgreSQL");
