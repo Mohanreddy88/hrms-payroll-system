@@ -136,7 +136,13 @@
         </ul>
       }
 
-      <!-- 9. Master Settings -->
+      <!-- 9. Audit Log -->
+      <li routerLink="/audit" routerLinkActive="active-menu">
+        <i class="bi bi-shield-check"></i>
+        <span>Audit Log</span>
+      </li>
+
+      <!-- 10. Master Settings -->
       <li class="menu-parent" [class.open]="masterMenuOpen" (click)="toggleMasterMenu()">
         <div class="menu-parent-header">
           <i class="bi bi-gear-fill"></i>

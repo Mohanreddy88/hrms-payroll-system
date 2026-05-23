@@ -49,6 +49,10 @@ export class PayrollListComponent implements OnInit {
   rejectionReason = '';
   approvalRemarks = '';
 
+  // Bulk email selection
+  selectedIds: Set<number> = new Set();
+  bulkEmailing = false;
+
   // Adjustments
   showAddAdjustment = false;
   savingAdj = false;
@@ -263,6 +267,47 @@ export class PayrollListComponent implements OnInit {
     this.http.post(`${environment.apiUrl}/payroll/email/${id}`, {}).subscribe({
       next: () => this.toast.success('Success', 'Payslip emailed successfully'),
       error: () => this.toast.error('Error', 'Failed to email payslip')
+    });
+  }
+
+  toggleSelect(id: number): void {
+    if (this.selectedIds.has(id)) this.selectedIds.delete(id);
+    else this.selectedIds.add(id);
+  }
+
+  isSelected(id: number): boolean {
+    return this.selectedIds.has(id);
+  }
+
+  toggleSelectAll(): void {
+    if (this.selectedIds.size === this.filteredPayrolls.length) {
+      this.selectedIds.clear();
+    } else {
+      this.filteredPayrolls.forEach(p => this.selectedIds.add(p.id));
+    }
+  }
+
+  get allSelected(): boolean {
+    return this.filteredPayrolls.length > 0 && this.selectedIds.size === this.filteredPayrolls.length;
+  }
+
+  emailSelectedPayslips(): void {
+    if (this.selectedIds.size === 0) {
+      this.toast.warning('No Selection', 'Please select at least one payroll record.');
+      return;
+    }
+    this.bulkEmailing = true;
+    const ids = Array.from(this.selectedIds);
+    this.http.post<any>(`${environment.apiUrl}/payroll/email-bulk`, ids).subscribe({
+      next: (res) => {
+        this.bulkEmailing = false;
+        this.selectedIds.clear();
+        this.toast.success('Emails Sent', `Payslip emails sent to ${res.sentCount} employee(s).`);
+      },
+      error: (err) => {
+        this.bulkEmailing = false;
+        this.toast.error('Error', err?.error?.message ?? 'Failed to send bulk emails.');
+      }
     });
   }
 

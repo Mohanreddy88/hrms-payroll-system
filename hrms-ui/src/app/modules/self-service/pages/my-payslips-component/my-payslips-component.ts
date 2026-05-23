@@ -93,8 +93,22 @@ export class MyPayslipsComponent implements OnInit {
   }
 
   downloadPayslip(payslip: any): void {
-    // TODO: Implement PDF download
-    this.toast.info('Download', 'PDF download will be implemented soon');
+    const id = payslip.id ?? payslip.Id;
+    this.http.get(`${environment.apiUrl}/selfservice/my-payslips/${id}/download`, {
+      responseType: 'blob'
+    }).subscribe({
+      next: (blob) => {
+        const monthName = `${this.getMonthName(payslip.month ?? payslip.month)}_${payslip.year}`;
+        const fileName = `Payslip_${monthName}.pdf`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Error', 'Failed to download payslip')
+    });
   }
 
   emailPayslip(id: number): void {

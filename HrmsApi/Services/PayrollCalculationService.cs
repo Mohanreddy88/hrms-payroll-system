@@ -9,10 +9,45 @@ public class PayrollCalculationService : IPayrollCalculationService
     private readonly HrmsDbContext _db;
 
     // Malaysia statutory rates
-    private const decimal EPF_EMPLOYEE_RATE = 0.02m;   // 2% employee contribution
-    private const decimal SOCSO_RATE = 0.005m;         // 0.5%
-    private const decimal TAX_RATE = 0.1197m;          // 11.97% PCB (income tax)
+    private const decimal EPF_EMPLOYEE_RATE    = 0.02m; // 2% employee contribution (as practised)
     private const decimal STANDARD_HOURS_PER_DAY = 8m;
+
+    // ── SOCSO contribution table (employee share) — capped at RM5,000 salary ──────
+    // Source: PERKESO contribution schedule 2026
+    private static readonly (decimal MaxSalary, decimal EmployeeAmount)[] SocsoTable =
+    [
+        (30m,     0.10m),  (50m,     0.20m),  (70m,     0.25m),  (100m,    0.35m),
+        (150m,    0.50m),  (200m,    0.65m),  (300m,    1.00m),  (400m,    1.35m),
+        (500m,    1.70m),  (600m,    2.05m),  (700m,    2.40m),  (800m,    2.75m),
+        (900m,    3.10m),  (1000m,   3.45m),  (1100m,   3.80m),  (1200m,   4.15m),
+        (1300m,   4.50m),  (1400m,   4.85m),  (1500m,   5.20m),  (1600m,   5.55m),
+        (1700m,   5.90m),  (1800m,   6.25m),  (1900m,   6.60m),  (2000m,   6.95m),
+        (2100m,   7.30m),  (2200m,   7.65m),  (2300m,   8.00m),  (2400m,   8.35m),
+        (2500m,   8.70m),  (2600m,   9.05m),  (2700m,   9.40m),  (2800m,   9.75m),
+        (2900m,  10.10m),  (3000m,  10.45m),  (3100m,  10.80m),  (3200m,  11.15m),
+        (3300m,  11.50m),  (3400m,  11.85m),  (3500m,  12.20m),  (3600m,  12.55m),
+        (3700m,  12.90m),  (3800m,  13.25m),  (3900m,  13.60m),  (4000m,  13.95m),
+        (4500m,  14.75m),  (5000m,  16.60m)   // ceiling: RM5,000 → RM19.75 employee
+    ];
+    // Above RM5,000: fixed at RM19.75 employee
+    private const decimal SOCSO_CEILING_SALARY = 5000m;
+    private const decimal SOCSO_CEILING_AMOUNT  = 19.75m;
+
+    // ── PCB / MTD income tax brackets (chargeable annual income) ─────────────────
+    // Source: LHDN / IRB Malaysia 2026
+    private static readonly (decimal From, decimal To, decimal Rate, decimal PrevTax)[] PcbBrackets =
+    [
+        (0m,       5000m,    0.00m,  0m),
+        (5001m,    20000m,   0.01m,  0m),
+        (20001m,   35000m,   0.03m,  150m),
+        (35001m,   50000m,   0.08m,  600m),
+        (50001m,   70000m,   0.13m,  1800m),
+        (70001m,   100000m,  0.21m,  4400m),
+        (100001m,  400000m,  0.24m,  10700m),
+        (400001m,  600000m,  0.245m, 82700m),
+        (600001m,  2000000m, 0.25m,  131700m),
+        (2000001m, decimal.MaxValue, 0.26m, 481700m)
+    ];
 
     public PayrollCalculationService(HrmsDbContext db)
     {
@@ -242,9 +277,9 @@ public class PayrollCalculationService : IPayrollCalculationService
         result.GrossIncome = result.BasicSalary + result.Allowances;
 
         // Statutory deductions
-        result.EpfAmount = Math.Round(result.BasicSalary * EPF_EMPLOYEE_RATE, 2);
-        result.SocsoAmount = Math.Round(result.BasicSalary * SOCSO_RATE, 2);
-        result.TaxAmount = Math.Round(result.GrossIncome * TAX_RATE, 2);
+        result.EpfAmount   = Math.Round(result.BasicSalary * EPF_EMPLOYEE_RATE, 2);
+        result.SocsoAmount = CalculateSocso(result.BasicSalary);
+        result.TaxAmount   = CalculatePcb(result.BasicSalary, result.EpfAmount);
 
         result.TotalDeductions = result.UnpaidLeaveDeduction
                                + result.EpfAmount
@@ -451,5 +486,53 @@ public class PayrollCalculationService : IPayrollCalculationService
 
         await _db.SaveChangesAsync();
         return payroll;
+    }
+
+    // ── SOCSO lookup table calculation ───────────────────────────────────────────
+    private static decimal CalculateSocso(decimal monthlySalary)
+    {
+        if (monthlySalary <= 0) return 0m;
+        if (monthlySalary > SOCSO_CEILING_SALARY) return SOCSO_CEILING_AMOUNT;
+
+        foreach (var (maxSalary, employeeAmount) in SocsoTable)
+        {
+            if (monthlySalary <= maxSalary)
+                return employeeAmount;
+        }
+        return SOCSO_CEILING_AMOUNT;
+    }
+
+    // ── PCB / MTD progressive tax calculation ────────────────────────────────────
+    // Formula:
+    //   Annual chargeable = (monthly salary × 12) − (EPF annual) − personal relief RM9,000
+    //   Annual tax        = tax on chargeable income using brackets
+    //   Monthly PCB       = annual tax ÷ 12
+    private static decimal CalculatePcb(decimal monthlySalary, decimal monthlyEpf)
+    {
+        if (monthlySalary <= 0) return 0m;
+
+        const decimal PERSONAL_RELIEF = 9000m;
+
+        var annualGross      = monthlySalary * 12m;
+        var annualEpf        = monthlyEpf    * 12m;
+        var chargeableIncome = annualGross - annualEpf - PERSONAL_RELIEF;
+
+        if (chargeableIncome <= 0) return 0m;
+
+        decimal annualTax = 0m;
+
+        foreach (var (from, to, rate, prevTax) in PcbBrackets)
+        {
+            if (chargeableIncome <= from - 1) break;
+
+            var bracketTop    = Math.Min(chargeableIncome, to);
+            var taxableInBand = bracketTop - (from - 1);
+            annualTax = prevTax + (taxableInBand * rate);
+
+            if (chargeableIncome <= to) break;
+        }
+
+        var monthlyPcb = Math.Round(annualTax / 12m, 2);
+        return monthlyPcb;
     }
 }

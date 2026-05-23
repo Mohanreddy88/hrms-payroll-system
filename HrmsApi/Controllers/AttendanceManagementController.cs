@@ -10,21 +10,28 @@ namespace HrmsApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Manager")] // Only admins and managers can approve/reject
+[Authorize(Roles = "Admin,Manager")]
 public class AttendanceManagementController : ControllerBase
 {
     private readonly HrmsDbContext _db;
     private readonly IEmailService _emailService;
     private readonly ILogger<AttendanceManagementController> _logger;
     private readonly IEmailQueue _emailQueue;
+    private readonly IAuditService _audit;
+    private readonly INotificationService _notif;
 
-    public AttendanceManagementController(HrmsDbContext db, IEmailService emailService, ILogger<AttendanceManagementController> logger, IEmailQueue emailQueue)
+    public AttendanceManagementController(HrmsDbContext db, IEmailService emailService, ILogger<AttendanceManagementController> logger, IEmailQueue emailQueue, IAuditService audit, INotificationService notif)
     {
-        _db = db;
+        _db           = db;
         _emailService = emailService;
-        _logger = logger;
-        _emailQueue = emailQueue;
+        _logger       = logger;
+        _emailQueue   = emailQueue;
+        _audit        = audit;
+        _notif        = notif;
     }
+
+    private string CurrentUser()   => User.FindFirst(ClaimTypes.Name)?.Value ?? "system";
+    private int?   CurrentUserId() { var v = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; return int.TryParse(v, out var id) ? id : null; }
 
     /// <summary>
     /// GET /api/attendancemanagement/pending - Get all pending (submitted) attendance periods for review
@@ -89,7 +96,6 @@ public class AttendanceManagementController : ControllerBase
                 p.StartDate,
                 p.EndDate,
                 p.Status,
-                p.CreatedAt,
                 p.SubmittedAt,
                 p.ApprovedAt,
                 p.RejectedAt,
@@ -121,6 +127,15 @@ public class AttendanceManagementController : ControllerBase
 
         if (period == null)
             return NotFound(new { message = "Attendance period not found" });
+
+        // Load public holidays for the period's year(s) — used to re-validate day flags
+        var startYear = period.StartDate.Year;
+        var endYear   = period.EndDate.Year;
+        var publicHolidayDates = await _db.PublicHolidays
+            .Where(h => h.Year >= startYear && h.Year <= endYear
+                     && h.Date >= period.StartDate && h.Date <= period.EndDate)
+            .Select(h => h.Date.Date)
+            .ToListAsync();
 
         // Get approved leave requests that overlap with this period
         var approvedLeaves = await _db.LeaveRequests
@@ -177,7 +192,6 @@ public class AttendanceManagementController : ControllerBase
             period.StartDate,
             period.EndDate,
             period.Status,
-            period.CreatedAt,
             period.SubmittedAt,
             period.ApprovedAt,
             period.RejectedAt,
@@ -192,8 +206,10 @@ public class AttendanceManagementController : ControllerBase
                 d.Hours,
                 d.Note,
                 d.Remarks,
-                d.IsPublicHoliday,
-                d.IsWeekend
+                // Re-derive from authoritative sources — ignore stored flags
+                IsPublicHoliday = publicHolidayDates.Contains(d.Date.Date),
+                IsWeekend       = d.Date.DayOfWeek == DayOfWeek.Saturday
+                               || d.Date.DayOfWeek == DayOfWeek.Sunday
             }).ToList(),
             summary = new
             {
@@ -235,15 +251,8 @@ public class AttendanceManagementController : ControllerBase
         if (period.Status != "Submitted")
             return BadRequest(new { message = $"Cannot approve a period with status: {period.Status}. Only Submitted periods can be approved." });
 
-        // Check for pending leave requests
-        var hasPendingLeaves = await _db.LeaveRequests
-            .AnyAsync(lr => lr.EmployeeId == period.EmployeeId
-                         && lr.Status == "Pending"
-                         && lr.StartDate <= period.EndDate
-                         && lr.EndDate >= period.StartDate);
-
-        if (hasPendingLeaves)
-            return BadRequest(new { message = "Cannot approve attendance. There are pending leave requests for this period. Please approve or reject leave requests first." });
+        // Note: pending leave requests are a warning only — admin can still approve.
+        // The UI shows the warning and lets admin decide.
 
         // Update status
         period.Status = "Approved";
@@ -310,6 +319,27 @@ public class AttendanceManagementController : ControllerBase
             _logger.LogError(ex, "Failed to queue attendance approved email for {Email}", period.Employee.Email);
         }
 
+        await _audit.LogAsync(
+            action:      "Approved",
+            entityType:  "AttendancePeriod",
+            entityId:    id.ToString(),
+            description: $"Approved attendance period for employee {period.EmployeeId} ({period.StartDate:dd MMM} - {period.EndDate:dd MMM yyyy})",
+            username:    CurrentUser(),
+            userId:      CurrentUserId(),
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        // In-app notification → employee
+        var attEmpUser = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == period.Employee.Email.ToLower());
+        if (attEmpUser != null)
+        {
+            await _notif.NotifyUserAsync(
+                userId:  attEmpUser.Id,
+                title:   "Attendance Approved",
+                message: $"Your attendance for {period.StartDate:dd MMM} - {period.EndDate:dd MMM yyyy} has been approved.",
+                type:    "attendance_approved",
+                link:    "/self-service/my-attendance");
+        }
+
         return Ok(new
         {
             message = "Attendance period approved successfully",
@@ -371,6 +401,28 @@ public class AttendanceManagementController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to queue attendance rejected email for {Email}", period.Employee.Email);
+        }
+
+        await _audit.LogAsync(
+            action:      "Rejected",
+            entityType:  "AttendancePeriod",
+            entityId:    id.ToString(),
+            description: $"Rejected attendance period for employee {period.EmployeeId} ({period.StartDate:dd MMM} - {period.EndDate:dd MMM yyyy}). Reason: {request.RejectionReason}",
+            username:    CurrentUser(),
+            userId:      CurrentUserId(),
+            newValues:   request.RejectionReason,
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        // In-app notification → employee
+        var rejEmpUser = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == period.Employee.Email.ToLower());
+        if (rejEmpUser != null)
+        {
+            await _notif.NotifyUserAsync(
+                userId:  rejEmpUser.Id,
+                title:   "Attendance Rejected",
+                message: $"Your attendance for {period.StartDate:dd MMM} - {period.EndDate:dd MMM yyyy} was rejected. Reason: {request.RejectionReason}",
+                type:    "attendance_rejected",
+                link:    "/self-service/my-attendance");
         }
 
         return Ok(new

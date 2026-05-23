@@ -66,13 +66,16 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
 
   loadNotifications(): void {
     this.loading = true;
+    this.cdr.markForCheck();
     this.notificationService.getNotifications().subscribe({
       next: (notifications) => {
         this.notifications = notifications;
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -84,7 +87,7 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
           notification.isRead = true;
           notification.readAt = new Date().toISOString();
           this.notificationService.refreshUnreadCount();
-          
+          this.cdr.markForCheck();
           if (notification.link) {
             this.router.navigate([notification.link]);
             this.closeDropdown();
@@ -107,6 +110,7 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
           n.readAt = new Date().toISOString();
         });
         this.notificationService.refreshUnreadCount();
+        this.cdr.markForCheck();
       }
     });
   }
@@ -117,6 +121,7 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
       next: () => {
         this.notifications = this.notifications.filter(n => n.id !== notification.id);
         this.notificationService.refreshUnreadCount();
+        this.cdr.markForCheck();
       }
     });
   }

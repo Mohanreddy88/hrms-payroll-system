@@ -20,6 +20,7 @@ public class SelfServiceController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly IPdfService _pdfService;
     private readonly IEmailQueue _emailQueue;
+    private readonly INotificationService _notif;
 
     public SelfServiceController(
         HrmsDbContext db,
@@ -27,14 +28,16 @@ public class SelfServiceController : ControllerBase
         ITimesheetService timesheetService,
         IEmailService emailService,
         IPdfService pdfService,
-        IEmailQueue emailQueue)
+        IEmailQueue emailQueue,
+        INotificationService notif)
     {
-        _db = db;
-        _logger = logger;
+        _db               = db;
+        _logger           = logger;
         _timesheetService = timesheetService;
-        _emailService = emailService;
-        _pdfService = pdfService;
-        _emailQueue = emailQueue;
+        _emailService     = emailService;
+        _pdfService       = pdfService;
+        _emailQueue       = emailQueue;
+        _notif            = notif;
     }
 
     /// <summary>
@@ -125,8 +128,6 @@ public class SelfServiceController : ControllerBase
             employee.Name,
             employee.Email,
             employee.Phone,
-            employee.IcPassport,
-            employee.TaxNumber,
             departmentId = employee.DepartmentId,
             departmentName = employee.Department?.Name,
             employee.Designation,
@@ -135,9 +136,7 @@ public class SelfServiceController : ControllerBase
             bankId = employee.BankId,
             bankName = employee.Bank?.Name,
             employee.AccountNumber,
-            employee.ProfilePicture,
-            employee.IsActive,
-            employee.CreatedAt
+            employee.IsActive
         });
     }
 
@@ -557,6 +556,38 @@ public class SelfServiceController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/selfservice/my-payslips/{id}/download - Download payslip PDF directly
+    /// </summary>
+    [HttpGet("my-payslips/{id:int}/download")]
+    public async Task<IActionResult> DownloadMyPayslip(int id)
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User not authenticated" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (user == null)
+            return NotFound(new { message = "User not found" });
+
+        var employee = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Email.ToLower() == user.Email.ToLower());
+        if (employee == null)
+            return NotFound(new { message = "Employee profile not found" });
+
+        var payroll = await _db.Payrolls
+            .Include(p => p.Employee)
+            .FirstOrDefaultAsync(p => p.Id == id && p.EmployeeId == employee.Id);
+        if (payroll == null)
+            return NotFound(new { message = "Payslip not found or does not belong to you" });
+
+        var pdfData = await _pdfService.GeneratePayslipPdfAsync(id);
+        var monthName = new DateTime(payroll.Year, payroll.Month, 1).ToString("MMMM_yyyy");
+        var fileName = $"Payslip_{payroll.Employee.Name.Replace(" ", "_")}_{monthName}.pdf";
+
+        return File(pdfData, "application/pdf", fileName);
+    }
+
+    /// <summary>
     /// GET /api/selfservice/my-attendance - Get current user's attendance records
     /// </summary>
     [HttpGet("my-attendance")]
@@ -595,8 +626,7 @@ public class SelfServiceController : ControllerBase
                 a.CheckIn,
                 a.CheckOut,
                 a.WorkHours,
-                a.Remarks,
-                a.CreatedAt
+                a.Remarks
             })
             .ToListAsync();
 
@@ -660,9 +690,7 @@ public class SelfServiceController : ControllerBase
                 lb.TotalDays,
                 lb.UsedDays,
                 lb.BalanceDays,
-                lb.CarryForwardDays,
-                lb.CreatedAt,
-                lb.UpdatedAt
+                lb.CarryForwardDays
             })
             .ToListAsync();
 
@@ -714,7 +742,6 @@ public class SelfServiceController : ControllerBase
                 ap.StartDate,
                 ap.EndDate,
                 ap.Status,
-                ap.CreatedAt,
                 ap.SubmittedAt,
                 ap.ApprovedAt,
                 ap.RejectedAt,
@@ -884,6 +911,13 @@ public class SelfServiceController : ControllerBase
 
         _logger.LogInformation("Attendance period {Id} submitted by employee {EmployeeId}", id, employee.Id);
 
+        // Notify admins that attendance is pending review
+        await _notif.NotifyAdminsAsync(
+            title:   "Attendance Submitted for Approval",
+            message: $"{employee.Name} has submitted attendance for {period.StartDate:dd MMM} - {period.EndDate:dd MMM yyyy}. Please review.",
+            type:    "attendance_submitted",
+            link:    "/attendance/approval");
+
         return Ok(new
         {
             message     = "Attendance period submitted successfully for approval",
@@ -938,9 +972,7 @@ public class SelfServiceController : ControllerBase
                 lr.RequestedOn,
                 lr.ApprovedBy,
                 lr.ApprovedOn,
-                lr.ApprovalRemarks,
-                lr.CancelledOn,
-                lr.CancellationReason
+                lr.ApprovalRemarks
             })
             .ToListAsync();
 
@@ -1083,8 +1115,9 @@ public class SelfServiceController : ControllerBase
         if (request.NewPassword != request.ConfirmPassword)
             return BadRequest(new { message = "New password and confirmation do not match" });
 
-        // Hash and update password
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        // Hash and update password — also clear force-change flag
+        user.PasswordHash          = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.MustChangePassword    = false;
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Password changed successfully for user: {Username}", username);

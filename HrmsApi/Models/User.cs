@@ -16,4 +16,7 @@ public class User
     // ── Password reset ────────────────────────────────────
     public string?   PasswordResetToken       { get; set; }
     public DateTime? PasswordResetTokenExpiry { get; set; }
+
+    // ── Force password change on first login ──────────────
+    public bool MustChangePassword { get; set; } = false;
 }

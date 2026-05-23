@@ -66,8 +66,6 @@ if (!string.IsNullOrEmpty(smtpUser))     builder.Configuration["Email:SmtpUser"]
 if (!string.IsNullOrEmpty(smtpPassword)) builder.Configuration["Email:SmtpPassword"] = smtpPassword;
 if (!string.IsNullOrEmpty(smtpFrom))     builder.Configuration["Email:FromEmail"]    = smtpFrom;
 
-
-
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var usePostgres = builder.Configuration.GetValue<bool>("UsePostgreSQL");
@@ -152,6 +150,8 @@ builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
 builder.Services.AddScoped<IPayrollCalculationService, PayrollCalculationService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Background email queue — singleton hosted service that survives request lifetime
 // Controllers inject IEmailQueue and call Enqueue() — returns instantly, no 504

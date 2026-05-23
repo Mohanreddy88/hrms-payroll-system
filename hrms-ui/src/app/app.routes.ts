@@ -35,11 +35,17 @@ import { AdminDashboardComponent } from './modules/dashboard/pages/admin-dashboa
 import { AnalyticsComponent } from './modules/analytics/pages/analytics-component/analytics-component';
 import { PublicHolidaysComponent } from './modules/master/pages/public-holidays-component/public-holidays-component';
 import { NotificationsPageComponent } from './modules/notifications/pages/notifications-page/notifications-page.component';
+import { AuditLogComponent } from './modules/audit/pages/audit-log-component/audit-log-component';
+import { ChangePasswordComponent as ForceChangePasswordComponent } from './modules/auth/pages/change-password/change-password.component';
 
 export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent
+  },
+  {
+    path: 'change-password',
+    component: ForceChangePasswordComponent
   },
   {
     path: 'forgot-password',
@@ -102,6 +108,9 @@ export const routes: Routes = [
       
       // Notifications
       { path: 'notifications', component: NotificationsPageComponent },
+
+      // Audit Log (Admin only)
+      { path: 'audit', component: AuditLogComponent, canActivate: [adminGuard] },
 
       // Legacy route redirect
       { path: 'users',              redirectTo: 'master/users', pathMatch: 'full' },

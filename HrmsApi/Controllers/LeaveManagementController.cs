@@ -18,15 +18,22 @@ public class LeaveManagementController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly ILogger<LeaveManagementController> _logger;
     private readonly IEmailQueue _emailQueue;
+    private readonly IAuditService _audit;
+    private readonly INotificationService _notif;
 
-    public LeaveManagementController(HrmsDbContext db, ILeaveService leaveService, IEmailService emailService, ILogger<LeaveManagementController> logger, IEmailQueue emailQueue)
+    public LeaveManagementController(HrmsDbContext db, ILeaveService leaveService, IEmailService emailService, ILogger<LeaveManagementController> logger, IEmailQueue emailQueue, IAuditService audit, INotificationService notif)
     {
-        _db = db;
+        _db           = db;
         _leaveService = leaveService;
         _emailService = emailService;
-        _logger = logger;
-        _emailQueue = emailQueue;
+        _logger       = logger;
+        _emailQueue   = emailQueue;
+        _audit        = audit;
+        _notif        = notif;
     }
+
+    private string CurrentUser()   => User.FindFirst(ClaimTypes.Name)?.Value ?? "system";
+    private int?   CurrentUserId() { var v = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; return int.TryParse(v, out var id) ? id : null; }
 
     // ══════════════════════════════════════════════════════════════════════════════
     // LEAVE TYPES
@@ -287,9 +294,7 @@ public class LeaveManagementController : ControllerBase
                 lr.RequestedOn,
                 lr.ApprovedBy,
                 lr.ApprovedOn,
-                lr.ApprovalRemarks,
-                lr.CancelledOn,
-                lr.CancellationReason
+                lr.ApprovalRemarks
             })
             .ToListAsync();
 
@@ -354,7 +359,19 @@ public class LeaveManagementController : ControllerBase
         try
         {
             var leaveRequest = await _leaveService.CreateLeaveRequestAsync(request);
-            
+
+            // Notify all admins that a new leave request needs approval
+            var emp = await _db.Employees.FindAsync(leaveRequest.EmployeeId);
+            var lt  = await _db.LeaveTypes.FindAsync(leaveRequest.LeaveTypeId);
+            if (emp != null && lt != null)
+            {
+                await _notif.NotifyAdminsAsync(
+                    title:   "New Leave Request",
+                    message: $"{emp.Name} has submitted a {lt.Name} request for {leaveRequest.TotalDays} day(s) ({leaveRequest.StartDate:dd MMM} - {leaveRequest.EndDate:dd MMM yyyy}).",
+                    type:    "leave_submitted",
+                    link:    "/leave/requests");
+            }
+
             // Return DTO to avoid circular reference
             var result = new
             {
@@ -368,7 +385,7 @@ public class LeaveManagementController : ControllerBase
                 leaveRequest.Status,
                 leaveRequest.RequestedOn
             };
-            
+
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -417,6 +434,28 @@ public class LeaveManagementController : ControllerBase
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to queue leave approved email for request {Id}", id);
+            }
+
+            await _audit.LogAsync(
+                action:      "Approved",
+                entityType:  "LeaveRequest",
+                entityId:    id.ToString(),
+                description: $"Approved leave request for employee {leaveRequest.EmployeeId} ({leaveRequest.TotalDays} days {leaveRequest.LeaveType?.Name})",
+                username:    CurrentUser(),
+                userId:      CurrentUserId(),
+                newValues:   approval.ApprovalRemarks,
+                ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
+            // In-app notification → employee
+            var empUser = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == leaveRequest.Employee.Email.ToLower());
+            if (empUser != null)
+            {
+                await _notif.NotifyUserAsync(
+                    userId:  empUser.Id,
+                    title:   "Leave Request Approved",
+                    message: $"Your {leaveRequest.LeaveType?.Name} request ({leaveRequest.TotalDays} day(s), {leaveRequest.StartDate:dd MMM} - {leaveRequest.EndDate:dd MMM yyyy}) has been approved.",
+                    type:    "leave_approved",
+                    link:    "/self-service/my-leave");
             }
 
             return Ok(new
@@ -480,6 +519,33 @@ public class LeaveManagementController : ControllerBase
                 _logger.LogError(ex, "Failed to queue leave rejected email for request {Id}", id);
             }
 
+            await _audit.LogAsync(
+                action:      "Rejected",
+                entityType:  "LeaveRequest",
+                entityId:    id.ToString(),
+                description: $"Rejected leave request for employee {leaveRequest.EmployeeId}. Reason: {approval.ApprovalRemarks}",
+                username:    CurrentUser(),
+                userId:      CurrentUserId(),
+                newValues:   approval.ApprovalRemarks,
+                ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
+            // In-app notification → employee
+            var rejEmployee = await _db.Employees.FindAsync(leaveRequest.EmployeeId);
+            var rejLeaveType = await _db.LeaveTypes.FindAsync(leaveRequest.LeaveTypeId);
+            if (rejEmployee != null)
+            {
+                var rejUser = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == rejEmployee.Email.ToLower());
+                if (rejUser != null)
+                {
+                    await _notif.NotifyUserAsync(
+                        userId:  rejUser.Id,
+                        title:   "Leave Request Rejected",
+                        message: $"Your {rejLeaveType?.Name ?? "leave"} request ({leaveRequest.StartDate:dd MMM} - {leaveRequest.EndDate:dd MMM yyyy}) was rejected. Reason: {approval.ApprovalRemarks}",
+                        type:    "leave_rejected",
+                        link:    "/self-service/my-leave");
+                }
+            }
+
             return Ok(new
             {
                 leaveRequest.Id,
@@ -514,9 +580,7 @@ public class LeaveManagementController : ControllerBase
                 leaveRequest.Id,
                 leaveRequest.EmployeeId,
                 leaveRequest.LeaveTypeId,
-                leaveRequest.Status,
-                leaveRequest.CancelledOn,
-                leaveRequest.CancellationReason
+                leaveRequest.Status
             };
             
             return Ok(result);
@@ -561,10 +625,20 @@ public class LeaveManagementController : ControllerBase
             }
         }
 
+        var prevStatus = request.Status;
         _db.LeaveRequests.Remove(request);
         await _db.SaveChangesAsync();
 
-        return Ok(new { message = "Leave request deleted" + (request.Status == "Approved" ? " and leave balance restored" : "") });
+        await _audit.LogAsync(
+            action:      "Deleted",
+            entityType:  "LeaveRequest",
+            entityId:    id.ToString(),
+            description: $"Deleted leave request (was {prevStatus}) for employee {request.EmployeeId}",
+            username:    CurrentUser(),
+            userId:      CurrentUserId(),
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        return Ok(new { message = "Leave request deleted" + (prevStatus == "Approved" ? " and leave balance restored" : "") });
     }
 
     /// <summary>

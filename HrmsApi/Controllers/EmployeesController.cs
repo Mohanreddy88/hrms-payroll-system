@@ -1,8 +1,12 @@
 using HrmsApi.Data;
 using HrmsApi.Models;
+using HrmsApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Text.Json;
+using BCrypt.Net;
 
 namespace HrmsApi.Controllers;
 
@@ -12,8 +16,18 @@ namespace HrmsApi.Controllers;
 public class EmployeesController : ControllerBase
 {
     private readonly HrmsDbContext _db;
+    private readonly IAuditService _audit;
+    private readonly ILogger<EmployeesController> _logger;
 
-    public EmployeesController(HrmsDbContext db) => _db = db;
+    public EmployeesController(HrmsDbContext db, IAuditService audit, ILogger<EmployeesController> logger)
+    {
+        _db     = db;
+        _audit  = audit;
+        _logger = logger;
+    }
+
+    private string CurrentUser() => User.FindFirst(ClaimTypes.Name)?.Value ?? "system";
+    private int?   CurrentUserId() { var v = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; return int.TryParse(v, out var id) ? id : null; }
 
     /// <summary>
     /// GET /api/employees
@@ -33,10 +47,9 @@ public class EmployeesController : ControllerBase
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
                 e.JoinDate, e.Salary, e.IsActive,
-                e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.ProfilePicture, e.Gender
+                e.Gender
             })
             .ToListAsync();
 
@@ -68,10 +81,9 @@ public class EmployeesController : ControllerBase
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
                 e.JoinDate, e.Salary, e.IsActive,
-                e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.ProfilePicture, e.Gender
+                e.Gender
             })
             .ToListAsync();
 
@@ -102,10 +114,9 @@ public class EmployeesController : ControllerBase
                 DepartmentName = e.Department != null ? e.Department.Name : null,
                 e.Designation,
                 e.JoinDate, e.Salary, e.IsActive,
-                e.IcPassport, e.TaxNumber,
                 e.BankId, e.AccountNumber,
                 BankName = e.Bank != null ? e.Bank.Name : null,
-                e.ProfilePicture, e.Gender
+                e.Gender
             })
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Employee {id} not found.");
@@ -179,11 +190,8 @@ public class EmployeesController : ControllerBase
             JoinDate       = joinDateUtc,
             Salary         = req.Salary,
             IsActive       = req.IsActive,
-            IcPassport     = req.IcPassport,
-            TaxNumber      = req.TaxNumber,
             BankId         = req.BankId,
             AccountNumber  = req.AccountNumber,
-            ProfilePicture = req.ProfilePicture ?? string.Empty,
             Gender         = req.Gender ?? string.Empty
         };
 
@@ -195,39 +203,75 @@ public class EmployeesController : ControllerBase
         }
         catch (DbUpdateException ex)
         {
-            // Return detailed error information for debugging
             var innerException = ex.InnerException?.Message ?? ex.Message;
-            var stackTrace = ex.StackTrace;
-            
             return StatusCode(500, new
             {
                 error = "Database update failed",
                 message = ex.Message,
-                innerException = innerException,
-                stackTrace = stackTrace,
-                employeeCode = employeeCode,
-                employeeData = new
-                {
-                    emp.Name,
-                    emp.Email,
-                    emp.Phone,
-                    emp.DepartmentId,
-                    emp.Designation,
-                    emp.JoinDate,
-                    emp.Salary,
-                    emp.IsActive,
-                    emp.IcPassport,
-                    emp.TaxNumber,
-                    emp.BankId,
-                    emp.AccountNumber
-                }
+                innerException,
+                employeeCode,
+                stackTrace = ex.StackTrace
             });
         }
 
-        return CreatedAtAction(nameof(GetById), new { id = emp.Id }, new { 
-            message = "Employee created successfully", 
-            employeeCode = employeeCode,
-            id = emp.Id 
+        // Auto-create a User account for the employee
+        // Username = part of email before '@'  (e.g. "john.doe@company.com" → "john.doe")
+        var userCreated = false;
+        var userAlreadyExists = false;
+        var generatedUsername = emp.Email.Contains('@')
+            ? emp.Email.Split('@')[0].ToLower()
+            : emp.Email.ToLower();
+
+        var existingUser = await _db.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == emp.Email.ToLower()
+                               || u.Username.ToLower() == generatedUsername);
+
+        if (existingUser == null)
+        {
+            try
+            {
+                var newUser = new User
+                {
+                    Username           = generatedUsername,
+                    Email              = emp.Email,
+                    PasswordHash       = BCrypt.Net.BCrypt.HashPassword("Employee@123"),
+                    Role               = "Employee",
+                    IsActive           = true,
+                    CreatedAt          = DateTime.UtcNow,
+                    MustChangePassword = true   // force password change on first login
+                };
+                _db.Users.Add(newUser);
+                await _db.SaveChangesAsync();
+                userCreated = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-create user for employee {Email}", emp.Email);
+            }
+        }
+        else
+        {
+            userAlreadyExists = true;
+        }
+
+        await _audit.LogAsync(
+            action:      "Created",
+            entityType:  "Employee",
+            entityId:    emp.Id.ToString(),
+            description: $"Created employee {emp.Name} ({employeeCode})" + (userCreated ? $" and auto-created user account ({generatedUsername})" : ""),
+            username:    CurrentUser(),
+            userId:      CurrentUserId(),
+            newValues:   JsonSerializer.Serialize(new { emp.Name, emp.Email, emp.Designation, emp.Salary, emp.IsActive }),
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        return CreatedAtAction(nameof(GetById), new { id = emp.Id }, new {
+            message      = "Employee created successfully",
+            employeeCode,
+            id           = emp.Id,
+            userCreated,
+            userAlreadyExists,
+            username     = userCreated ? generatedUsername : null,
+            defaultPassword = userCreated ? "Employee@123" : null
         });
     }
 
@@ -262,6 +306,8 @@ public class EmployeesController : ControllerBase
             ? DateTime.SpecifyKind(req.JoinDate, DateTimeKind.Utc)
             : req.JoinDate.ToUniversalTime();
 
+        var oldSnap = JsonSerializer.Serialize(new { emp.Name, emp.Email, emp.Designation, emp.Salary, emp.IsActive });
+
         emp.Name           = req.Name;
         emp.Email          = req.Email;
         emp.Phone          = req.Phone;
@@ -270,14 +316,23 @@ public class EmployeesController : ControllerBase
         emp.JoinDate       = joinDateUtc;
         emp.Salary         = req.Salary;
         emp.IsActive       = req.IsActive;
-        emp.IcPassport     = req.IcPassport;
-        emp.TaxNumber      = req.TaxNumber;
         emp.BankId         = req.BankId;
         emp.AccountNumber  = req.AccountNumber;
-        emp.ProfilePicture = req.ProfilePicture ?? string.Empty;
         emp.Gender         = req.Gender ?? string.Empty;
 
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(
+            action:      "Updated",
+            entityType:  "Employee",
+            entityId:    id.ToString(),
+            description: $"Updated employee {emp.Name} ({emp.EmployeeCode})",
+            username:    CurrentUser(),
+            userId:      CurrentUserId(),
+            oldValues:   oldSnap,
+            newValues:   JsonSerializer.Serialize(new { emp.Name, emp.Email, emp.Designation, emp.Salary, emp.IsActive }),
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
         return NoContent();
     }
 
@@ -291,8 +346,20 @@ public class EmployeesController : ControllerBase
         var emp = await _db.Employees.FindAsync(id)
             ?? throw new KeyNotFoundException($"Employee {id} not found.");
 
+        var empName = emp.Name;
+        var empCode = emp.EmployeeCode;
         _db.Employees.Remove(emp);
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(
+            action:      "Deleted",
+            entityType:  "Employee",
+            entityId:    id.ToString(),
+            description: $"Deleted employee {empName} ({empCode})",
+            username:    CurrentUser(),
+            userId:      CurrentUserId(),
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+
         return NoContent();
     }
 }

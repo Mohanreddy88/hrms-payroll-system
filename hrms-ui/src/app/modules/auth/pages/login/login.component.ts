@@ -52,7 +52,12 @@ export class LoginComponent implements OnInit {
     this.authService.login(this.loginForm.value).subscribe({
       next: (response) => {
         this.loading = false;
-        this.router.navigate(['/']);
+        // Force password change for new employees on first login
+        if (response.mustChangePassword) {
+          this.router.navigate(['/change-password']);
+        } else {
+          this.router.navigate(['/']);
+        }
       },
       error: (err) => {
         this.loading = false;

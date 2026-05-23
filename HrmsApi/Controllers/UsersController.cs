@@ -30,7 +30,7 @@ public class UsersController : ControllerBase
             .Select(u => new
             {
                 u.Id, u.Username, u.Email, u.Role,
-                u.IsActive, u.CreatedAt
+                u.IsActive
             })
             .ToListAsync();
 
@@ -77,7 +77,7 @@ public class UsersController : ControllerBase
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        return Ok(new { user.Id, user.Username, user.Email, user.Role, user.IsActive, user.CreatedAt });
+        return Ok(new { user.Id, user.Username, user.Email, user.Role, user.IsActive });
     }
 
     /// <summary>
@@ -127,7 +127,7 @@ public class UsersController : ControllerBase
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
 
         await _db.SaveChangesAsync();
-        return Ok(new { user.Id, user.Username, user.Email, user.Role, user.IsActive, user.CreatedAt });
+        return Ok(new { user.Id, user.Username, user.Email, user.Role, user.IsActive });
     }
 
     /// <summary>

@@ -298,20 +298,17 @@
     <div class="action-buttons" *ngIf="selectedPeriod.status === 'Submitted'">
       <button class="btn-reject"
               (click)="openRejectModal(selectedPeriod.id)"
-              [disabled]="getMissingLeaveDays().length > 0 || selectedPeriod.hasPendingLeaves"
-              [title]="getMissingLeaveDays().length > 0 ? 'Resolve ' + getMissingLeaveDays().length + ' unresolved day(s) first' :
-                       selectedPeriod.hasPendingLeaves ? 'Approve or reject pending leave requests first' : 'Reject attendance period'">
+              [disabled]="selectedPeriod.hasPendingLeaves"
+              [title]="selectedPeriod.hasPendingLeaves ? 'Approve or reject pending leave requests first' : 'Reject attendance period'">
         <i class="bi bi-x-circle"></i>
         Reject
       </button>
       <button class="btn-approve"
               (click)="openApproveModal()"
-              [disabled]="getMissingLeaveDays().length > 0 || selectedPeriod.hasPendingLeaves"
-              [title]="getMissingLeaveDays().length > 0 ? 'Resolve ' + getMissingLeaveDays().length + ' unresolved day(s) first' :
-                       selectedPeriod.hasPendingLeaves ? 'Approve or reject pending leave requests first' : 'Approve attendance period'">
+              [disabled]="selectedPeriod.hasPendingLeaves"
+              [title]="selectedPeriod.hasPendingLeaves ? 'Approve or reject pending leave requests first' : 'Approve attendance period'">
         <i class="bi bi-check-circle"></i>
-        {{ getMissingLeaveDays().length > 0 ? 'Blocked (' + getMissingLeaveDays().length + ' unresolved)' :
-           selectedPeriod.hasPendingLeaves ? 'Approve (Blocked)' : 'Approve' }}
+        {{ selectedPeriod.hasPendingLeaves ? 'Blocked — Pending Leaves' : 'Approve' }}
       </button>
     </div>
   </div>
@@ -364,7 +361,7 @@
       </button>
       <button class="btn-modal-approve"
               (click)="confirmApprove()"
-              [disabled]="selectedPeriod?.hasPendingLeaves">
+              [disabled]="false">
         <i class="bi bi-check-circle"></i> Approve & Send Email
       </button>
     </div>

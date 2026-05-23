@@ -16,22 +16,32 @@ export class AuthService {
 
   login(payload: LoginRequest): Observable<LoginResponse> {
     const url = `${environment.apiUrl}/auth/login`;
-    console.log('🌐 POST', url, payload);
     return this.http.post<LoginResponse>(url, payload).pipe(
       tap(res => {
-        console.log('📥 Login response:', res);
-        const userData = { 
-          username: res.username, 
-          role: res.role, 
-          employeeId: res.employeeId 
+        const userData = {
+          username:          res.username,
+          role:              res.role,
+          employeeId:        res.employeeId,
+          mustChangePassword: res.mustChangePassword ?? false
         };
-        
         this.setItem(this.TOKEN_KEY, res.token);
         this.setItem(this.USER_KEY, JSON.stringify(userData));
         this.loggedIn$.next(true);
-        console.log('💾 Saved token and user data');
       })
     );
+  }
+
+  mustChangePassword(): boolean {
+    const user = this.getUser() as any;
+    return user?.mustChangePassword === true;
+  }
+
+  clearMustChangePassword(): void {
+    const raw = this.getItem(this.USER_KEY);
+    if (!raw) return;
+    const user = JSON.parse(raw);
+    user.mustChangePassword = false;
+    this.setItem(this.USER_KEY, JSON.stringify(user));
   }
 
   logout(): void {

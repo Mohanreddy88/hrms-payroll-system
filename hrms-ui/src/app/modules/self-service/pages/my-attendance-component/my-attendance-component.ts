@@ -675,11 +675,22 @@ export class MyAttendanceComponent implements OnInit {
       this.toast.warning('Empty Comment', 'Please enter a comment before saving');
       return;
     }
-    
-    // TODO: Save comment via API
-    this.toast.success('Comment Saved', 'Your comment has been saved successfully');
+
+    // Write the comment into the note field of the last-clicked day
+    if (this.lastClickedDayIndex >= 0 && this.lastClickedDayIndex < this.currentPeriodDays.length) {
+      this.currentPeriodDays[this.lastClickedDayIndex].note = this.commentText.trim();
+      // Sync back to the period model so saveAttendance picks it up
+      const currentPeriod = this.periods[this.currentPeriodIndex];
+      if (currentPeriod) {
+        currentPeriod.days[this.lastClickedDayIndex].note = this.commentText.trim();
+      }
+    }
+
     this.commentText = '';
     this.closeCommentModal();
+
+    // Persist the updated note to the backend immediately
+    this.saveAttendance();
   }
 
   getSelectedCommentDateDisplay(): string {

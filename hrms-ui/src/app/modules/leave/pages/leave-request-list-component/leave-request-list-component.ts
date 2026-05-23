@@ -97,7 +97,7 @@ export class LeaveRequestListComponent implements OnInit {
     this.loading = true;
     const url = this.isAdmin
       ? `${environment.apiUrl}/leavemanagement/requests`
-      : `${environment.apiUrl}/leavemanagement/my-requests`;
+      : `${environment.apiUrl}/selfservice/my-leave-requests`;
 
     this.http.get<any[]>(url).subscribe({
       next: (data) => {

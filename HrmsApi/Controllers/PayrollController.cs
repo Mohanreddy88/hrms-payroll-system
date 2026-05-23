@@ -17,18 +17,36 @@ public class PayrollController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly IPdfService _pdfService;
     private readonly IPayrollCalculationService _payrollService;
+    private readonly IAuditService _audit;
+    private readonly INotificationService _notif;
 
     public PayrollController(
-        HrmsDbContext db, 
-        IEmailService emailService, 
+        HrmsDbContext db,
+        IEmailService emailService,
         IPdfService pdfService,
-        IPayrollCalculationService payrollService)
+        IPayrollCalculationService payrollService,
+        IAuditService audit,
+        INotificationService notif)
     {
-        _db = db;
-        _emailService = emailService;
-        _pdfService = pdfService;
+        _db             = db;
+        _emailService   = emailService;
+        _pdfService     = pdfService;
         _payrollService = payrollService;
+        _audit          = audit;
+        _notif          = notif;
     }
+
+    // Helper: find User.Id for an employee so we can send them a notification
+    private async Task<int?> GetUserIdForEmployeeAsync(int employeeId)
+    {
+        var emp = await _db.Employees.FindAsync(employeeId);
+        if (emp == null) return null;
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emp.Email.ToLower());
+        return user?.Id;
+    }
+
+    private string CurrentUser()   => User.FindFirst(ClaimTypes.Name)?.Value ?? "system";
+    private int    GetCurrentUserId() { var v = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; return int.TryParse(v, out var id) ? id : 0; }
 
     /// <summary>GET /api/payroll?status=Draft&month=5&year=2026 — get all payroll records with filters</summary>
     [HttpGet]
@@ -174,8 +192,7 @@ public class PayrollController : ControllerBase
                 a.AdjustmentType,
                 a.Description,
                 a.Amount,
-                createdBy = a.Creator.Username,
-                a.CreatedAt
+                createdBy = a.Creator.Username
             })
         });
     }
@@ -228,14 +245,46 @@ public class PayrollController : ControllerBase
     [HttpPost("generate")]
     public async Task<IActionResult> GenerateSingle([FromBody] PayrollGenerateRequest request)
     {
-        var userId = GetCurrentUserId();
-        var payroll = await _payrollService.GeneratePayrollAsync(request.EmployeeId, request.Month, request.Year, userId);
-        return Ok(new
+        try
         {
-            message = $"Payroll generated successfully for {new DateTime(request.Year, request.Month, 1):MMMM yyyy}",
-            payrollId = payroll.Id,
-            netSalary = payroll.NetSalary
-        });
+            var userId = GetCurrentUserId();
+            var payroll = await _payrollService.GeneratePayrollAsync(request.EmployeeId, request.Month, request.Year, userId);
+            await _audit.LogAsync(
+                action:      "Generated",
+                entityType:  "Payroll",
+                entityId:    payroll.Id.ToString(),
+                description: $"Generated payroll for employee {request.EmployeeId} — {new DateTime(request.Year, request.Month, 1):MMMM yyyy} (Net: {payroll.NetSalary:F2})",
+                username:    CurrentUser(),
+                userId:      userId,
+                ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+            // Notify employee that their payslip has been generated
+            var genEmpUserId = await GetUserIdForEmployeeAsync(request.EmployeeId);
+            if (genEmpUserId.HasValue)
+            {
+                await _notif.NotifyUserAsync(
+                    userId:  genEmpUserId.Value,
+                    title:   "Payslip Generated",
+                    message: $"Your payslip for {new DateTime(request.Year, request.Month, 1):MMMM yyyy} has been generated. Net salary: RM {payroll.NetSalary:F2}.",
+                    type:    "payroll_generated",
+                    link:    "/self-service/my-payslips");
+            }
+            return Ok(new
+            {
+                message = $"Payroll generated successfully for {new DateTime(request.Year, request.Month, 1):MMMM yyyy}",
+                payrollId = payroll.Id,
+                netSalary = payroll.NetSalary
+            });
+        }
+        catch (Exception ex)
+        {
+            var inner = ex.InnerException?.Message ?? "";
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner,
+                stackTrace = ex.StackTrace
+            });
+        }
     }
 
     /// <summary>POST /api/payroll/generate-bulk — generate payroll for multiple employees</summary>
@@ -261,7 +310,26 @@ public class PayrollController : ControllerBase
     {
         var userId = GetCurrentUserId();
         var payroll = await _payrollService.ApprovePayrollAsync(id, userId, request?.Remarks);
-        
+        await _audit.LogAsync(
+            action:      "Approved",
+            entityType:  "Payroll",
+            entityId:    id.ToString(),
+            description: $"Approved payroll #{id} for employee {payroll.EmployeeId} ({payroll.Month}/{payroll.Year})",
+            username:    CurrentUser(),
+            userId:      userId,
+            newValues:   request?.Remarks,
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+        // Notify employee
+        var appEmpUserId = await GetUserIdForEmployeeAsync(payroll.EmployeeId);
+        if (appEmpUserId.HasValue)
+        {
+            await _notif.NotifyUserAsync(
+                userId:  appEmpUserId.Value,
+                title:   "Payslip Approved",
+                message: $"Your payslip for {new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy} has been approved.",
+                type:    "payroll_approved",
+                link:    "/self-service/my-payslips");
+        }
         return Ok(new
         {
             message = "Payroll approved successfully",
@@ -282,7 +350,26 @@ public class PayrollController : ControllerBase
 
         var userId = GetCurrentUserId();
         var payroll = await _payrollService.RejectPayrollAsync(id, userId, request.Reason);
-        
+        await _audit.LogAsync(
+            action:      "Rejected",
+            entityType:  "Payroll",
+            entityId:    id.ToString(),
+            description: $"Rejected payroll #{id} for employee {payroll.EmployeeId} ({payroll.Month}/{payroll.Year}). Reason: {request.Reason}",
+            username:    CurrentUser(),
+            userId:      userId,
+            newValues:   request.Reason,
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+        // Notify employee
+        var rejEmpUserId = await GetUserIdForEmployeeAsync(payroll.EmployeeId);
+        if (rejEmpUserId.HasValue)
+        {
+            await _notif.NotifyUserAsync(
+                userId:  rejEmpUserId.Value,
+                title:   "Payslip Rejected",
+                message: $"Your payslip for {new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy} was rejected. Reason: {request.Reason}",
+                type:    "payroll_rejected",
+                link:    "/self-service/my-payslips");
+        }
         return Ok(new
         {
             message = "Payroll rejected successfully",
@@ -297,7 +384,25 @@ public class PayrollController : ControllerBase
     {
         var userId = GetCurrentUserId();
         var payroll = await _payrollService.ProcessPayrollAsync(id, userId);
-        
+        await _audit.LogAsync(
+            action:      "Processed",
+            entityType:  "Payroll",
+            entityId:    id.ToString(),
+            description: $"Marked payroll #{id} as processed for employee {payroll.EmployeeId} ({payroll.Month}/{payroll.Year})",
+            username:    CurrentUser(),
+            userId:      userId,
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
+        // Notify employee that salary has been paid/processed
+        var procEmpUserId = await GetUserIdForEmployeeAsync(payroll.EmployeeId);
+        if (procEmpUserId.HasValue)
+        {
+            await _notif.NotifyUserAsync(
+                userId:  procEmpUserId.Value,
+                title:   "Salary Processed",
+                message: $"Your salary for {new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy} has been processed. Net: RM {payroll.NetSalary:F2}. Please check your bank account.",
+                type:    "payroll_processed",
+                link:    "/self-service/my-payslips");
+        }
         return Ok(new
         {
             message = "Payroll marked as processed",
@@ -405,8 +510,18 @@ public class PayrollController : ControllerBase
             return BadRequest(new { message = "Cannot delete processed payroll" });
         }
 
+        var empId  = record.EmployeeId;
+        var period = $"{record.Month}/{record.Year}";
         _db.Payrolls.Remove(record);
         await _db.SaveChangesAsync();
+        await _audit.LogAsync(
+            action:      "Deleted",
+            entityType:  "Payroll",
+            entityId:    id.ToString(),
+            description: $"Deleted payroll #{id} for employee {empId} ({period})",
+            username:    CurrentUser(),
+            userId:      GetCurrentUserId(),
+            ipAddress:   HttpContext.Connection.RemoteIpAddress?.ToString());
         return NoContent();
     }
 
@@ -517,16 +632,7 @@ public class PayrollController : ControllerBase
         }
     }
 
-    // Helper method to get current user ID from JWT
-    private int GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-        {
-            throw new UnauthorizedAccessException("User ID not found in token");
-        }
-        return userId;
-    }
+    // Legacy helper — superseded by the inline method at the top of the class
 }
 
 // ── Request/Response DTOs ──────────────────────────────────

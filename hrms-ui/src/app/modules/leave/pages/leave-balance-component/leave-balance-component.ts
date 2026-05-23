@@ -79,15 +79,20 @@ export class LeaveBalanceComponent implements OnInit {
     }
 
     this.loading = true;
-    console.log('Loading leave balances...');
-    
-    // For admin: use selected employee, for employee: use placeholder ID 1
-    // TODO: Implement proper user-to-employee mapping via backend
-    const employeeId = this.isAdmin ? this.selectedEmployeeId! : 1;
-    
+
+    // For employee: read employeeId from the JWT token stored at login
+    const employeeId = this.isAdmin
+      ? this.selectedEmployeeId!
+      : this.authService.getEmployeeId();
+
+    if (!employeeId) {
+      this.toast.error('Not Linked', 'Your account is not linked to an employee profile. Please contact HR.');
+      this.loading = false;
+      return;
+    }
+
     this.leaveService.getBalance(employeeId, this.selectedYear).subscribe({
       next: (data: any) => {
-        console.log('Leave balances received:', data);
         this.balances = data;
         this.loading = false;
         this.cdr.detectChanges();

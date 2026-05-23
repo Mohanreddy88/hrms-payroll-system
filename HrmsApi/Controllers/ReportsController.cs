@@ -163,7 +163,6 @@ public class ReportsController : ControllerBase
                 e.JoinDate,
                 e.Salary,
                 e.IsActive,
-                e.ProfilePicture,
                 bankName = e.Bank != null ? e.Bank.Name : null,
                 e.AccountNumber
             })

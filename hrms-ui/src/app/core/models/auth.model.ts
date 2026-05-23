@@ -9,4 +9,5 @@ export interface LoginResponse {
   role: string;
   expiresAt: string;
   employeeId?: number;
+  mustChangePassword?: boolean;
 }

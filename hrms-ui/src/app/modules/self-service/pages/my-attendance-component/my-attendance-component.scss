@@ -137,15 +137,17 @@
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
-  .calendar-grid {
-    overflow-x: auto;
-    margin-bottom: 0;
+    .calendar-grid {
+      overflow-x: auto;
+      margin-bottom: 0;
+      width: 100%;
 
     .grid-header {
       display: flex;
       background: #374151;
       border: none;
       border-radius: 0;
+      width: 100%;
 
       .row-label {
         min-width: 140px;
@@ -217,8 +219,8 @@
       }
 
       .day-header {
-        min-width: 62px;
-        max-width: 62px;
+        flex: 1;
+        min-width: 52px;
         padding: 6px 3px;
         text-align: center;
         border-right: 1px solid #475569;
@@ -245,17 +247,7 @@
       }
 
       .total-header {
-        min-width: 62px;
-        max-width: 62px;
-        padding: 6px 3px;
-        text-align: center;
-        font-weight: 600;
-        color: white;
-        font-size: 11px;
-        background: #374151;
-      }
-
-      .total-header {
+        flex: 1;
         min-width: 62px;
         padding: 6px 3px;
         text-align: center;
@@ -337,6 +329,7 @@
       border: none;
       border-bottom: 1px solid #d1d5db;
       background: white;
+      width: 100%;
 
       .row-label {
         min-width: 140px;
@@ -388,8 +381,8 @@
       }
 
       .day-cell {
-        min-width: 62px;
-        max-width: 62px;
+        flex: 1;
+        min-width: 52px;
         padding: 0;
         border-right: 1px solid #d1d5db;
         display: flex;
@@ -511,8 +504,8 @@
       }
 
       .total-cell {
+        flex: 1;
         min-width: 62px;
-        max-width: 62px;
         padding: 6px 3px;
         display: flex;
         align-items: center;
@@ -534,6 +527,7 @@
       border: none;
       border-top: 1px solid #e2e8f0;
       background: #374151;
+      width: 100%;
 
       .row-label {
         min-width: 140px;
@@ -543,8 +537,8 @@
       }
 
       .day-summary {
-        min-width: 62px;
-        max-width: 62px;
+        flex: 1;
+        min-width: 52px;
         padding: 6px 3px;
         text-align: center;
         border-right: 1px solid #475569;
@@ -555,6 +549,7 @@
       }
 
       .total-summary {
+        flex: 1;
         min-width: 62px;
         padding: 6px 3px;
         text-align: center;

@@ -4,10 +4,19 @@
       <h2><i class="bi bi-cash-stack"></i> Payroll Management</h2>
       <p>Review, approve, and manage employee payroll records</p>
     </div>
-    <button class="btn btn-primary" (click)="navigateToGenerate()">
-      <i class="bi bi-plus-circle"></i>
-      Generate Payroll
-    </button>
+    <div class="header-actions">
+      <button class="btn btn-email-bulk"
+              (click)="emailSelectedPayslips()"
+              [disabled]="selectedIds.size === 0 || bulkEmailing"
+              *ngIf="filteredPayrolls.length > 0">
+        <i class="bi bi-envelope-check"></i>
+        {{ bulkEmailing ? 'Sending...' : 'Email Selected (' + selectedIds.size + ')' }}
+      </button>
+      <button class="btn btn-primary" (click)="navigateToGenerate()">
+        <i class="bi bi-plus-circle"></i>
+        Generate Payroll
+      </button>
+    </div>
   </div>
 
   <!-- Filters -->
@@ -58,6 +67,9 @@
     <table class="payroll-table">
       <thead>
         <tr>
+          <th class="col-check">
+            <input type="checkbox" [checked]="allSelected" (change)="toggleSelectAll()" title="Select all">
+          </th>
           <th>Employee</th>
           <th>Period</th>
           <th>Status</th>
@@ -71,7 +83,7 @@
       </thead>
       <tbody>
         <tr *ngIf="filteredPayrolls.length === 0">
-          <td colspan="9" class="empty-row">
+          <td colspan="10" class="empty-row">
             <div class="empty-state">
               <i class="bi bi-inbox"></i>
               <p>No payroll records found</p>
@@ -83,7 +95,10 @@
           </td>
         </tr>
 
-        <tr *ngFor="let p of filteredPayrolls" class="payroll-row">
+        <tr *ngFor="let p of filteredPayrolls" class="payroll-row" [class.selected-row]="isSelected(p.id)">
+          <td class="col-check">
+            <input type="checkbox" [checked]="isSelected(p.id)" (change)="toggleSelect(p.id)">
+          </td>
           <td>
             <div class="employee-cell">
               <div class="employee-avatar">{{ p.employeeName.charAt(0) }}</div>
