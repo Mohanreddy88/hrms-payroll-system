@@ -243,14 +243,9 @@ public class EmailService : IEmailService
     </div>
     <div class=""body"">
       <p>Dear <strong>{employeeName}</strong>,</p>
-      <p>Your payslip for <strong>{month} {year}</strong> has been processed. Please find the details below:</p>
-      <table class=""info-table"">
-        <tr><td>Employee Name</td><td>{employeeName}</td></tr>
-        <tr><td>Pay Period</td><td>{month} {year}</td></tr>
-        <tr><td>Net Salary</td><td>RM {netSalary:N2}</td></tr>
-      </table>
+      <p>Please find your payslip for <strong>{month} {year}</strong> attached to this email.</p>
       <div class=""notice"">
-        Your detailed payslip PDF is attached to this email. Please login to the HRMS portal for full payroll details.
+        Your detailed payslip PDF is attached. Please login to the HRMS portal for full payroll details.
       </div>
     </div>
     <div class=""footer"">
