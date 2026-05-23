@@ -324,23 +324,16 @@ public class PdfService : IPdfService
                     // ════════════════════════════════════════════════════════
                     // FOOTER
                     // ════════════════════════════════════════════════════════
-                    main.Item().PaddingTop(12).Row(row =>
+                    main.Item().PaddingTop(14).BorderTop(1).BorderColor(Colors.Grey.Lighten1)
+                        .PaddingTop(6).Column(c =>
                     {
-                        row.RelativeItem().Column(c =>
-                        {
-                            c.Item().BorderBottom(1).BorderColor(Colors.Black).Width(120).PaddingBottom(2).Text("");
-                            c.Item().PaddingTop(3).Text("Employee Signature").FontSize(8).FontColor(Colors.Grey.Darken1);
-                        });
-                        row.RelativeItem().AlignRight().Column(c =>
-                        {
-                            c.Item().AlignRight().BorderBottom(1).BorderColor(Colors.Black).Width(120).PaddingBottom(2).Text("");
-                            c.Item().PaddingTop(3).AlignRight().Text("Authorised Signature").FontSize(8).FontColor(Colors.Grey.Darken1);
-                        });
+                        c.Item().AlignCenter()
+                            .Text("*** This is a computer-generated payslip. No signature is required. ***")
+                            .FontSize(8).Bold().FontColor(Colors.Grey.Darken2);
+                        c.Item().PaddingTop(3).AlignCenter()
+                            .Text($"Generated on: {DateTime.Now:dd MMM yyyy  HH:mm:ss}  |  HRMS Payroll System  |  {CompanyName}")
+                            .FontSize(7).FontColor(Colors.Grey.Medium);
                     });
-
-                    main.Item().PaddingTop(10).AlignCenter()
-                        .Text("This is a computer-generated payslip. No signature is required.")
-                        .FontSize(7).Italic().FontColor(Colors.Grey.Medium);
                 });
             });
         });

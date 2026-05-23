@@ -32,8 +32,8 @@ public class EmailService : IEmailService
     private readonly ILogger<EmailService> _logger;
     private readonly IHttpClientFactory    _httpClientFactory;
 
-    // Brevo transactional email HTTP API — works on Railway (no SMTP port blocking)
-    private const string BrevoApiUrl = "https://api.brevo.com/v3/smtp/email";
+    private const string BrevoApiUrl  = "https://api.brevo.com/v3/smtp/email";
+    private const string CompanyName  = "ESYNC SOFTWARE SERVICES SDN.BHD";
 
     public EmailService(IConfiguration config, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
     {
@@ -222,26 +222,40 @@ public class EmailService : IEmailService
 
     private string GeneratePayslipEmailBody(string employeeName, string month, string year, decimal netSalary) =>
         $@"<!DOCTYPE html><html><head><style>
-  body{{font-family:Arial,sans-serif;line-height:1.6;color:#333;}}
-  .container{{max-width:600px;margin:0 auto;padding:20px;}}
-  .header{{background:#2563eb;color:white;padding:20px;text-align:center;border-radius:8px 8px 0 0;}}
-  .content{{background:#f8f9fa;padding:30px;border-radius:0 0 8px 8px;}}
-  .salary-box{{background:white;padding:20px;border-radius:8px;margin:20px 0;text-align:center;border-left:4px solid #10b981;}}
-  .salary-amount{{font-size:32px;font-weight:bold;color:#10b981;}}
-  .footer{{text-align:center;margin-top:20px;color:#888;font-size:12px;}}
+  body{{font-family:Arial,sans-serif;line-height:1.8;color:#1a1a1a;background:#f4f4f4;margin:0;padding:0;}}
+  .wrap{{max-width:580px;margin:30px auto;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}}
+  .header{{background:#1e40af;padding:24px 30px;}}
+  .header h2{{margin:0;color:white;font-size:18px;font-weight:600;}}
+  .header p{{margin:4px 0 0;color:#93c5fd;font-size:13px;}}
+  .body{{padding:28px 30px;}}
+  .body p{{margin:0 0 12px;font-size:14px;color:#374151;}}
+  .info-table{{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;}}
+  .info-table td{{padding:8px 12px;border-bottom:1px solid #f1f5f9;}}
+  .info-table td:first-child{{color:#6b7280;width:40%;}}
+  .info-table td:last-child{{font-weight:600;color:#111827;}}
+  .notice{{background:#f0f9ff;border-left:4px solid #0ea5e9;padding:12px 16px;border-radius:4px;font-size:13px;color:#0369a1;margin-top:16px;}}
+  .footer{{background:#f9fafb;padding:16px 30px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #f1f5f9;}}
 </style></head><body>
-  <div class=""container"">
-    <div class=""header""><h1>&#x1F9FE; Payslip Available</h1></div>
-    <div class=""content"">
-      <p>Dear <strong>{employeeName}</strong>,</p>
-      <p>Your payslip for <strong>{month}/{year}</strong> is now available.</p>
-      <div class=""salary-box"">
-        <p style=""margin:0;font-size:14px;color:#666;"">Net Salary</p>
-        <div class=""salary-amount"">RM {netSalary:N2}</div>
-      </div>
-      <p>Please log in to the HRMS portal to view your detailed payslip.</p>
+  <div class=""wrap"">
+    <div class=""header"">
+      <h2>ESYNC SOFTWARE SERVICES SDN.BHD</h2>
+      <p>Payslip Notification — {month} {year}</p>
     </div>
-    <div class=""footer""><p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p></div>
+    <div class=""body"">
+      <p>Dear <strong>{employeeName}</strong>,</p>
+      <p>Your payslip for <strong>{month} {year}</strong> has been processed. Please find the details below:</p>
+      <table class=""info-table"">
+        <tr><td>Employee Name</td><td>{employeeName}</td></tr>
+        <tr><td>Pay Period</td><td>{month} {year}</td></tr>
+        <tr><td>Net Salary</td><td>RM {netSalary:N2}</td></tr>
+      </table>
+      <div class=""notice"">
+        Your detailed payslip PDF is attached to this email. Please login to the HRMS portal for full payroll details.
+      </div>
+    </div>
+    <div class=""footer"">
+      This is an auto-generated email. Please do not reply. &copy; {DateTime.Now.Year} {CompanyName}
+    </div>
   </div>
 </body></html>";
 
