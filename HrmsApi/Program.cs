@@ -142,7 +142,12 @@ builder.Services.AddCors(options =>
 });
 
 // ── Services ─────────────────────────────────────────────
-builder.Services.AddHttpClient(); // Required by EmailService for Resend HTTP API
+builder.Services.AddHttpClient(); // Default HttpClient
+builder.Services.AddHttpClient("Brevo", client =>
+{
+    client.BaseAddress = new Uri("https://api.brevo.com");
+    client.Timeout     = TimeSpan.FromSeconds(30);
+}); // Named client for Brevo HTTP API
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IExportService, ExportService>();
