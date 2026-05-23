@@ -587,7 +587,8 @@ public class PayrollController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Failed to send email: {ex.Message}" });
+            var inner = ex.InnerException?.Message ?? "";
+            return StatusCode(500, new { message = $"Failed to send email: {ex.Message}", detail = inner });
         }
     }
 

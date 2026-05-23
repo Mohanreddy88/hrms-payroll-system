@@ -57,8 +57,10 @@ public class EmailService : IEmailService
 
         using var smtp = new SmtpClient(host, port)
         {
-            Credentials = new NetworkCredential(user, password),
-            EnableSsl = true
+            Credentials           = new NetworkCredential(user, password),
+            EnableSsl             = true,
+            DeliveryMethod        = SmtpDeliveryMethod.Network,
+            UseDefaultCredentials = false
         };
 
         using var message = new MailMessage
@@ -76,6 +78,9 @@ public class EmailService : IEmailService
             message.Attachments.Add(new Attachment(stream, attachmentName, "application/pdf"));
         }
 
+        _logger.LogInformation("SMTP attempt — host:{Host} port:{Port} user:{User} ssl:true to:{To}",
+            host, port, user, toEmail);
+
         await smtp.SendMailAsync(message);
         _logger.LogInformation("Email sent via SMTP to {Email} | subject: {Subject}", toEmail, subject);
     }
@@ -83,14 +88,11 @@ public class EmailService : IEmailService
     private async Task SendViaResendAsync(string toEmail, string subject, string htmlBody,
         byte[]? attachmentData = null, string? attachmentName = null)
     {
-        // Use SMTP directly — Resend API is not used
-        await SendViaSmtpAsync(toEmail, subject, htmlBody, attachmentData, attachmentName);
-        return;
-
-        // Resend API path kept for reference but bypassed
+        // Fall back to SMTP if Resend API key is not configured (local dev)
         var apiKey = _config["Resend:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
         {
+            _logger.LogInformation("Resend:ApiKey not configured — falling back to SMTP");
             await SendViaSmtpAsync(toEmail, subject, htmlBody, attachmentData, attachmentName);
             return;
         }
