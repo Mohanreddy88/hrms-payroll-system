@@ -157,27 +157,27 @@ public class AuthController : ControllerBase
             });
         }
     }
+
+    /// <summary>Temporary debug — shows masked config values to verify env vars loaded on Railway</summary>
+    [HttpGet("debug-config")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult DebugConfig()
+    {
+        string Mask(string? val) => string.IsNullOrEmpty(val)
+            ? "NOT SET"
+            : val.Length <= 8 ? "***" : $"{val[..4]}...{val[^4..]} (len:{val.Length})";
+
+        return Ok(new
+        {
+            smtpHost        = _config["Email:SmtpHost"],
+            smtpPort        = _config["Email:SmtpPort"],
+            smtpUser        = _config["Email:SmtpUser"],
+            smtpPassword    = Mask(_config["Email:SmtpPassword"]),
+            fromEmail       = _config["Email:FromEmail"],
+            fromName        = _config["Email:FromName"],
+            envSmtpPassword = Mask(Environment.GetEnvironmentVariable("SMTP_PASSWORD"))
+        });
+    }
 }
 
 public record TestEmailRequest(string ToEmail);
-
-/// <summary>Temporary debug — shows first/last 4 chars of key values so we can verify env vars are loaded</summary>
-[HttpGet("debug-config")]
-[Authorize(Roles = "Admin")]
-public IActionResult DebugConfig()
-{
-    string Mask(string? val) => string.IsNullOrEmpty(val)
-        ? "NOT SET"
-        : val.Length <= 8 ? "***" : $"{val[..4]}...{val[^4..]} (len:{val.Length})";
-
-    return Ok(new
-    {
-        smtpHost     = _config["Email:SmtpHost"],
-        smtpPort     = _config["Email:SmtpPort"],
-        smtpUser     = _config["Email:SmtpUser"],
-        smtpPassword = Mask(_config["Email:SmtpPassword"]),
-        fromEmail    = _config["Email:FromEmail"],
-        fromName     = _config["Email:FromName"],
-        envSmtpPassword = Mask(Environment.GetEnvironmentVariable("SMTP_PASSWORD"))
-    });
-}
