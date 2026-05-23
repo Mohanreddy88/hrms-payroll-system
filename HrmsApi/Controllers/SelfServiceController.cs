@@ -492,48 +492,36 @@ public class SelfServiceController : ControllerBase
             var monthName = new DateTime(payroll.Year, payroll.Month, 1).ToString("MMMM_yyyy");
             var fileName = $"Payslip_{payroll.Employee.Name.Replace(" ", "_")}_{monthName}.pdf";
 
-            var subject = $"Payslip for {new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy}";
-            var body = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a; background-color: #f5f5f5; margin: 0; padding: 0; }}
-        .container {{ max-width: 600px; margin: 0 auto; background-color: white; }}
-        .header {{ background: #4169E1; color: white; padding: 40px 20px; text-align: center; }}
-        .header h1 {{ margin: 0; font-size: 24px; font-weight: normal; }}
-        .content {{ padding: 40px 30px; background-color: white; }}
-        .content p {{ margin: 10px 0; color: #1a1a1a; font-size: 15px; }}
-        .salary-box {{ background: white; padding: 30px; margin: 30px 0; text-align: center; border: 3px solid #e0e0e0; border-left: 6px solid #10b981; }}
-        .salary-label {{ margin: 0; font-size: 16px; color: #666; }}
-        .salary-amount {{ font-size: 48px; font-weight: bold; color: #10b981; margin: 10px 0; }}
-        .footer {{ background: #f8f9fa; padding: 20px; text-align: center; font-size: 13px; color: #666; }}
-    </style>
-</head>
-<body>
-    <div class=""container"">
-        <div class=""header"">
-            <h1>🧾 Your Payslip is Ready</h1>
-        </div>
-        <div class=""content"">
-            <p>Dear <strong>{payroll.Employee.Name}</strong>,</p>
-            <p>Your payslip for <strong>{new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy}</strong> is now available.</p>
-            
-            <div class=""salary-box"">
-                <p class=""salary-label"">Net Salary</p>
-                <div class=""salary-amount"">RM {payroll.NetSalary:N2}</div>
-            </div>
-
-            <p>Please find your detailed payslip attached as a PDF document.</p>
-            <p>If you have any questions regarding your payslip, please contact the HR department.</p>
-        </div>
-        <div class=""footer"">
-            <p>This is an automated email from the HRMS Payroll System.</p>
-            <p>&copy; {DateTime.Now.Year} HRMS. All rights reserved.</p>
-        </div>
+            var monthLabel = new DateTime(payroll.Year, payroll.Month, 1).ToString("MMMM yyyy");
+            var subject    = $"Payslip for {monthLabel}";
+            var body = $@"<!DOCTYPE html><html><head><style>
+  body{{font-family:Arial,sans-serif;line-height:1.8;color:#1a1a1a;background:#f4f4f4;margin:0;padding:0;}}
+  .wrap{{max-width:580px;margin:30px auto;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}}
+  .header{{background:#1e40af;padding:24px 30px;}}
+  .header h2{{margin:0;color:white;font-size:18px;font-weight:600;}}
+  .header p{{margin:4px 0 0;color:#93c5fd;font-size:13px;}}
+  .body{{padding:28px 30px;}}
+  .body p{{margin:0 0 12px;font-size:14px;color:#374151;}}
+  .notice{{background:#f0f9ff;border-left:4px solid #0ea5e9;padding:12px 16px;border-radius:4px;font-size:13px;color:#0369a1;margin-top:16px;}}
+  .footer{{background:#f9fafb;padding:16px 30px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #f1f5f9;}}
+</style></head><body>
+  <div class=""wrap"">
+    <div class=""header"">
+      <h2>ESYNC SOFTWARE SERVICES SDN.BHD</h2>
+      <p>Payslip Notification — {monthLabel}</p>
     </div>
-</body>
-</html>";
+    <div class=""body"">
+      <p>Dear <strong>{payroll.Employee.Name}</strong>,</p>
+      <p>Please find your payslip for <strong>{monthLabel}</strong> attached to this email.</p>
+      <div class=""notice"">
+        Your detailed payslip PDF is attached. Please login to the HRMS portal for full payroll details.
+      </div>
+    </div>
+    <div class=""footer"">
+      This is an auto-generated email. Please do not reply. &copy; {DateTime.Now.Year} ESYNC SOFTWARE SERVICES SDN.BHD
+    </div>
+  </div>
+</body></html>";
 
             // Enqueue — returns instantly, background service delivers the email
             _emailQueue.Enqueue(new EmailJob
