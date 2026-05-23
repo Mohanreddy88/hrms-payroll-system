@@ -53,18 +53,22 @@ if (!string.IsNullOrEmpty(resendApiKey))
     builder.Configuration["Email:FromName"]   = smtpFromName;
 }
 
-// ── SMTP Environment Variables Override (Railway SMTP_* variables) ──────
+// ── SMTP / Brevo Environment Variables Override ──────────────────────────
 var smtpHost     = Environment.GetEnvironmentVariable("SMTP_HOST");
 var smtpPort     = Environment.GetEnvironmentVariable("SMTP_PORT");
 var smtpUser     = Environment.GetEnvironmentVariable("SMTP_USER");
 var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
 var smtpFrom     = Environment.GetEnvironmentVariable("SMTP_FROM");
+// BREVO_API_KEY = the HTTP API key (xkeysib-...) from Brevo Settings → API Keys
+// If set, it takes priority over SMTP_PASSWORD for the HTTP API transport
+var brevoApiKey  = Environment.GetEnvironmentVariable("BREVO_API_KEY");
 
 if (!string.IsNullOrEmpty(smtpHost))     builder.Configuration["Email:SmtpHost"]     = smtpHost;
 if (!string.IsNullOrEmpty(smtpPort))     builder.Configuration["Email:SmtpPort"]     = smtpPort;
 if (!string.IsNullOrEmpty(smtpUser))     builder.Configuration["Email:SmtpUser"]     = smtpUser;
 if (!string.IsNullOrEmpty(smtpPassword)) builder.Configuration["Email:SmtpPassword"] = smtpPassword;
 if (!string.IsNullOrEmpty(smtpFrom))     builder.Configuration["Email:FromEmail"]    = smtpFrom;
+if (!string.IsNullOrEmpty(brevoApiKey))  builder.Configuration["Brevo:ApiKey"]       = brevoApiKey;
 
 // ── Database ────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

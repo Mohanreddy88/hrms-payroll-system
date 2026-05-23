@@ -46,10 +46,11 @@ public class EmailService : IEmailService
     private async Task SendViaBrevoApiAsync(string toEmail, string subject, string htmlBody,
         byte[]? attachmentData = null, string? attachmentName = null)
     {
-        // API key = SMTP password from Brevo (same key, different transport)
-        var apiKey   = _config["Email:SmtpPassword"]
-                    ?? _config["SMTP_PASSWORD"]
-                    ?? throw new InvalidOperationException("Brevo API key (Email:SmtpPassword) not configured");
+        // Prefer BREVO_API_KEY (xkeysib-...) → fallback to SMTP_PASSWORD (xsmtpsib-...)
+        // Brevo HTTP API requires the API key from Settings → API Keys, NOT the SMTP key
+        var apiKey   = _config["Brevo:ApiKey"]
+                    ?? _config["Email:SmtpPassword"]
+                    ?? throw new InvalidOperationException("Brevo API key not configured. Set BREVO_API_KEY in Railway env vars.");
 
         var fromEmail = _config["Email:FromEmail"]
                      ?? _config["SMTP_FROM"]
