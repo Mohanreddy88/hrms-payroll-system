@@ -116,9 +116,9 @@
 </div>
 
 <!-- Payslip Detail Modal -->
-<div class="modal" [class.show]="showDetailModal" *ngIf="showDetailModal && selectedPayslip">>
+<div class="modal" [class.show]="showDetailModal" *ngIf="showDetailModal && selectedPayslip">
   <div class="modal-backdrop"></div>
-  <div class="modal-dialog">(click)="\$event.stopPropagation()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>
         <i class="bi bi-receipt"></i>
