@@ -15,64 +15,81 @@ public interface IPdfService
 public class PdfService : IPdfService
 {
     private readonly HrmsDbContext _db;
+    private readonly IWebHostEnvironment _env;
 
-    // ── Company details — update these to match your company ──────────────────
-    private const string CompanyName    = "ESYNC SOFTWARE SERVICES SDN.BHD";
-    private const string CompanyRegNo   = "(1158750-D)";
-    private const string CompanyAddress = "";
+    private const string CompanyName  = "ESYNC SOFTWARE SERVICES SDN.BHD";
+    private const string CompanyRegNo = "(1158750-D)";
 
-    public PdfService(HrmsDbContext db)
+    public PdfService(HrmsDbContext db, IWebHostEnvironment env)
     {
-        _db = db;
+        _db  = db;
+        _env = env;
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
     public async Task<byte[]> GeneratePayslipPdfAsync(int payrollId)
     {
         var payroll = await _db.Payrolls
-            .Include(p => p.Employee)
-                .ThenInclude(e => e.Department)
-            .Include(p => p.Employee)
-                .ThenInclude(e => e.Bank)
+            .Include(p => p.Employee).ThenInclude(e => e.Department)
+            .Include(p => p.Employee).ThenInclude(e => e.Bank)
             .Include(p => p.Adjustments)
             .FirstOrDefaultAsync(p => p.Id == payrollId)
             ?? throw new KeyNotFoundException($"Payroll {payrollId} not found");
 
-        // Load leave balances for the employee
         var leaveBalances = await _db.EmployeeLeaveBalances
             .Include(lb => lb.LeaveType)
             .Where(lb => lb.EmployeeId == payroll.EmployeeId && lb.Year == payroll.Year)
             .ToListAsync();
 
-        // Calculate YTD — sum of all processed/approved payrolls for same employee, same year, up to this month
         var ytdPayrolls = await _db.Payrolls
             .Where(p => p.EmployeeId == payroll.EmployeeId
-                     && p.Year == payroll.Year
-                     && p.Month <= payroll.Month
-                     && (p.Status == "Processed" || p.Status == "Approved")
-                     && p.Id != payrollId)
+                     && p.Year       == payroll.Year
+                     && p.Month      <= payroll.Month
+                     && p.Id         != payrollId
+                     && (p.Status == "Processed" || p.Status == "Approved"))
             .ToListAsync();
 
-        decimal ytdBasic      = ytdPayrolls.Sum(p => p.BasicSalary);
-        decimal ytdAllowances = ytdPayrolls.Sum(p => p.Allowances);
-        decimal ytdEpf        = ytdPayrolls.Sum(p => p.EpfAmount);
-        decimal ytdSocso      = ytdPayrolls.Sum(p => p.SocsoAmount);
-        decimal ytdTax        = ytdPayrolls.Sum(p => p.TaxAmount);
-        decimal ytdDeductions = ytdPayrolls.Sum(p => p.Deductions);
-        decimal ytdNet        = ytdPayrolls.Sum(p => p.NetSalary);
+        decimal ytdBasic  = ytdPayrolls.Sum(p => p.BasicSalary);
+        decimal ytdAllow  = ytdPayrolls.Sum(p => p.Allowances);
+        decimal ytdEpf    = ytdPayrolls.Sum(p => p.EpfAmount);
+        decimal ytdSocso  = ytdPayrolls.Sum(p => p.SocsoAmount);
+        decimal ytdTax    = ytdPayrolls.Sum(p => p.TaxAmount);
+        decimal ytdDed    = ytdPayrolls.Sum(p => p.Deductions);
+        decimal ytdGross  = ytdPayrolls.Sum(p => p.GrossIncome);
+        decimal ytdNet    = ytdPayrolls.Sum(p => p.NetSalary);
 
-        var monthName  = new DateTime(payroll.Year, payroll.Month, 1).ToString("MMM, yyyy");
-        var payDate    = new DateTime(payroll.Year, payroll.Month,
+        var bonusTotal    = payroll.Adjustments
+            .Where(a => a.AdjustmentType is "Allowance" or "Bonus" or "Overtime")
+            .Sum(a => a.Amount);
+        var otherDedTotal = payroll.Deductions + payroll.Adjustments
+            .Where(a => a.AdjustmentType == "Deduction").Sum(a => a.Amount);
+
+        var payDate   = new DateTime(payroll.Year, payroll.Month,
                             DateTime.DaysInMonth(payroll.Year, payroll.Month));
+        var monthName = new DateTime(payroll.Year, payroll.Month, 1).ToString("MMM, yyyy");
 
-        // Allowance adjustments (positive)
-        var allowanceAdj = payroll.Adjustments
-            .Where(a => a.AdjustmentType == "Allowance" || a.AdjustmentType == "Bonus" || a.AdjustmentType == "Overtime")
-            .ToList();
+        // Logo — try file system path (works both locally and in Docker/Railway)
+        byte[]? logoBytes = null;
+        var logoPaths = new[]
+        {
+            Path.Combine(_env.ContentRootPath, "Assets", "EsyncLogo.png"),
+            Path.Combine(AppContext.BaseDirectory, "Assets", "EsyncLogo.png"),
+            Path.Combine(_env.ContentRootPath, "EsyncLogo.png")
+        };
+        foreach (var lp in logoPaths)
+        {
+            if (File.Exists(lp)) { logoBytes = await File.ReadAllBytesAsync(lp); break; }
+        }
 
-        // Deduction adjustments (negative)
-        var deductionAdj = payroll.Adjustments
-            .Where(a => a.AdjustmentType == "Deduction")
+        // Leave balance helpers
+        var ml = leaveBalances.FirstOrDefault(lb =>
+            lb.LeaveType?.Code == "MC" || (lb.LeaveType?.Name?.Contains("Medical") ?? false));
+        var al = leaveBalances.FirstOrDefault(lb =>
+            lb.LeaveType?.Code == "AL" || (lb.LeaveType?.Name?.Contains("Annual") ?? false));
+        var otherLeaves = leaveBalances
+            .Where(lb => lb.LeaveType?.Code != "MC" && lb.LeaveType?.Code != "AL"
+                      && !(lb.LeaveType?.Name?.Contains("Medical") ?? false)
+                      && !(lb.LeaveType?.Name?.Contains("Annual")  ?? false))
             .ToList();
 
         var document = Document.Create(container =>
@@ -80,244 +97,250 @@ public class PdfService : IPdfService
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.MarginHorizontal(35);
-                page.MarginVertical(30);
+                page.MarginHorizontal(30);
+                page.MarginVertical(25);
                 page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
 
-                page.Content().Column(col =>
+                page.Content().Column(main =>
                 {
-                    // ── Company Header ────────────────────────────────────
-                    col.Item().BorderBottom(2).BorderColor(Colors.Black).PaddingBottom(8).Row(row =>
+                    // ════════════════════════════════════════════════════════
+                    // HEADER — Logo + Company Name
+                    // ════════════════════════════════════════════════════════
+                    main.Item().PaddingBottom(6).Row(row =>
                     {
-                        // Logo placeholder (grey box with "eSYNC" text)
-                        row.ConstantItem(80).Border(1).BorderColor(Colors.Grey.Medium)
-                            .Background(Colors.Grey.Lighten3)
-                            .AlignCenter().AlignMiddle()
-                            .Text("eSYNC\nSoftware\nServices")
-                            .FontSize(8).Bold().FontColor(Colors.Grey.Darken3);
+                        // Logo
+                        row.ConstantItem(90).AlignMiddle().Element(img =>
+                        {
+                            if (logoBytes != null)
+                                img.Image(logoBytes).FitArea();
+                            else
+                                img.Border(1).BorderColor(Colors.Grey.Medium)
+                                   .Background(Colors.Grey.Lighten3)
+                                   .AlignCenter().AlignMiddle()
+                                   .Text("eSYNC").Bold().FontSize(10);
+                        });
 
-                        row.RelativeItem().PaddingLeft(12).Column(c =>
+                        // Company name
+                        row.RelativeItem().PaddingLeft(10).AlignMiddle().Column(c =>
                         {
                             c.Item().Text(CompanyName)
-                                .FontSize(16).Bold().FontColor(Colors.Red.Darken2);
-                            c.Item().PaddingTop(4).Text(CompanyRegNo)
-                                .FontSize(10).FontColor(Colors.Grey.Darken2);
+                                .FontSize(18).Bold().FontColor(Colors.Red.Darken2);
+                            c.Item().PaddingTop(3).Text(CompanyRegNo)
+                                .FontSize(10).FontColor(Colors.Grey.Darken1);
                         });
                     });
 
-                    col.Item().PaddingTop(4).AlignCenter()
-                        .Text($"PAY SLIP FOR {new DateTime(payroll.Year, payroll.Month, 1):MMMM yyyy}".ToUpper())
-                        .FontSize(10).Bold();
+                    main.Item().BorderBottom(1).BorderColor(Colors.Black).PaddingBottom(0);
 
-                    col.Item().PaddingTop(10).PaddingBottom(6).Row(row =>
+                    // Pay slip title
+                    main.Item().PaddingVertical(5).AlignCenter()
+                        .Text($"PAY SLIP FOR {new DateTime(payroll.Year, payroll.Month, 1):MMMM, yyyy}".ToUpper())
+                        .FontSize(11).Bold();
+
+                    main.Item().BorderBottom(1).BorderColor(Colors.Black).PaddingBottom(0);
+
+                    // ════════════════════════════════════════════════════════
+                    // EMPLOYEE DETAILS — 2 columns
+                    // ════════════════════════════════════════════════════════
+                    main.Item().PaddingVertical(8).Row(row =>
                     {
-                        // Left — employee info
                         row.RelativeItem().Column(c =>
                         {
-                            c.Item().Text(text =>
+                            void LR(string label, string value)
                             {
-                                text.Span("NAME: ").Bold();
-                                text.Span(payroll.Employee.Name.ToUpper());
-                            });
-                            c.Item().PaddingTop(2).Text(text =>
-                            {
-                                text.Span("NRIC NO: ").Bold();
-                                text.Span(payroll.Employee.IcPassport ?? "—");
-                            });
-                            c.Item().PaddingTop(2).Text(text =>
-                            {
-                                text.Span("ACCOUNT No: ").Bold();
-                                text.Span(payroll.Employee.AccountNumber ?? "—");
-                            });
-                            c.Item().PaddingTop(2).Text(text =>
-                            {
-                                text.Span("DEPARTMENT: ").Bold();
-                                text.Span(payroll.Employee.Department?.Name ?? "—");
-                            });
+                                c.Item().PaddingBottom(3).Text(t =>
+                                {
+                                    t.Span(label).Bold().FontSize(9);
+                                    t.Span(value).FontSize(9);
+                                });
+                            }
+                            LR("NAME:       ", payroll.Employee.Name.ToUpper());
+                            LR("NRIC NO:    ", payroll.Employee.IcPassport ?? "—");
+                            LR("ACCOUNT No: ", payroll.Employee.AccountNumber ?? "—");
+                            LR("DEPARTMENT: ", payroll.Employee.Department?.Name ?? "—");
                         });
 
-                        // Right — pay info
                         row.RelativeItem().Column(c =>
                         {
-                            c.Item().AlignRight().Text(text =>
+                            void RR(string label, string value)
                             {
-                                text.Span("DATE: ").Bold();
-                                text.Span(payDate.ToString("dd/MM/yyyy"));
-                            });
-                            c.Item().PaddingTop(2).AlignRight().Text(text =>
-                            {
-                                text.Span("Pay slip for ").Bold();
-                                text.Span(monthName);
-                            });
-                            c.Item().PaddingTop(2).AlignRight().Text(text =>
-                            {
-                                text.Span("Bank: ").Bold();
-                                text.Span(payroll.Employee.Bank?.Name ?? "—");
-                            });
-                            c.Item().PaddingTop(2).AlignRight().Text(text =>
-                            {
-                                text.Span("DESIGNATION: ").Bold();
-                                text.Span(payroll.Employee.Designation ?? "—");
-                            });
+                                c.Item().PaddingBottom(3).AlignRight().Text(t =>
+                                {
+                                    t.Span(label).Bold().FontSize(9);
+                                    t.Span(value).FontSize(9);
+                                });
+                            }
+                            RR("DATE: ",        payDate.ToString("dd/MM/yyyy"));
+                            RR("Pay slip for: ", monthName);
+                            RR("Bank: ",         payroll.Employee.Bank?.Name ?? "—");
+                            RR("DESIGNATION: ", payroll.Employee.Designation ?? "—");
                         });
                     });
 
-                    // ── Main Income / Deduction Table ─────────────────────
-                    col.Item().Table(table =>
+                    // ════════════════════════════════════════════════════════
+                    // MAIN TABLE — Income | Deduction  with  Current + Y-T-D
+                    // ════════════════════════════════════════════════════════
+                    main.Item().Table(table =>
                     {
-                        table.ColumnsDefinition(cols =>
+                        // 7 columns: desc | curr | ytd | gap | desc | curr | ytd
+                        table.ColumnsDefinition(c =>
                         {
-                            cols.RelativeColumn(3);   // INCOME description
-                            cols.RelativeColumn(2);   // Current
-                            cols.RelativeColumn(2);   // Y-T-D
-                            cols.ConstantColumn(8);   // divider
-                            cols.RelativeColumn(3);   // DEDUCTION description
-                            cols.RelativeColumn(2);   // CURRENT
-                            cols.RelativeColumn(2);   // Y-T-D
+                            c.RelativeColumn(3.2f);
+                            c.RelativeColumn(1.8f);
+                            c.RelativeColumn(1.8f);
+                            c.ConstantColumn(5);
+                            c.RelativeColumn(3.2f);
+                            c.RelativeColumn(1.8f);
+                            c.RelativeColumn(1.8f);
                         });
 
-                        // Header row
-                        void HeaderCell(string text, bool right = false)
+                        // ── Header ───────────────────────────────────────
+                        void H(string t, bool center = true)
                         {
-                            var cell = table.Cell().Border(1).BorderColor(Colors.Black)
-                                .Background(Colors.Grey.Lighten2).Padding(4);
-                            if (right) cell.AlignRight().Text(text).Bold().FontSize(9);
-                            else       cell.AlignCenter().Text(text).Bold().FontSize(9);
+                            var c = table.Cell().Border(1).BorderColor(Colors.Black)
+                                         .Background(Colors.Grey.Lighten2).Padding(4);
+                            if (center) c.AlignCenter().Text(t).Bold().FontSize(9);
+                            else        c.AlignRight().Text(t).Bold().FontSize(9);
+                        }
+                        H("INCOME"); H("Current", false); H("Y-T-D", false);
+                        table.Cell(); // gap
+                        H("DEDUCTION"); H("CURRENT", false); H("Y-T-D", false);
+
+                        // ── Row helpers ───────────────────────────────────
+                        string Fmt(decimal? v) => (v.HasValue && v.Value != 0)
+                            ? v.Value.ToString("N2") : "";
+
+                        void IR(string label, decimal? cur, decimal? ytd, bool bold = false)
+                        {
+                            var l = table.Cell().BorderLeft(1).BorderColor(Colors.Black)
+                                         .PaddingHorizontal(4).PaddingVertical(3);
+                            var cc = table.Cell().BorderLeft(1).BorderColor(Colors.Black)
+                                         .PaddingHorizontal(4).PaddingVertical(3).AlignRight();
+                            var y  = table.Cell().BorderLeft(1).BorderRight(1).BorderColor(Colors.Black)
+                                         .PaddingHorizontal(4).PaddingVertical(3).AlignRight();
+                            if (bold) { l.Text(label).Bold(); cc.Text(Fmt(cur)).Bold(); y.Text(Fmt(ytd)).Bold(); }
+                            else      { l.Text(label);        cc.Text(Fmt(cur));        y.Text(Fmt(ytd)); }
                         }
 
-                        HeaderCell("INCOME");
-                        HeaderCell("Current", true);
-                        HeaderCell("Y-T-D", true);
-                        table.Cell(); // divider
-                        HeaderCell("DEDUCTION");
-                        HeaderCell("CURRENT", true);
-                        HeaderCell("Y-T-D", true);
+                        void DR(string label, decimal? cur, decimal? ytd, bool bold = false)
+                        {
+                            table.Cell(); // gap
+                            var l  = table.Cell().BorderLeft(1).BorderColor(Colors.Black)
+                                          .PaddingHorizontal(4).PaddingVertical(3);
+                            var cc = table.Cell().BorderLeft(1).BorderColor(Colors.Black)
+                                          .PaddingHorizontal(4).PaddingVertical(3).AlignRight();
+                            var y  = table.Cell().BorderLeft(1).BorderRight(1).BorderColor(Colors.Black)
+                                          .PaddingHorizontal(4).PaddingVertical(3).AlignRight();
+                            if (bold) { l.Text(label).Bold(); cc.Text(Fmt(cur)).Bold(); y.Text(Fmt(ytd)).Bold(); }
+                            else      { l.Text(label);        cc.Text(Fmt(cur));        y.Text(Fmt(ytd)); }
+                        }
+
+                        void ER() { IR("", null, null); } // empty income row
+
+                        // Employer EPF (13%)
+                        var empEpf   = Math.Round(payroll.BasicSalary * 0.13m, 2);
+                        var empSocso = Math.Round(payroll.BasicSalary * 0.0175m, 2);
 
                         // ── Data rows ─────────────────────────────────────
-                        void IncomeRow(string label, decimal? current, decimal? ytd, bool bold = false)
-                        {
-                            var lCell = table.Cell().BorderLeft(1).BorderColor(Colors.Black).PaddingHorizontal(4).PaddingVertical(3);
-                            var cCell = table.Cell().BorderLeft(1).BorderColor(Colors.Black).PaddingHorizontal(4).PaddingVertical(3).AlignRight();
-                            var yCell = table.Cell().BorderLeft(1).BorderRight(1).BorderColor(Colors.Black).PaddingHorizontal(4).PaddingVertical(3).AlignRight();
+                        IR("BASIC PAY",            payroll.BasicSalary, ytdBasic + payroll.BasicSalary);
+                        DR("EPF",                  payroll.EpfAmount,   ytdEpf   + payroll.EpfAmount);
 
-                            if (bold) { lCell.Text(label).Bold(); cCell.Text(current > 0 ? current.Value.ToString("N2") : "").Bold(); yCell.Text(ytd > 0 ? ytd.Value.ToString("N2") : "").Bold(); }
-                            else      { lCell.Text(label); cCell.Text(current > 0 ? current.Value.ToString("N2") : ""); yCell.Text(ytd > 0 ? ytd.Value.ToString("N2") : ""); }
-                        }
+                        IR("Bonus",                bonusTotal > 0 ? bonusTotal : null, bonusTotal > 0 ? bonusTotal : null);
+                        DR("SOCSO",                payroll.SocsoAmount, ytdSocso + payroll.SocsoAmount);
 
-                        void DeductRow(string label, decimal? current, decimal? ytd, bool bold = false)
-                        {
-                            table.Cell(); // divider between income and deduction
-                            var lCell = table.Cell().BorderLeft(1).BorderColor(Colors.Black).PaddingHorizontal(4).PaddingVertical(3);
-                            var cCell = table.Cell().BorderLeft(1).BorderColor(Colors.Black).PaddingHorizontal(4).PaddingVertical(3).AlignRight();
-                            var yCell = table.Cell().BorderLeft(1).BorderRight(1).BorderColor(Colors.Black).PaddingHorizontal(4).PaddingVertical(3).AlignRight();
+                        IR("MA / HRA / DA",        payroll.Allowances > 0 ? payroll.Allowances : null,
+                                                   payroll.Allowances > 0 ? ytdAllow + payroll.Allowances : null);
+                        DR("PCB",                  payroll.TaxAmount,  ytdTax + payroll.TaxAmount);
 
-                            if (bold) { lCell.Text(label).Bold(); cCell.Text(current > 0 ? current.Value.ToString("N2") : "").Bold(); yCell.Text(ytd > 0 ? ytd.Value.ToString("N2") : "").Bold(); }
-                            else      { lCell.Text(label); cCell.Text(current > 0 ? current.Value.ToString("N2") : ""); yCell.Text(ytd > 0 ? ytd.Value.ToString("N2") : ""); }
-                        }
+                        ER();
+                        DR("Other Deductions",     otherDedTotal > 0 ? otherDedTotal : null,
+                                                   otherDedTotal > 0 ? ytdDed + otherDedTotal : null);
+                        ER();
+                        DR("",                     null, null);
+                        ER();
+                        DR("Employer EPF",         empEpf,   null);
+                        ER();
+                        DR("Employer SOCSO",       empSocso, null);
+                        ER();
+                        DR("",                     null, null);
+                        ER();
+                        DR("Gross Income",         payroll.GrossIncome, ytdGross + payroll.GrossIncome, true);
+                        ER();
+                        DR("Net Income",           payroll.NetSalary,   ytdNet   + payroll.NetSalary,   true);
 
-                        // Row 1: Basic Pay | EPF
-                        IncomeRow("BASIC PAY", payroll.BasicSalary, ytdBasic + payroll.BasicSalary);
-                        DeductRow("EPF", payroll.EpfAmount, ytdEpf + payroll.EpfAmount);
+                        // ── Gross Total / End of Month Pay row ────────────
+                        var grossTotal    = payroll.BasicSalary + payroll.Allowances + bonusTotal;
+                        var ytdGrossTotal = ytdBasic + ytdAllow + grossTotal;
 
-                        // Row 2: Allowances | SOCSO
-                        IncomeRow("Allowances (MA/HRA/DA)", payroll.Allowances > 0 ? payroll.Allowances : null, payroll.Allowances > 0 ? ytdAllowances + payroll.Allowances : null);
-                        DeductRow("SOCSO", payroll.SocsoAmount, ytdSocso + payroll.SocsoAmount);
-
-                        // Row 3: Bonus/Other allowance adjustments | PCB
-                        var bonusTotal = allowanceAdj.Sum(a => a.Amount);
-                        IncomeRow("Bonus / Other Allowances", bonusTotal > 0 ? bonusTotal : null, bonusTotal > 0 ? bonusTotal : null);
-                        DeductRow("PCB (Tax)", payroll.TaxAmount, ytdTax + payroll.TaxAmount);
-
-                        // Row 4: empty | Other Deductions
-                        var otherDedTotal = payroll.Deductions + deductionAdj.Sum(a => a.Amount);
-                        IncomeRow("", null, null);
-                        DeductRow("Other Deductions", otherDedTotal > 0 ? otherDedTotal : null, otherDedTotal > 0 ? ytdDeductions + otherDedTotal : null);
-
-                        // Row 5: empty | Employer EPF
-                        var employerEpf = Math.Round(payroll.BasicSalary * 0.13m, 2);
-                        IncomeRow("", null, null);
-                        DeductRow("Employer EPF", employerEpf, null);
-
-                        // Row 6: empty | Employer SOCSO
-                        IncomeRow("", null, null);
-                        DeductRow("Employer SOCSO", 0m, null);
-
-                        // Row 7: empty | Gross Income
-                        IncomeRow("", null, null);
-                        DeductRow("Gross Income", payroll.GrossIncome, ytdPayrolls.Sum(p => p.GrossIncome) + payroll.GrossIncome, true);
-
-                        // Row 8: empty | Net Income
-                        IncomeRow("", null, null);
-                        DeductRow("Net Income", payroll.NetSalary, ytdNet + payroll.NetSalary, true);
-
-                        // ── Totals row ────────────────────────────────────
-                        var grossTotal = payroll.BasicSalary + payroll.Allowances + bonusTotal;
-                        var ytdGrossTotal = ytdBasic + ytdAllowances + grossTotal;
-
-                        table.Cell().ColumnSpan(3).BorderTop(1).BorderBottom(1).BorderLeft(1).BorderRight(1).BorderColor(Colors.Black)
-                            .Background(Colors.Grey.Lighten2).Padding(5).Row(r =>
+                        table.Cell().ColumnSpan(3)
+                            .Border(1).BorderColor(Colors.Black)
+                            .Background(Colors.Grey.Lighten3).Padding(5)
+                            .Row(r =>
                             {
-                                r.RelativeItem().Text("Gross Total").Bold();
-                                r.ConstantItem(60).AlignRight().Text(grossTotal.ToString("N2")).Bold();
-                                r.ConstantItem(60).AlignRight().Text(ytdGrossTotal.ToString("N2")).Bold();
+                                r.RelativeItem().Text("Gross Total").Bold().FontSize(9);
+                                r.ConstantItem(58).AlignRight().Text(grossTotal.ToString("N2")).Bold().FontSize(9);
+                                r.ConstantItem(58).AlignRight().Text(ytdGrossTotal.ToString("N2")).Bold().FontSize(9);
                             });
 
-                        table.Cell(); // divider
+                        table.Cell(); // gap
 
-                        var endOfMonthPay = payroll.NetSalary;
-                        table.Cell().ColumnSpan(3).BorderTop(1).BorderBottom(1).BorderLeft(1).BorderRight(1).BorderColor(Colors.Black)
-                            .Background(Colors.Grey.Lighten2).Padding(5).Row(r =>
+                        table.Cell().ColumnSpan(3)
+                            .Border(1).BorderColor(Colors.Black)
+                            .Background(Colors.Grey.Lighten3).Padding(5)
+                            .Row(r =>
                             {
-                                r.RelativeItem().Text("End of Month Pay").Bold();
-                                r.ConstantItem(80).AlignRight().Text($"{endOfMonthPay:N2}").Bold();
+                                r.RelativeItem().Text("End of Month Pay").Bold().FontSize(9);
+                                r.ConstantItem(75).AlignRight()
+                                    .Text($"{payroll.NetSalary:N2}").Bold().FontSize(9);
                             });
                     });
 
-                    // ── Leave Summary ─────────────────────────────────────
-                    col.Item().PaddingTop(6).Table(table =>
+                    // ════════════════════════════════════════════════════════
+                    // LEAVE SUMMARY
+                    // ════════════════════════════════════════════════════════
+                    main.Item().PaddingTop(5).Table(table =>
                     {
-                        table.ColumnsDefinition(cols =>
+                        table.ColumnsDefinition(c =>
                         {
-                            cols.RelativeColumn();
-                            cols.RelativeColumn();
+                            c.RelativeColumn();
+                            c.RelativeColumn();
                         });
 
-                        var mlBalance = leaveBalances.FirstOrDefault(lb =>
-                            lb.LeaveType?.Code == "MC" || lb.LeaveType?.Name?.Contains("Medical") == true);
-                        var alBalance = leaveBalances.FirstOrDefault(lb =>
-                            lb.LeaveType?.Code == "AL" || lb.LeaveType?.Name?.Contains("Annual") == true);
-                        var elBalance = leaveBalances.FirstOrDefault(lb =>
-                            lb.LeaveType?.Code == "EL" || lb.LeaveType?.Name?.Contains("Emergency") == true);
-
-                        var mlUsed    = mlBalance?.UsedDays ?? 0;
-                        var mlBal     = mlBalance?.BalanceDays ?? 0;
-                        var alUsed    = alBalance?.UsedDays ?? 0;
-                        var alBal     = alBalance?.BalanceDays ?? 0;
-
-                        table.Cell().Border(1).BorderColor(Colors.Black).Padding(4)
-                            .Text($"Medical Leave = {mlUsed}, Balance = {mlBal}, YTD = {mlUsed}").FontSize(8);
-                        table.Cell().Border(1).BorderColor(Colors.Black).Padding(4)
-                            .Text($"Annual Leave = {alUsed}, Balance = {alBal}, YTD = {alUsed}").FontSize(8);
-
-                        var otherLeaves = leaveBalances
-                            .Where(lb => lb.LeaveType?.Code != "MC" && lb.LeaveType?.Code != "AL"
-                                      && lb.LeaveType?.Name?.Contains("Medical") != true
-                                      && lb.LeaveType?.Name?.Contains("Annual") != true)
-                            .ToList();
+                        var mlUsed = ml?.UsedDays  ?? 0;
+                        var mlBal  = ml?.BalanceDays ?? 0;
+                        var alUsed = al?.UsedDays  ?? 0;
+                        var alBal  = al?.BalanceDays ?? 0;
                         var otherUsed = otherLeaves.Sum(lb => lb.UsedDays);
                         var otherBal  = otherLeaves.Sum(lb => lb.BalanceDays);
 
+                        table.Cell().Border(1).BorderColor(Colors.Black).Padding(4)
+                            .Text($"Medical Leave = {mlUsed},  Balance = {mlBal},  YTD = {mlUsed}").FontSize(8);
+                        table.Cell().Border(1).BorderColor(Colors.Black).Padding(4)
+                            .Text($"Annual Leave = {alUsed},  Balance = {alBal},  YTD = {alUsed}").FontSize(8);
                         table.Cell().ColumnSpan(2).Border(1).BorderColor(Colors.Black).Padding(4)
-                            .Text($"Other Leave = {otherUsed}, Balance = {otherBal}, YTD = {otherUsed}").FontSize(8);
+                            .Text($"Other Leave = {otherUsed},  Balance = {otherBal},  YTD = {otherUsed}").FontSize(8);
                     });
 
-                    // ── Footer ────────────────────────────────────────────
-                    col.Item().PaddingTop(10).AlignCenter()
+                    // ════════════════════════════════════════════════════════
+                    // FOOTER
+                    // ════════════════════════════════════════════════════════
+                    main.Item().PaddingTop(12).Row(row =>
+                    {
+                        row.RelativeItem().Column(c =>
+                        {
+                            c.Item().BorderBottom(1).BorderColor(Colors.Black).Width(120).PaddingBottom(2).Text("");
+                            c.Item().PaddingTop(3).Text("Employee Signature").FontSize(8).FontColor(Colors.Grey.Darken1);
+                        });
+                        row.RelativeItem().AlignRight().Column(c =>
+                        {
+                            c.Item().AlignRight().BorderBottom(1).BorderColor(Colors.Black).Width(120).PaddingBottom(2).Text("");
+                            c.Item().PaddingTop(3).AlignRight().Text("Authorised Signature").FontSize(8).FontColor(Colors.Grey.Darken1);
+                        });
+                    });
+
+                    main.Item().PaddingTop(10).AlignCenter()
                         .Text("This is a computer-generated payslip. No signature is required.")
-                        .FontSize(8).FontColor(Colors.Grey.Darken1).Italic();
-                    col.Item().PaddingTop(2).AlignCenter()
-                        .Text($"Generated on: {DateTime.Now:dd MMM yyyy HH:mm}")
-                        .FontSize(8).FontColor(Colors.Grey.Medium);
+                        .FontSize(7).Italic().FontColor(Colors.Grey.Medium);
                 });
             });
         });

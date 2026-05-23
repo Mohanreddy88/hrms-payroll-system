@@ -28,4 +28,11 @@
     <None Remove="HrmsApi.Tests\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Copy logo asset to output directory so PdfService can load it at runtime -->
+    <Content Include="Assets\EsyncLogo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
