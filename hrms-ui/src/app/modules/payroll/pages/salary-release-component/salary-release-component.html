@@ -140,16 +140,9 @@
               <button class="btn-icon btn-ytd" (click)="openYtd(p.employeeId, p.year)" title="Year-to-Date Summary">
                 <i class="bi bi-bar-chart-line"></i>
               </button>
-              <!-- EA Form view -->
-              <button class="btn-icon btn-ea" (click)="openEaForm(p.employeeId, p.year)" title="View EA Form">
+              <!-- EA Form — opens modal to review then confirm send -->
+              <button class="btn-icon btn-ea" (click)="openEaForm(p.employeeId, p.year, p.employeeName)" title="View &amp; Email EA Form">
                 <i class="bi bi-file-earmark-text"></i>
-              </button>
-              <!-- Email EA Form to employee -->
-              <button class="btn-icon btn-email-ea"
-                (click)="emailEaForm(p.employeeId, p.year, p.employeeName)"
-                [disabled]="isEmailingEa(p.employeeId)"
-                title="Email EA Form to Employee">
-                <i class="bi" [class.bi-file-earmark-arrow-up]="!isEmailingEa(p.employeeId)" [class.bi-hourglass-split]="isEmailingEa(p.employeeId)"></i>
               </button>
             </div>
           </td>
@@ -175,7 +168,7 @@
 <!-- YTD Modal -->
 <div class="modal" [class.show]="showYtdModal" *ngIf="showYtdModal">
   <div class="modal-backdrop" (click)="closeYtdModal()"></div>
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3><i class="bi bi-bar-chart-line"></i> Year-to-Date Summary {{ ytdYear }}</h3>
       <button class="btn-close" (click)="closeYtdModal()"><i class="bi bi-x-lg"></i></button>
@@ -223,7 +216,7 @@
 <!-- EA Form Modal -->
 <div class="modal" [class.show]="showEaModal" *ngIf="showEaModal">
   <div class="modal-backdrop" (click)="closeEaModal()"></div>
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3><i class="bi bi-file-earmark-text"></i> EA Form &mdash; {{ eaYear }}</h3>
       <button class="btn-close" (click)="closeEaModal()"><i class="bi bi-x-lg"></i></button>
@@ -274,7 +267,16 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" (click)="closeEaModal()">Close</button>
-      <button class="btn btn-primary" (click)="printEaForm()"><i class="bi bi-printer"></i> Print</button>
+      <button class="btn btn-print" (click)="printEaForm()" *ngIf="eaData">
+        <i class="bi bi-printer"></i> Print
+      </button>
+      <button class="btn btn-send-ea"
+        (click)="confirmSendEaEmail()"
+        [disabled]="sendingEaEmail || !eaData"
+        *ngIf="eaData">
+        <i class="bi" [class.bi-envelope-check]="!sendingEaEmail" [class.bi-hourglass-split]="sendingEaEmail"></i>
+        {{ sendingEaEmail ? 'Sending...' : 'Confirm &amp; Send Email' }}
+      </button>
     </div>
   </div>
 </div>

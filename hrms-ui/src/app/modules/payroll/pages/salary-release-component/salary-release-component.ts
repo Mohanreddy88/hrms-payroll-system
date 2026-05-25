@@ -50,10 +50,13 @@ export class SalaryReleaseComponent implements OnInit {
   ytdYear = new Date().getFullYear();
 
   // EA Form modal
-  showEaModal = false;
-  eaLoading   = false;
+  showEaModal    = false;
+  eaLoading      = false;
   eaData: EaForm | null = null;
-  eaYear = new Date().getFullYear();
+  eaYear         = new Date().getFullYear();
+  eaEmployeeId   = 0;
+  eaEmployeeName = '';
+  sendingEaEmail = false;
 
   constructor(
     private http: HttpClient,
@@ -183,24 +186,21 @@ export class SalaryReleaseComponent implements OnInit {
     });
   }
 
-  // ── Email EA Form ─────────────────────────────────────────────────────────────
-  emailingEaIds: Set<number> = new Set(); // tracks which employeeId is being emailed
-
-  emailEaForm(employeeId: number, year: number, employeeName: string): void {
-    this.emailingEaIds.add(employeeId);
-    this.http.post(`${environment.apiUrl}/payroll/email-ea-form/${employeeId}/${year}`, {}).subscribe({
+  // ── Email EA Form (called from modal footer after reviewing) ────────────────
+  confirmSendEaEmail(): void {
+    this.sendingEaEmail = true;
+    this.http.post(`${environment.apiUrl}/payroll/email-ea-form/${this.eaEmployeeId}/${this.eaYear}`, {}).subscribe({
       next: () => {
-        this.emailingEaIds.delete(employeeId);
-        this.toast.success('EA Form Sent', `EA Form for ${year} emailed to ${employeeName}.`);
+        this.sendingEaEmail = false;
+        this.toast.success('EA Form Sent', `EA Form for ${this.eaYear} emailed to ${this.eaEmployeeName}.`);
+        this.closeEaModal();
       },
       error: (err) => {
-        this.emailingEaIds.delete(employeeId);
+        this.sendingEaEmail = false;
         this.toast.error('Email Failed', err?.error?.message || 'Could not send EA Form email.');
       }
     });
   }
-
-  isEmailingEa(employeeId: number): boolean { return this.emailingEaIds.has(employeeId); }
 
   // ── YTD ───────────────────────────────────────────────────────────────────────
   openYtd(employeeId: number, year: number): void {
@@ -213,14 +213,19 @@ export class SalaryReleaseComponent implements OnInit {
   closeYtdModal(): void { this.showYtdModal = false; this.ytdData = null; }
 
   // ── EA Form ───────────────────────────────────────────────────────────────────
-  openEaForm(employeeId: number, year: number): void {
-    this.eaYear = year; this.eaData = null; this.showEaModal = true; this.eaLoading = true;
+  openEaForm(employeeId: number, year: number, employeeName: string = ''): void {
+    this.eaYear = year;
+    this.eaEmployeeId = employeeId;
+    this.eaEmployeeName = employeeName;
+    this.eaData = null;
+    this.showEaModal = true;
+    this.eaLoading = true;
     this.payrollService.getEaForm(employeeId, year).subscribe({
-      next: (data) => { this.eaData = data; this.eaLoading = false; },
+      next: (data) => { this.eaData = data; this.eaEmployeeName = data.employeeName; this.eaLoading = false; },
       error: (err) => { this.eaLoading = false; this.toast.error('EA Form Error', err?.error?.message || 'Could not load EA Form.'); this.showEaModal = false; }
     });
   }
-  closeEaModal(): void { this.showEaModal = false; this.eaData = null; }
+  closeEaModal(): void { this.showEaModal = false; this.eaData = null; this.sendingEaEmail = false; }
   printEaForm(): void  { window.print(); }
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
