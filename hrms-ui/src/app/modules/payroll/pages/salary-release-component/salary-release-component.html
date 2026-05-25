@@ -132,17 +132,13 @@
           <td class="amount net">RM {{ p.netSalary | number:'1.2-2' }}</td>
           <td>
             <div class="action-buttons">
-              <!-- Email -->
+              <!-- Email payslip -->
               <button class="btn-icon btn-email" (click)="emailPayslip(p.id)" title="Email Payslip">
                 <i class="bi bi-envelope"></i>
               </button>
               <!-- YTD -->
               <button class="btn-icon btn-ytd" (click)="openYtd(p.employeeId, p.year)" title="Year-to-Date Summary">
                 <i class="bi bi-bar-chart-line"></i>
-              </button>
-              <!-- EA Form — opens modal to review then confirm send -->
-              <button class="btn-icon btn-ea" (click)="openEaForm(p.employeeId, p.year, p.employeeName)" title="View &amp; Email EA Form">
-                <i class="bi bi-file-earmark-text"></i>
               </button>
             </div>
           </td>

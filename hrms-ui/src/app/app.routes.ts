@@ -14,6 +14,7 @@ import { AttendanceApprovalComponent } from './modules/attendance/pages/attendan
 import { PayrollGenerateComponent } from './modules/payroll/pages/payroll-generate-component/payroll-generate-component';
 import { PayrollListComponent } from './modules/payroll/pages/payroll-list-component/payroll-list-component';
 import { SalaryReleaseComponent } from './modules/payroll/pages/salary-release-component/salary-release-component';
+import { YearEndReportsComponent } from './modules/payroll/pages/year-end-reports-component/year-end-reports-component';
 import { UserListComponent } from './modules/users/pages/user-list-component/user-list-component';
 import { DepartmentListComponent } from './modules/master/pages/department-list-component/department-list-component';
 import { BankListComponent } from './modules/master/pages/bank-list-component/bank-list-component';
@@ -74,8 +75,9 @@ export const routes: Routes = [
       // Payroll submenu
       { path: 'payroll/generate',       component: PayrollGenerateComponent },
       { path: 'payroll/list',           component: PayrollListComponent },
-      { path: 'payroll/salary-release', component: SalaryReleaseComponent },
-      { path: 'payroll',                redirectTo: 'payroll/generate', pathMatch: 'full' },
+      { path: 'payroll/salary-release',   component: SalaryReleaseComponent },
+      { path: 'payroll/year-end-reports',  component: YearEndReportsComponent },
+      { path: 'payroll',                   redirectTo: 'payroll/generate', pathMatch: 'full' },
       
       // Timesheets
       { path: 'timesheets',         component: TimesheetListComponent },

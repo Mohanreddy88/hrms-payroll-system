@@ -859,6 +859,63 @@ public class PayrollController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
+    // YEAR-END SUMMARY — list all employees with payroll for the year
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/payroll/year-end-summary/{year}
+    /// Returns all employees who have payroll records for the given year,
+    /// with their totals and EA Form readiness status.
+    /// </summary>
+    [HttpGet("year-end-summary/{year:int}")]
+    public async Task<IActionResult> GetYearEndSummary(int year)
+    {
+        var records = await _db.Payrolls
+            .Include(p => p.Employee).ThenInclude(e => e.Department)
+            .Where(p => p.Year == year)
+            .ToListAsync();
+
+        if (!records.Any())
+            return Ok(new { hasRecords = false, message = $"No payroll records found for {year}.", employees = new List<object>() });
+
+        var grouped = records
+            .GroupBy(p => p.EmployeeId)
+            .Select(g =>
+            {
+                var emp         = g.First().Employee;
+                var allMonths   = g.OrderBy(p => p.Month).ToList();
+                var processed   = allMonths.Where(p => p.Status == "Processed" || p.Status == "Approved").ToList();
+                var monthsDone  = processed.Count;
+                var isEaReady   = monthsDone > 0;
+
+                return new
+                {
+                    employeeId      = emp.Id,
+                    employeeName    = emp.Name,
+                    employeeCode    = emp.EmployeeCode,
+                    email           = emp.Email,
+                    designation     = emp.Designation,
+                    departmentName  = emp.Department?.Name ?? "",
+                    monthsProcessed = monthsDone,
+                    totalMonths     = allMonths.Count,
+                    ytdGross        = processed.Sum(p => p.GrossIncome),
+                    ytdBasic        = processed.Sum(p => p.BasicSalary),
+                    ytdAllowances   = processed.Sum(p => p.Allowances),
+                    ytdEpf          = processed.Sum(p => p.EpfAmount),
+                    ytdSocso        = processed.Sum(p => p.SocsoAmount),
+                    ytdTax          = processed.Sum(p => p.TaxAmount),
+                    ytdNet          = processed.Sum(p => p.NetSalary),
+                    isEaReady,
+                    hasEmail        = !string.IsNullOrWhiteSpace(emp.Email)
+                };
+            })
+            .OrderBy(e => e.employeeCode)
+            .ToList();
+
+        return Ok(new { hasRecords = true, year, employees = grouped });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
     // EMAIL EA FORM TO EMPLOYEE
     // ─────────────────────────────────────────────────────────────────────────────
 

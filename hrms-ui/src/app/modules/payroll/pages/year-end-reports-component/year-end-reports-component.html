@@ -1,0 +1,210 @@
+<div class="page-container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h2><i class="bi bi-file-earmark-ruled-fill"></i> Year-End Reports</h2>
+      <p>Generate and email EA Forms (Borang EA) to all employees for annual income tax filing</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-bulk-send"
+        (click)="sendAllEaForms()"
+        [disabled]="bulkSending || !hasRecords || readyCount === 0">
+        <i class="bi" [class.bi-send-check-fill]="!bulkSending" [class.bi-hourglass-split]="bulkSending"></i>
+        {{ bulkSending ? 'Sending...' : 'Send All EA Forms (' + readyCount + ')' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Year selector -->
+  <div class="year-selector-card">
+    <div class="year-selector-inner">
+      <i class="bi bi-calendar-range-fill"></i>
+      <label>Year of Assessment</label>
+      <select [(ngModel)]="selectedYear" (ngModelChange)="onYearChange()" class="year-select">
+        <option *ngFor="let y of years" [ngValue]="y">{{ y }}</option>
+      </select>
+      <span class="year-hint">EA Forms cover all payrolls processed in {{ selectedYear }}</span>
+    </div>
+  </div>
+
+  <!-- Summary strip -->
+  <div class="summary-strip" *ngIf="hasRecords && !loading">
+    <div class="summary-card">
+      <div class="summary-icon"><i class="bi bi-people-fill"></i></div>
+      <div><div class="summary-value">{{ employees.length }}</div><div class="summary-label">Employees</div></div>
+    </div>
+    <div class="summary-card green">
+      <div class="summary-icon"><i class="bi bi-file-earmark-check-fill"></i></div>
+      <div><div class="summary-value">{{ readyCount }}</div><div class="summary-label">EA Form Ready</div></div>
+    </div>
+    <div class="summary-card blue">
+      <div class="summary-icon"><i class="bi bi-envelope-check-fill"></i></div>
+      <div><div class="summary-value">{{ sentCount }}</div><div class="summary-label">Sent This Session</div></div>
+    </div>
+    <div class="summary-card teal">
+      <div class="summary-icon"><i class="bi bi-cash-coin"></i></div>
+      <div><div class="summary-value">RM {{ totalNet | number:'1.2-2' }}</div><div class="summary-label">Total Net Paid {{ selectedYear }}</div></div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div><p>Loading year-end data...</p>
+  </div>
+
+  <!-- No records -->
+  <div class="empty-state" *ngIf="!loading && !hasRecords">
+    <i class="bi bi-inbox"></i>
+    <p>{{ message || 'No payroll records found for ' + selectedYear }}</p>
+    <small>Generate and process payrolls for {{ selectedYear }} first.</small>
+  </div>
+
+  <!-- Table -->
+  <div class="year-end-table-card" *ngIf="!loading && hasRecords">
+    <table class="year-end-table">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Department</th>
+          <th>Months Processed</th>
+          <th>YTD Gross</th>
+          <th>YTD EPF</th>
+          <th>YTD SOCSO</th>
+          <th>YTD PCB</th>
+          <th>YTD Net</th>
+          <th>EA Ready</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let emp of employees" [class.sent-row]="isSent(emp.employeeId)">
+          <td>
+            <div class="employee-cell">
+              <div class="employee-avatar">{{ emp.employeeName.charAt(0) }}</div>
+              <div>
+                <div class="employee-name">{{ emp.employeeName }}</div>
+                <div class="employee-code">{{ emp.employeeCode }}</div>
+                <div class="employee-email">{{ emp.email || 'No email' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>{{ emp.departmentName }}</div>
+            <div class="designation">{{ emp.designation }}</div>
+          </td>
+          <td>
+            <div class="months-cell">
+              <div class="months-bar">
+                <div class="months-fill" [style.width.%]="(emp.monthsProcessed / 12) * 100"></div>
+              </div>
+              <span>{{ emp.monthsProcessed }}/12 months</span>
+            </div>
+          </td>
+          <td class="amount">RM {{ emp.ytdGross | number:'1.2-2' }}</td>
+          <td class="amount negative">RM {{ emp.ytdEpf | number:'1.2-2' }}</td>
+          <td class="amount negative">RM {{ emp.ytdSocso | number:'1.2-2' }}</td>
+          <td class="amount negative">RM {{ emp.ytdTax | number:'1.2-2' }}</td>
+          <td class="amount net">RM {{ emp.ytdNet | number:'1.2-2' }}</td>
+          <td>
+            <span class="ea-badge" [class.ready]="emp.isEaReady" [class.not-ready]="!emp.isEaReady">
+              <i class="bi" [class.bi-check-circle-fill]="emp.isEaReady" [class.bi-x-circle-fill]="!emp.isEaReady"></i>
+              {{ emp.isEaReady ? 'Ready' : 'Not Ready' }}
+            </span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <!-- View EA Form -->
+              <button class="btn-icon btn-view-ea"
+                (click)="openEaForm(emp)"
+                [disabled]="!emp.isEaReady"
+                title="Preview EA Form">
+                <i class="bi bi-file-earmark-text"></i>
+              </button>
+
+              <!-- Send EA Form Email -->
+              <button class="btn-icon"
+                [class.btn-send-ea]="!isSent(emp.employeeId)"
+                [class.btn-sent]="isSent(emp.employeeId)"
+                (click)="sendEaEmail(emp)"
+                [disabled]="!emp.isEaReady || !emp.hasEmail || isSending(emp.employeeId) || isSent(emp.employeeId)"
+                [title]="isSent(emp.employeeId) ? 'EA Form already sent' : !emp.hasEmail ? 'No email configured' : 'Send EA Form Email'">
+                <i class="bi"
+                  [class.bi-envelope-arrow-up]="!isSending(emp.employeeId) && !isSent(emp.employeeId)"
+                  [class.bi-hourglass-split]="isSending(emp.employeeId)"
+                  [class.bi-envelope-check-fill]="isSent(emp.employeeId)"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- EA Form Preview Modal -->
+<div class="modal" [class.show]="showEaModal" *ngIf="showEaModal">
+  <div class="modal-backdrop" (click)="closeEaModal()"></div>
+  <div class="modal-dialog modal-lg" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="bi bi-file-earmark-text"></i> EA Form &mdash; {{ selectedYear }}</h3>
+      <button class="btn-close" (click)="closeEaModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="eaLoading" class="text-center py-4"><div class="spinner"></div><p>Loading EA Form...</p></div>
+      <ng-container *ngIf="!eaLoading && eaData">
+        <div class="ea-header">
+          <div class="ea-title">{{ eaData.formTitle }}</div>
+          <div class="ea-employer">Employer: <strong>{{ eaData.employerId }}</strong></div>
+        </div>
+        <div class="ea-section">
+          <div class="ea-section-title">Part A &mdash; Employee Details</div>
+          <div class="ea-grid">
+            <div class="ea-row"><span class="ea-label">Name</span><span class="ea-value">{{ eaData.employeeName }}</span></div>
+            <div class="ea-row"><span class="ea-label">Employee Code</span><span class="ea-value">{{ eaData.employeeCode }}</span></div>
+            <div class="ea-row"><span class="ea-label">IC / Passport</span><span class="ea-value">{{ eaData.icPassport || '&mdash;' }}</span></div>
+            <div class="ea-row"><span class="ea-label">Tax No. (TIN)</span><span class="ea-value">{{ eaData.taxNumber || '&mdash;' }}</span></div>
+            <div class="ea-row"><span class="ea-label">Designation</span><span class="ea-value">{{ eaData.designation }}</span></div>
+            <div class="ea-row"><span class="ea-label">Department</span><span class="ea-value">{{ eaData.departmentName }}</span></div>
+            <div class="ea-row"><span class="ea-label">Months Covered</span><span class="ea-value">{{ eaData.monthsCovered }} month(s)</span></div>
+          </div>
+        </div>
+        <div class="ea-section">
+          <div class="ea-section-title">Part B &mdash; Employment Income</div>
+          <div class="ea-grid">
+            <div class="ea-row"><span class="ea-label">B1. Gross Salary</span><span class="ea-value amount">RM {{ eaData.totalBasicSalary | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">B2. Allowances &amp; Benefits</span><span class="ea-value amount">RM {{ eaData.totalAllowances | number:'1.2-2' }}</span></div>
+            <div class="ea-row total"><span class="ea-label">B. Total Gross Income</span><span class="ea-value amount">RM {{ eaData.totalGrossIncome | number:'1.2-2' }}</span></div>
+          </div>
+        </div>
+        <div class="ea-section">
+          <div class="ea-section-title">Part C &mdash; Statutory Deductions</div>
+          <div class="ea-grid">
+            <div class="ea-row"><span class="ea-label">C1. EPF (Employee)</span><span class="ea-value amount negative">RM {{ eaData.totalEpfEmployee | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">C2. SOCSO (Employee)</span><span class="ea-value amount negative">RM {{ eaData.totalSocsoEmployee | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">C3. PCB / MTD</span><span class="ea-value amount negative">RM {{ eaData.totalPcbMtd | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">C4. Other Deductions</span><span class="ea-value amount negative">RM {{ eaData.totalOtherDeductions | number:'1.2-2' }}</span></div>
+          </div>
+        </div>
+        <div class="ea-section ea-summary">
+          <div class="ea-row total"><span class="ea-label">Taxable Income (Gross &minus; EPF)</span><span class="ea-value amount">RM {{ eaData.taxableIncome | number:'1.2-2' }}</span></div>
+          <div class="ea-row net"><span class="ea-label">Total Net Salary Paid</span><span class="ea-value amount">RM {{ eaData.totalNetSalary | number:'1.2-2' }}</span></div>
+        </div>
+        <div class="ea-generated">Generated: {{ eaData.generatedOn }}</div>
+      </ng-container>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeEaModal()">Close</button>
+      <button class="btn btn-print" (click)="printEaForm()" *ngIf="eaData">
+        <i class="bi bi-printer"></i> Print
+      </button>
+      <button class="btn btn-send-email"
+        (click)="confirmSendEaEmail()"
+        [disabled]="sendingEaEmail || !eaData"
+        *ngIf="eaData">
+        <i class="bi" [class.bi-envelope-check]="!sendingEaEmail" [class.bi-hourglass-split]="sendingEaEmail"></i>
+        {{ sendingEaEmail ? 'Sending...' : 'Confirm &amp; Send Email' }}
+      </button>
+    </div>
+  </div>
+</div>
