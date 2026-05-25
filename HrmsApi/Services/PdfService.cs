@@ -606,30 +606,32 @@ public class PdfService : IPdfService
                                 .Text("CONTRIBUTIONS PAID BY EMPLOYEE TO APPROVED SAVINGS / PENSION FUNDS AND SOCSO").Bold().FontSize(9);
                         });
 
-                        section.Item().Padding(4).Column(c =>
+                        section.Item().Padding(4).Table(t =>
                         {
-                            c.Item().PaddingBottom(2).Text(t =>
+                            t.ColumnsDefinition(c => { c.RelativeColumn(9); c.RelativeColumn(3); });
+
+                            // EPF label row
+                            t.Cell().PaddingVertical(2).PaddingLeft(4).Text(t2 =>
                             {
-                                t.Span("1.  Fund Name ").Bold();
-                                t.Span("Employees' Provident Fund").Underline();
+                                t2.Span("1.  Fund Name ").Bold();
+                                t2.Span("Employees' Provident Fund").Underline();
                             });
-                            c.Item().PaddingLeft(12).PaddingBottom(2)
+                            t.Cell(); // no amount on label row
+
+                            // EPF contribution row
+                            t.Cell().PaddingLeft(16).PaddingVertical(2)
                                 .Text("Contribution amount that must be paid (specify the employee's share only)");
-                            c.Item().PaddingLeft(12).PaddingBottom(4).Text(t =>
+                            t.Cell().PaddingVertical(2).AlignRight().PaddingRight(4)
+                                .Text($"RM  {Amt(totalEpf)}").Bold();
+
+                            // SOCSO row
+                            t.Cell().PaddingVertical(2).PaddingLeft(4).Text(t2 =>
                             {
-                                t.Span("RM ").Bold();
-                                t.Span(Amt(totalEpf)).Bold();
+                                t2.Span("2.  SOCSO: ").Bold();
+                                t2.Span("Contribution amount that must be paid (specify the employee's share only)");
                             });
-                            c.Item().PaddingBottom(2).Text(t =>
-                            {
-                                t.Span("2.  SOCSO: ").Bold();
-                                t.Span("Contribution amount that must be paid (specify the employee's share only)");
-                            });
-                            c.Item().PaddingLeft(12).Text(t =>
-                            {
-                                t.Span("RM ").Bold();
-                                t.Span(Amt(totalSocso)).Bold();
-                            });
+                            t.Cell().PaddingVertical(2).AlignRight().PaddingRight(4)
+                                .Text($"RM  {Amt(totalSocso)}").Bold();
                         });
                     });
 
