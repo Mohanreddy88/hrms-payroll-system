@@ -1,0 +1,147 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>📅 Attendance Report</h2>
+      <p>Attendance records by date range</p>
+    </div>
+    <button class="btn-export" (click)="exportToExcel()">
+      <i class="bi bi-file-earmark-excel"></i>
+      Export to Excel
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label>Start Date</label>
+      <input type="date" [(ngModel)]="startDate" class="form-control">
+    </div>
+    <div class="filter-group">
+      <label>End Date</label>
+      <input type="date" [(ngModel)]="endDate" class="form-control">
+    </div>
+    <div class="filter-actions">
+      <button class="btn-filter" (click)="loadReport()">
+        <i class="bi bi-funnel"></i>
+        Apply Filter
+      </button>
+    </div>
+  </div>
+
+  <!-- Report Content -->
+  <div *ngIf="reportData" class="report-content">
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="stat-card">
+        <div class="stat-icon total-icon">
+          <i class="bi bi-file-text"></i>
+        </div>
+        <div class="stat-details">
+          <h3>{{ reportData.totalRecords }}</h3>
+          <p>Total Records</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon present-icon">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-details">
+          <h3>{{ reportData.presentCount }}</h3>
+          <p>Present</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon absent-icon">
+          <i class="bi bi-x-circle"></i>
+        </div>
+        <div class="stat-details">
+          <h3>{{ reportData.absentCount }}</h3>
+          <p>Absent</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon leave-icon">
+          <i class="bi bi-calendar-x"></i>
+        </div>
+        <div class="stat-details">
+          <h3>{{ reportData.leaveCount }}</h3>
+          <p>On Leave</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Department Statistics -->
+    <div class="department-stats">
+      <h3>Department-wise Statistics</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Total Records</th>
+              <th>Present</th>
+              <th>Absent</th>
+              <th>Leave</th>
+              <th>Half Day</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let dept of reportData.byDepartment">
+              <td class="dept-name">{{ dept.department }}</td>
+              <td>{{ dept.totalRecords }}</td>
+              <td><span class="badge badge-success">{{ dept.presentCount }}</span></td>
+              <td><span class="badge badge-danger">{{ dept.absentCount }}</span></td>
+              <td><span class="badge badge-warning">{{ dept.leaveCount }}</span></td>
+              <td><span class="badge badge-info">{{ dept.halfDayCount }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detailed Records -->
+    <div class="detailed-records">
+      <h3>Detailed Attendance Records</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Check In</th>
+              <th>Check Out</th>
+              <th>Work Hours</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let record of reportData.records">
+              <td>{{ record.date | date:'dd/MM/yyyy' }}</td>
+              <td class="employee-name">{{ record.employeeName }}</td>
+              <td>{{ record.departmentName }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusClass(record.status)">
+                  {{ record.status }}
+                </span>
+              </td>
+              <td>{{ record.checkIn ? (record.checkIn | date:'HH:mm') : '-' }}</td>
+              <td>{{ record.checkOut ? (record.checkOut | date:'HH:mm') : '-' }}</td>
+              <td>{{ record.workHours > 0 ? (record.workHours | number:'1.2-2') + ' hrs' : '-' }}</td>
+              <td class="remarks">{{ record.remarks || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!reportData" class="no-data">
+    <i class="bi bi-inbox"></i>
+    <p>No attendance data available for the selected date range</p>
+  </div>
+</div>

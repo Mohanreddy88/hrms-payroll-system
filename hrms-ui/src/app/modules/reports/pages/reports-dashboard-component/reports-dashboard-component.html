@@ -1,0 +1,84 @@
+<div class="page-container">
+  <div class="page-header">
+    <h2>📊 Reports Dashboard</h2>
+    <p>Access all reports and analytics</p>
+  </div>
+
+  <div class="reports-grid">
+    <!-- Payroll Report Card -->
+    <div class="report-card" routerLink="/reports/payroll">
+      <div class="report-icon payroll-icon">
+        <i class="bi bi-receipt"></i>
+      </div>
+      <div class="report-content">
+        <h3>Payroll Report</h3>
+        <p>Department-wise payroll summary and detailed breakdown</p>
+        <div class="report-actions">
+          <button class="btn-view">View Report <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendance Report Card -->
+    <div class="report-card" routerLink="/reports/attendance">
+      <div class="report-icon attendance-icon">
+        <i class="bi bi-calendar-check"></i>
+      </div>
+      <div class="report-content">
+        <h3>Attendance Report</h3>
+        <p>Attendance records by date range with department statistics</p>
+        <div class="report-actions">
+          <button class="btn-view">View Report <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Employee Directory Card -->
+    <div class="report-card" routerLink="/reports/directory">
+      <div class="report-icon directory-icon">
+        <i class="bi bi-people"></i>
+      </div>
+      <div class="report-content">
+        <h3>Employee Directory</h3>
+        <p>Complete employee directory with contact information</p>
+        <div class="report-actions">
+          <button class="btn-view">View Directory <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Summary Card -->
+    <div class="report-card" routerLink="/reports/monthly-summary">
+      <div class="report-icon summary-icon">
+        <i class="bi bi-bar-chart"></i>
+      </div>
+      <div class="report-content">
+        <h3>Monthly Summary</h3>
+        <p>Comprehensive payroll and attendance summary</p>
+        <div class="report-actions">
+          <button class="btn-view">View Summary <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Export Section -->
+  <div class="quick-export-section">
+    <h3>📥 Quick Exports</h3>
+    <p>Download data in Excel format</p>
+    <div class="export-buttons">
+      <button class="btn-export" routerLink="/reports/payroll">
+        <i class="bi bi-file-earmark-excel"></i>
+        Export Payroll
+      </button>
+      <button class="btn-export" routerLink="/reports/attendance">
+        <i class="bi bi-file-earmark-excel"></i>
+        Export Attendance
+      </button>
+      <button class="btn-export" routerLink="/reports/directory">
+        <i class="bi bi-file-earmark-excel"></i>
+        Export Employees
+      </button>
+    </div>
+  </div>
+</div>

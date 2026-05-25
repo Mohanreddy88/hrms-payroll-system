@@ -1,0 +1,67 @@
+<div class="notification-center">
+  <!-- Notification Bell Button -->
+  <button class="notification-bell" (click)="toggleDropdown()" [class.has-unread]="unreadCount > 0">
+    <i class="bi bi-bell"></i>
+    <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+  </button>
+
+  <!-- Notification Dropdown -->
+  <div class="notification-dropdown" *ngIf="isOpen" (clickOutside)="closeDropdown()">
+    <div class="dropdown-header">
+      <h3>Notifications</h3>
+      <button class="mark-all-read" *ngIf="unreadCount > 0" (click)="markAllAsRead()">
+        Mark all as read
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Loading notifications...</p>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="notifications-list" *ngIf="!loading && notifications.length > 0">
+      <div 
+        class="notification-item" 
+        *ngFor="let notification of notifications"
+        [class.unread]="!notification.isRead"
+        (click)="markAsRead(notification)">
+        
+        <div class="notification-icon" [style.background-color]="getColor(notification.type)">
+          <i class="bi bi-{{ getIcon(notification.type) }}"></i>
+        </div>
+
+        <div class="notification-content">
+          <div class="notification-header">
+            <h4>{{ notification.title }}</h4>
+            <button class="delete-btn" (click)="deleteNotification(notification, $event)">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          <p>{{ notification.message }}</p>
+          <span class="notification-time">{{ formatDateTime(notification.createdAt) }}</span>
+        </div>
+
+        <div class="unread-dot" *ngIf="!notification.isRead"></div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!loading && notifications.length === 0">
+      <i class="bi bi-bell-slash"></i>
+      <p>No notifications yet</p>
+      <span>You're all caught up!</span>
+    </div>
+
+    <!-- Footer -->
+    <div class="dropdown-footer" *ngIf="!loading && notifications.length > 0">
+      <button class="view-all-btn" routerLink="/notifications" (click)="closeDropdown()">
+        View All Notifications
+      </button>
+    </div>
+  </div>
+
+  <!-- Backdrop -->
+  <div class="notification-backdrop" *ngIf="isOpen" (click)="closeDropdown()"></div>
+</div>

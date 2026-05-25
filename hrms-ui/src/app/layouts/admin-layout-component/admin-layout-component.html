@@ -1,0 +1,18 @@
+<div class="layout-container">
+
+  <app-sidebar-component [isMobileMenuOpen]="mobileMenuOpen"></app-sidebar-component>
+
+  <div class="main-content">
+
+    <app-navbar (mobileMenuToggle)="onMobileMenuToggle($event)"></app-navbar>
+
+    <div class="page-content">
+      <router-outlet></router-outlet>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Global toast notification container — renders toasts from ToastService -->
+<app-toast></app-toast>

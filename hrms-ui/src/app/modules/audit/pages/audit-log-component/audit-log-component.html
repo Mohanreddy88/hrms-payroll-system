@@ -1,0 +1,201 @@
+<div class="page-container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h2><i class="bi bi-shield-check"></i> Audit Log</h2>
+      <p>Track all system actions — who did what and when</p>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-cards" *ngIf="summary">
+    <div class="summary-card" *ngFor="let item of summary.byEntity">
+      <div class="summary-icon"><i [class]="'bi ' + getEntityIcon(item.entityType)"></i></div>
+      <div class="summary-body">
+        <div class="summary-count">{{ item.count }}</div>
+        <div class="summary-label">{{ item.entityType }} {{ item.action }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <div class="filter-row">
+
+      <div class="form-group">
+        <label>Module</label>
+        <select [(ngModel)]="filterEntityType" class="form-control">
+          <option value="">All Modules</option>
+          <option *ngFor="let e of entityTypes" [value]="e">{{ e }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Action</label>
+        <select [(ngModel)]="filterAction" class="form-control">
+          <option value="">All Actions</option>
+          <option *ngFor="let a of actions" [value]="a">{{ a }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" [(ngModel)]="filterUsername" class="form-control" placeholder="Search user...">
+      </div>
+
+      <div class="form-group">
+        <label>From Date</label>
+        <input type="date" [(ngModel)]="filterFrom" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label>To Date</label>
+        <input type="date" [(ngModel)]="filterTo" class="form-control">
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-primary" (click)="applyFilters()">
+          <i class="bi bi-search"></i> Search
+        </button>
+        <button class="btn btn-secondary" (click)="clearFilters()" *ngIf="hasActiveFilters">
+          <i class="bi bi-x-circle"></i> Clear
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+
+    <div class="table-header">
+      <span class="result-count">{{ total }} records found</span>
+    </div>
+
+    <div class="loading-state" *ngIf="loading">
+      <i class="bi bi-arrow-repeat spin"></i> Loading...
+    </div>
+
+    <div class="error-state" *ngIf="error">
+      <i class="bi bi-exclamation-triangle"></i> {{ error }}
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && !error && logs.length === 0">
+      <i class="bi bi-shield-x"></i>
+      <p>No audit logs found.</p>
+    </div>
+
+    <div class="table-responsive" *ngIf="!loading && logs.length > 0">
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Module</th>
+            <th>Record ID</th>
+            <th>Description</th>
+            <th>IP Address</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of logs" (click)="openDetail(log)" class="log-row">
+            <td class="date-cell">
+              <span class="date">{{ log.createdAt | date:'dd MMM yyyy' }}</span>
+              <span class="time">{{ log.createdAt | date:'HH:mm:ss' }}</span>
+            </td>
+            <td>
+              <span class="username"><i class="bi bi-person-circle"></i> {{ log.username }}</span>
+            </td>
+            <td>
+              <span class="action-badge" [ngClass]="getActionClass(log.action)">{{ log.action }}</span>
+            </td>
+            <td>
+              <span class="entity-chip">
+                <i [class]="'bi ' + getEntityIcon(log.entityType)"></i>
+                {{ log.entityType }}
+              </span>
+            </td>
+            <td class="entity-id">#{{ log.entityId }}</td>
+            <td class="description">{{ log.description }}</td>
+            <td class="ip">{{ log.ipAddress || '—' }}</td>
+            <td>
+              <button class="btn-icon" title="View details" (click)="openDetail(log); $event.stopPropagation()">
+                <i class="bi bi-eye"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button class="page-btn" [disabled]="page === 1" (click)="goToPage(page - 1)">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <button
+        class="page-btn"
+        *ngFor="let p of pageNumbers"
+        [class.active]="p === page"
+        (click)="goToPage(p)">
+        {{ p }}
+      </button>
+      <button class="page-btn" [disabled]="page === totalPages" (click)="goToPage(page + 1)">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+      <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" *ngIf="selectedLog" (click)="closeDetail()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="bi bi-shield-check"></i> Audit Detail</h3>
+      <button class="modal-close" (click)="closeDetail()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-row">
+          <span class="detail-label">Date & Time</span>
+          <span class="detail-value">{{ selectedLog.createdAt | date:'dd MMM yyyy HH:mm:ss' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">User</span>
+          <span class="detail-value"><i class="bi bi-person-circle"></i> {{ selectedLog.username }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Action</span>
+          <span class="detail-value">
+            <span class="action-badge" [ngClass]="getActionClass(selectedLog.action)">{{ selectedLog.action }}</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Module</span>
+          <span class="detail-value">{{ selectedLog.entityType }} #{{ selectedLog.entityId }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">IP Address</span>
+          <span class="detail-value">{{ selectedLog.ipAddress || '—' }}</span>
+        </div>
+        <div class="detail-row full">
+          <span class="detail-label">Description</span>
+          <span class="detail-value">{{ selectedLog.description }}</span>
+        </div>
+        <div class="detail-row full" *ngIf="selectedLog.oldValues">
+          <span class="detail-label">Before</span>
+          <pre class="json-block">{{ formatJson(selectedLog.oldValues) }}</pre>
+        </div>
+        <div class="detail-row full" *ngIf="selectedLog.newValues">
+          <span class="detail-label">After / Remarks</span>
+          <pre class="json-block">{{ formatJson(selectedLog.newValues) }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

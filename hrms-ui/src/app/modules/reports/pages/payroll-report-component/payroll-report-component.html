@@ -1,0 +1,127 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>💰 Payroll Report</h2>
+      <p>Department-wise payroll summary</p>
+    </div>
+    <button class="btn-export" (click)="exportToExcel()">
+      <i class="bi bi-file-earmark-excel"></i>
+      Export to Excel
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label>Year</label>
+      <select [(ngModel)]="selectedYear" (change)="onFilterChange()" class="form-control">
+        <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Month</label>
+      <select [(ngModel)]="selectedMonth" (change)="onFilterChange()" class="form-control">
+        <option *ngFor="let month of months" [value]="month.value">{{ month.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Report Content -->
+  <div *ngIf="reportData" class="report-content">
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="stat-card">
+        <div class="stat-icon employees-icon">
+          <i class="bi bi-people"></i>
+        </div>
+        <div class="stat-details">
+          <h3>{{ reportData.totals.totalEmployees }}</h3>
+          <p>Total Employees</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon gross-icon">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="stat-details">
+          <h3>RM {{ reportData.totals.totalGross | number:'1.2-2' }}</h3>
+          <p>Total Gross Income</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon net-icon">
+          <i class="bi bi-wallet2"></i>
+        </div>
+        <div class="stat-details">
+          <h3>RM {{ reportData.totals.totalNet | number:'1.2-2' }}</h3>
+          <p>Total Net Salary</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon deduction-icon">
+          <i class="bi bi-receipt"></i>
+        </div>
+        <div class="stat-details">
+          <h3>RM {{ reportData.totals.totalEpf + reportData.totals.totalSocso + reportData.totals.totalTax | number:'1.2-2' }}</h3>
+          <p>Total Deductions</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Department Breakdown -->
+    <div class="department-breakdown">
+      <h3>Department-wise Breakdown</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Employees</th>
+              <th>Gross Income</th>
+              <th>EPF</th>
+              <th>SOCSO</th>
+              <th>Tax</th>
+              <th>Deductions</th>
+              <th>Net Salary</th>
+              <th>Avg Salary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let dept of reportData.departments">
+              <td class="dept-name">{{ dept.departmentName }}</td>
+              <td>{{ dept.employeeCount }}</td>
+              <td>RM {{ dept.totalGross | number:'1.2-2' }}</td>
+              <td>RM {{ dept.totalEpf | number:'1.2-2' }}</td>
+              <td>RM {{ dept.totalSocso | number:'1.2-2' }}</td>
+              <td>RM {{ dept.totalTax | number:'1.2-2' }}</td>
+              <td>RM {{ dept.totalDeductions | number:'1.2-2' }}</td>
+              <td class="net-amount">RM {{ dept.totalNet | number:'1.2-2' }}</td>
+              <td>RM {{ dept.averageSalary | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong>Total</strong></td>
+              <td><strong>{{ reportData.totals.totalEmployees }}</strong></td>
+              <td><strong>RM {{ reportData.totals.totalGross | number:'1.2-2' }}</strong></td>
+              <td><strong>RM {{ reportData.totals.totalEpf | number:'1.2-2' }}</strong></td>
+              <td><strong>RM {{ reportData.totals.totalSocso | number:'1.2-2' }}</strong></td>
+              <td><strong>RM {{ reportData.totals.totalTax | number:'1.2-2' }}</strong></td>
+              <td><strong>RM {{ reportData.totals.totalDeductions | number:'1.2-2' }}</strong></td>
+              <td><strong>RM {{ reportData.totals.totalNet | number:'1.2-2' }}</strong></td>
+              <td>-</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!reportData" class="no-data">
+    <i class="bi bi-inbox"></i>
+    <p>No payroll data available for {{ selectedMonth }}/{{ selectedYear }}</p>
+  </div>
+</div>

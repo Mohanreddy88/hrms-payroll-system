@@ -1,0 +1,144 @@
+<div class="page-container">
+  <div class="page-header">
+    <h2>👤 My Profile</h2>
+    <p>View and update your personal information</p>
+  </div>
+
+  <div *ngIf="profile" class="profile-container">
+    <!-- Profile Card -->
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="profile-avatar">
+          <img 
+            [src]="getProfilePictureUrl()" 
+            [alt]="profile.name"
+            (error)="$any($event.target).src='assets/img/default-avatar.svg'">
+        </div>
+        <div class="profile-basic">
+          <h2>{{ profile.name }}</h2>
+          <p class="designation">{{ profile.designation || 'N/A' }}</p>
+          <p class="department">{{ profile.departmentName }}</p>
+          <span class="status-badge" [class.active]="profile.isActive" [class.inactive]="!profile.isActive">
+            {{ profile.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="profile-actions">
+        <button *ngIf="!isEditMode" class="btn-primary" (click)="enableEditMode()">
+          <i class="bi bi-pencil"></i>
+          Edit Profile
+        </button>
+        <button *ngIf="!isEditMode" class="btn-secondary" routerLink="/self-service/change-password">
+          <i class="bi bi-shield-lock"></i>
+          Change Password
+        </button>
+        <button *ngIf="isEditMode" class="btn-success" (click)="saveProfile()">
+          <i class="bi bi-check-lg"></i>
+          Save Changes
+        </button>
+        <button *ngIf="isEditMode" class="btn-secondary" (click)="cancelEdit()">
+          <i class="bi bi-x-lg"></i>
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Personal Information -->
+    <div class="info-section">
+      <h3>📋 Personal Information</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Full Name</label>
+          <p>{{ profile.name }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Email</label>
+          <input 
+            *ngIf="isEditMode" 
+            type="email" 
+            [(ngModel)]="editData.email" 
+            class="form-control">
+          <p *ngIf="!isEditMode">{{ profile.email || 'N/A' }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Phone</label>
+          <input 
+            *ngIf="isEditMode" 
+            type="text" 
+            [(ngModel)]="editData.phone" 
+            class="form-control">
+          <p *ngIf="!isEditMode">{{ profile.phone || 'N/A' }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>IC/Passport Number</label>
+          <p>{{ profile.icPassport || 'N/A' }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Tax Number</label>
+          <p>{{ profile.taxNumber || 'N/A' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Employment Information -->
+    <div class="info-section">
+      <h3>💼 Employment Information</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Department</label>
+          <p>{{ profile.departmentName }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Designation</label>
+          <p>{{ profile.designation || 'N/A' }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Join Date</label>
+          <p>{{ profile.joinDate | date:'dd/MM/yyyy' }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Employment Status</label>
+          <span class="status-badge" [class.active]="profile.isActive" [class.inactive]="!profile.isActive">
+            {{ profile.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bank Information -->
+    <div class="info-section">
+      <h3>🏦 Bank Information</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Bank Name</label>
+          <p>{{ profile.bankName || 'N/A' }}</p>
+        </div>
+
+        <div class="info-item">
+          <label>Account Number</label>
+          <input 
+            *ngIf="isEditMode" 
+            type="text" 
+            [(ngModel)]="editData.accountNumber" 
+            class="form-control">
+          <p *ngIf="!isEditMode">{{ profile.accountNumber || 'N/A' }}</p>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="!profile" class="loading-state">
+    <p>Loading profile...</p>
+  </div>
+</div>

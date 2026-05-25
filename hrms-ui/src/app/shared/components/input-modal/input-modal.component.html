@@ -1,0 +1,49 @@
+@if (show) {
+  <div class="modal-backdrop" (click)="onBackdropClick($event)">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ title }}</h5>
+          <button type="button" class="btn-close" (click)="onCancel()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-message">{{ message }}</p>
+          
+          @if (inputType === 'text') {
+            <input 
+              type="text" 
+              class="form-control" 
+              [(ngModel)]="inputValue" 
+              [placeholder]="placeholder"
+              (keyup.enter)="onConfirm()"
+              autofocus
+            />
+          } @else {
+            <textarea 
+              class="form-control" 
+              [(ngModel)]="inputValue" 
+              [placeholder]="placeholder"
+              rows="4"
+              autofocus
+            ></textarea>
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="onCancel()">
+            {{ cancelText }}
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-primary" 
+            (click)="onConfirm()"
+            [disabled]="required && !inputValue.trim()"
+          >
+            {{ confirmText }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

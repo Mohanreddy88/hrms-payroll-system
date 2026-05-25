@@ -1,0 +1,381 @@
+using ClosedXML.Excel;
+using HrmsApi.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace HrmsApi.Services;
+
+public interface IExportService
+{
+    Task<byte[]> ExportPayrollToExcelAsync(int year, int month);
+    Task<byte[]> ExportEmployeesToExcelAsync();
+    Task<byte[]> ExportAttendanceToExcelAsync(DateTime startDate, DateTime endDate);
+    Task<byte[]> ExportTimesheetToExcelAsync(int timesheetId);
+}
+
+public class ExportService : IExportService
+{
+    private readonly HrmsDbContext _db;
+
+    public ExportService(HrmsDbContext db) => _db = db;
+
+    /// <summary>
+    /// Exports payroll data to Excel for a specific month
+    /// </summary>
+    public async Task<byte[]> ExportPayrollToExcelAsync(int year, int month)
+    {
+        var payrolls = await _db.Payrolls
+            .Include(p => p.Employee)
+            .ThenInclude(e => e.Department)
+            .Where(p => p.Year == year && p.Month == month)
+            .OrderBy(p => p.Employee.Name)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add($"Payroll {month}-{year}");
+
+        // Headers
+        worksheet.Cell(1, 1).Value = "Employee Name";
+        worksheet.Cell(1, 2).Value = "Department";
+        worksheet.Cell(1, 3).Value = "Designation";
+        worksheet.Cell(1, 4).Value = "Basic Salary";
+        worksheet.Cell(1, 5).Value = "Allowances";
+        worksheet.Cell(1, 6).Value = "Gross Income";
+        worksheet.Cell(1, 7).Value = "EPF";
+        worksheet.Cell(1, 8).Value = "SOCSO";
+        worksheet.Cell(1, 9).Value = "Tax (PCB)";
+        worksheet.Cell(1, 10).Value = "Other Deductions";
+        worksheet.Cell(1, 11).Value = "Net Salary";
+
+        // Style headers
+        var headerRow = worksheet.Range("A1:K1");
+        headerRow.Style.Font.Bold = true;
+        headerRow.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRow.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        // Data rows
+        int row = 2;
+        foreach (var p in payrolls)
+        {
+            worksheet.Cell(row, 1).Value = p.Employee.Name;
+            worksheet.Cell(row, 2).Value = p.Employee.Department?.Name ?? "Unassigned";
+            worksheet.Cell(row, 3).Value = p.Employee.Designation;
+            worksheet.Cell(row, 4).Value = p.BasicSalary;
+            worksheet.Cell(row, 5).Value = p.Allowances;
+            worksheet.Cell(row, 6).Value = p.GrossIncome;
+            worksheet.Cell(row, 7).Value = p.EpfAmount;
+            worksheet.Cell(row, 8).Value = p.SocsoAmount;
+            worksheet.Cell(row, 9).Value = p.TaxAmount;
+            worksheet.Cell(row, 10).Value = p.Deductions;
+            worksheet.Cell(row, 11).Value = p.NetSalary;
+
+            // Format currency columns
+            worksheet.Cell(row, 4).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 6).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 8).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 9).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(row, 11).Style.NumberFormat.Format = "#,##0.00";
+
+            row++;
+        }
+
+        // Add totals row
+        worksheet.Cell(row, 3).Value = "TOTAL";
+        worksheet.Cell(row, 3).Style.Font.Bold = true;
+        worksheet.Cell(row, 4).FormulaA1 = $"SUM(D2:D{row - 1})";
+        worksheet.Cell(row, 5).FormulaA1 = $"SUM(E2:E{row - 1})";
+        worksheet.Cell(row, 6).FormulaA1 = $"SUM(F2:F{row - 1})";
+        worksheet.Cell(row, 7).FormulaA1 = $"SUM(G2:G{row - 1})";
+        worksheet.Cell(row, 8).FormulaA1 = $"SUM(H2:H{row - 1})";
+        worksheet.Cell(row, 9).FormulaA1 = $"SUM(I2:I{row - 1})";
+        worksheet.Cell(row, 10).FormulaA1 = $"SUM(J2:J{row - 1})";
+        worksheet.Cell(row, 11).FormulaA1 = $"SUM(K2:K{row - 1})";
+
+        var totalRow = worksheet.Range($"C{row}:K{row}");
+        totalRow.Style.Font.Bold = true;
+        totalRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        // Auto-fit columns
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Exports employee directory to Excel
+    /// </summary>
+    public async Task<byte[]> ExportEmployeesToExcelAsync()
+    {
+        var employees = await _db.Employees
+            .Include(e => e.Department)
+            .Include(e => e.Bank)
+            .Where(e => e.IsActive)
+            .OrderBy(e => e.Department!.Name)
+            .ThenBy(e => e.Name)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Employees");
+
+        // Headers
+        worksheet.Cell(1, 1).Value = "Name";
+        worksheet.Cell(1, 2).Value = "Email";
+        worksheet.Cell(1, 3).Value = "Phone";
+        worksheet.Cell(1, 4).Value = "Department";
+        worksheet.Cell(1, 5).Value = "Designation";
+        worksheet.Cell(1, 6).Value = "Join Date";
+        worksheet.Cell(1, 7).Value = "Salary";
+        worksheet.Cell(1, 8).Value = "Bank";
+        worksheet.Cell(1, 9).Value = "Account Number";
+        worksheet.Cell(1, 10).Value = "IC/Passport";
+        worksheet.Cell(1, 11).Value = "Tax Number";
+
+        // Style headers
+        var headerRow = worksheet.Range("A1:K1");
+        headerRow.Style.Font.Bold = true;
+        headerRow.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRow.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        // Data rows
+        int row = 2;
+        foreach (var emp in employees)
+        {
+            worksheet.Cell(row, 1).Value = emp.Name;
+            worksheet.Cell(row, 2).Value = emp.Email;
+            worksheet.Cell(row, 3).Value = emp.Phone;
+            worksheet.Cell(row, 4).Value = emp.Department?.Name ?? "Unassigned";
+            worksheet.Cell(row, 5).Value = emp.Designation;
+            worksheet.Cell(row, 6).Value = emp.JoinDate.ToString("yyyy-MM-dd");
+            worksheet.Cell(row, 7).Value = emp.Salary;
+            worksheet.Cell(row, 8).Value = emp.Bank?.Name ?? "";
+            worksheet.Cell(row, 9).Value = emp.AccountNumber;
+            worksheet.Cell(row, 10).Value = emp.IcPassport;
+            worksheet.Cell(row, 11).Value = emp.TaxNumber;
+
+            worksheet.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+
+            row++;
+        }
+
+        // Auto-fit columns
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Exports attendance records to Excel for a date range
+    /// </summary>
+    public async Task<byte[]> ExportAttendanceToExcelAsync(DateTime startDate, DateTime endDate)
+    {
+        var records = await _db.Attendances
+            .Include(a => a.Employee)
+            .ThenInclude(e => e.Department)
+            .Where(a => a.Date >= startDate && a.Date <= endDate)
+            .OrderBy(a => a.Date)
+            .ThenBy(a => a.Employee.Name)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Attendance");
+
+        // Headers
+        worksheet.Cell(1, 1).Value = "Date";
+        worksheet.Cell(1, 2).Value = "Employee Name";
+        worksheet.Cell(1, 3).Value = "Department";
+        worksheet.Cell(1, 4).Value = "Status";
+        worksheet.Cell(1, 5).Value = "Check In";
+        worksheet.Cell(1, 6).Value = "Check Out";
+        worksheet.Cell(1, 7).Value = "Work Hours";
+        worksheet.Cell(1, 8).Value = "Remarks";
+
+        // Style headers
+        var headerRow = worksheet.Range("A1:H1");
+        headerRow.Style.Font.Bold = true;
+        headerRow.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRow.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        // Data rows
+        int row = 2;
+        foreach (var a in records)
+        {
+            worksheet.Cell(row, 1).Value = a.Date.ToString("yyyy-MM-dd");
+            worksheet.Cell(row, 2).Value = a.Employee.Name;
+            worksheet.Cell(row, 3).Value = a.Employee.Department?.Name ?? "Unassigned";
+            worksheet.Cell(row, 4).Value = a.Status;
+            worksheet.Cell(row, 5).Value = a.CheckIn?.ToString("HH:mm") ?? "";
+            worksheet.Cell(row, 6).Value = a.CheckOut?.ToString("HH:mm") ?? "";
+            worksheet.Cell(row, 7).Value = a.WorkHours;
+            worksheet.Cell(row, 8).Value = a.Remarks;
+
+            // Color code by status
+            var statusCell = worksheet.Cell(row, 4);
+            switch (a.Status)
+            {
+                case "Present":
+                    statusCell.Style.Fill.BackgroundColor = XLColor.LightGreen;
+                    break;
+                case "Absent":
+                    statusCell.Style.Fill.BackgroundColor = XLColor.LightPink;
+                    break;
+                case "Leave":
+                    statusCell.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                    break;
+                case "HalfDay":
+                    statusCell.Style.Fill.BackgroundColor = XLColor.LightCyan;
+                    break;
+            }
+
+            row++;
+        }
+
+        // Auto-fit columns
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Exports a single timesheet to Excel
+    /// </summary>
+    public async Task<byte[]> ExportTimesheetToExcelAsync(int timesheetId)
+    {
+        var timesheet = await _db.Timesheets
+            .Include(t => t.Employee)
+            .ThenInclude(e => e.Department)
+            .FirstOrDefaultAsync(t => t.Id == timesheetId)
+            ?? throw new KeyNotFoundException($"Timesheet {timesheetId} not found");
+
+        var monthName = new DateTime(timesheet.Year, timesheet.Month, 1).ToString("MMMM yyyy");
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add($"Timesheet {monthName}");
+
+        // Title
+        worksheet.Cell(1, 1).Value = "EMPLOYEE TIMESHEET";
+        worksheet.Cell(1, 1).Style.Font.Bold = true;
+        worksheet.Cell(1, 1).Style.Font.FontSize = 16;
+        worksheet.Range("A1:B1").Merge();
+
+        // Employee Info
+        worksheet.Cell(3, 1).Value = "Employee Name:";
+        worksheet.Cell(3, 1).Style.Font.Bold = true;
+        worksheet.Cell(3, 2).Value = timesheet.Employee.Name;
+
+        worksheet.Cell(4, 1).Value = "Employee ID:";
+        worksheet.Cell(4, 1).Style.Font.Bold = true;
+        worksheet.Cell(4, 2).Value = $"EMP-{timesheet.Employee.Id:D6}";
+
+        worksheet.Cell(5, 1).Value = "Department:";
+        worksheet.Cell(5, 1).Style.Font.Bold = true;
+        worksheet.Cell(5, 2).Value = timesheet.Employee.Department?.Name ?? "N/A";
+
+        worksheet.Cell(6, 1).Value = "Period:";
+        worksheet.Cell(6, 1).Style.Font.Bold = true;
+        worksheet.Cell(6, 2).Value = monthName;
+
+        // Timesheet Data Headers
+        int startRow = 8;
+        worksheet.Cell(startRow, 1).Value = "Description";
+        worksheet.Cell(startRow, 2).Value = "Days/Hours";
+        
+        var headerRange = worksheet.Range($"A{startRow}:B{startRow}");
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        // Data rows
+        int row = startRow + 1;
+        
+        worksheet.Cell(row, 1).Value = "Total Working Days";
+        worksheet.Cell(row, 2).Value = timesheet.TotalWorkingDays;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Total Present";
+        worksheet.Cell(row, 2).Value = timesheet.TotalPresent;
+        worksheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.LightGreen;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Total Absent";
+        worksheet.Cell(row, 2).Value = timesheet.TotalAbsent;
+        worksheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.LightPink;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Total Leave";
+        worksheet.Cell(row, 2).Value = timesheet.TotalLeave;
+        worksheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.LightYellow;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Total Half Day";
+        worksheet.Cell(row, 2).Value = timesheet.TotalHalfDay;
+        worksheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.LightCyan;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Total Public Holidays";
+        worksheet.Cell(row, 2).Value = timesheet.TotalPublicHolidays;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Total Work Hours";
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        worksheet.Cell(row, 2).Value = timesheet.TotalWorkHours;
+        worksheet.Cell(row, 2).Style.Font.Bold = true;
+        worksheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.LightGray;
+        worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        // Status and Approval Info
+        row += 2;
+        worksheet.Cell(row, 1).Value = "Status:";
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        worksheet.Cell(row, 2).Value = timesheet.Status;
+        row++;
+
+        worksheet.Cell(row, 1).Value = "Generated On:";
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        worksheet.Cell(row, 2).Value = timesheet.GeneratedOn.ToString("dd MMM yyyy HH:mm");
+        row++;
+
+        if (timesheet.ApprovedBy.HasValue && timesheet.ApprovedOn.HasValue)
+        {
+            worksheet.Cell(row, 1).Value = "Approved On:";
+            worksheet.Cell(row, 1).Style.Font.Bold = true;
+            worksheet.Cell(row, 2).Value = timesheet.ApprovedOn.Value.ToString("dd MMM yyyy HH:mm");
+            row++;
+        }
+
+        if (!string.IsNullOrWhiteSpace(timesheet.Remarks))
+        {
+            worksheet.Cell(row, 1).Value = "Remarks:";
+            worksheet.Cell(row, 1).Style.Font.Bold = true;
+            worksheet.Cell(row, 2).Value = timesheet.Remarks;
+            row++;
+        }
+
+        // Add borders to data area
+        var dataRange = worksheet.Range($"A{startRow}:B{row - 1}");
+        dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+        dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+
+        // Auto-fit columns
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+}

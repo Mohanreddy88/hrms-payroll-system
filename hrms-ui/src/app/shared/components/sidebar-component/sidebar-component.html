@@ -1,0 +1,218 @@
+<div class="sidebar" [class.mobile-open]="isMobileMenuOpen">
+
+  <div class="sidebar-brand">
+    <h2 class="brand-title">{{ isAdmin ? 'HR Dashboard' : 'My Portal' }}</h2>
+    <p class="brand-subtitle">{{ isAdmin ? 'Manage Employees & Data' : 'Employee Self-Service' }}</p>
+  </div>
+
+  <ul class="menu-list">
+
+    <!-- ══════════════════════════════════════════════════════
+         ADMIN MENU — workflow order
+         ══════════════════════════════════════════════════════ -->
+    @if (isAdmin) {
+
+      <!-- 1. Home -->
+      <li routerLink="/home" routerLinkActive="active-menu" [routerLinkActiveOptions]="{exact:false}">
+        <i class="bi bi-house-fill"></i>
+        <span>Home</span>
+      </li>
+
+      <!-- 2. Dashboard -->
+      <li routerLink="/dashboard" routerLinkActive="active-menu" [routerLinkActiveOptions]="{exact:true}">
+        <i class="bi bi-speedometer2"></i>
+        <span>Dashboard</span>
+      </li>
+
+      <!-- 3. Employees -->
+      <li routerLink="/employees" routerLinkActive="active-menu">
+        <i class="bi bi-people-fill"></i>
+        <span>Employees</span>
+      </li>
+
+      <!-- 4. Attendance -->
+      <li class="menu-parent" [class.open]="attendanceMenuOpen" (click)="toggleAttendanceMenu()">
+        <div class="menu-parent-header">
+          <i class="bi bi-calendar-check-fill"></i>
+          <span>Attendance</span>
+          <i class="bi bi-chevron-down submenu-arrow" [class.rotate]="attendanceMenuOpen"></i>
+        </div>
+      </li>
+      @if (attendanceMenuOpen) {
+        <ul class="submenu">
+          <li routerLink="/attendance" routerLinkActive="active-submenu" [routerLinkActiveOptions]="{exact:true}">
+            <i class="bi bi-calendar-week"></i>
+            <span>Attendance History</span>
+          </li>
+          <li routerLink="/attendance/approval" routerLinkActive="active-submenu">
+            <i class="bi bi-check2-circle"></i>
+            <span>Pending Approval</span>
+          </li>
+        </ul>
+      }
+
+      <!-- 5. Leave -->
+      <li class="menu-parent" [class.open]="leaveMenuOpen" (click)="toggleLeaveMenu()">
+        <div class="menu-parent-header">
+          <i class="bi bi-calendar-event-fill"></i>
+          <span>Leave</span>
+          <i class="bi bi-chevron-down submenu-arrow" [class.rotate]="leaveMenuOpen"></i>
+        </div>
+      </li>
+      @if (leaveMenuOpen) {
+        <ul class="submenu">
+          <li routerLink="/leave/requests" routerLinkActive="active-submenu">
+            <i class="bi bi-list-check"></i>
+            <span>Leave Approvals</span>
+            @if (pendingLeaveCount > 0) {
+              <span class="pending-badge">{{ pendingLeaveCount }}</span>
+            }
+          </li>
+          <li routerLink="/leave/balance" routerLinkActive="active-submenu">
+            <i class="bi bi-wallet2"></i>
+            <span>Leave Balance</span>
+          </li>
+        </ul>
+      }
+
+      <!-- 6. Timesheets -->
+      <li routerLink="/timesheets" routerLinkActive="active-menu">
+        <i class="bi bi-clock-history"></i>
+        <span>Timesheets</span>
+      </li>
+
+      <!-- 7. Payroll -->
+      <li class="menu-parent" [class.open]="payrollMenuOpen" (click)="togglePayrollMenu()">
+        <div class="menu-parent-header">
+          <i class="bi bi-cash-stack"></i>
+          <span>Payroll</span>
+          <i class="bi bi-chevron-down submenu-arrow" [class.rotate]="payrollMenuOpen"></i>
+        </div>
+      </li>
+      @if (payrollMenuOpen) {
+        <ul class="submenu">
+          <li routerLink="/payroll/generate" routerLinkActive="active-submenu">
+            <i class="bi bi-calculator"></i>
+            <span>Generate Payslip</span>
+          </li>
+          <li routerLink="/payroll/list" routerLinkActive="active-submenu">
+            <i class="bi bi-cash-stack"></i>
+            <span>Payroll Processing</span>
+          </li>
+          <li routerLink="/payroll/salary-release" routerLinkActive="active-submenu">
+            <i class="bi bi-send-check"></i>
+            <span>Salary Release</span>
+          </li>
+        </ul>
+      }
+
+      <!-- 8. Analytics & Reports -->
+      <li routerLink="/analytics" routerLinkActive="active-menu">
+        <i class="bi bi-bar-chart-fill"></i>
+        <span>Analytics</span>
+      </li>
+
+      <li class="menu-parent" [class.open]="reportsMenuOpen" (click)="toggleReportsMenu()">
+        <div class="menu-parent-header">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>Reports</span>
+          <i class="bi bi-chevron-down submenu-arrow" [class.rotate]="reportsMenuOpen"></i>
+        </div>
+      </li>
+      @if (reportsMenuOpen) {
+        <ul class="submenu">
+          <li routerLink="/reports" routerLinkActive="active-submenu" [routerLinkActiveOptions]="{exact:true}">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+          </li>
+          <li routerLink="/reports/attendance" routerLinkActive="active-submenu">
+            <i class="bi bi-calendar-check"></i>
+            <span>Attendance Report</span>
+          </li>
+          <li routerLink="/reports/payroll" routerLinkActive="active-submenu">
+            <i class="bi bi-receipt"></i>
+            <span>Payroll Report</span>
+          </li>
+          <li routerLink="/reports/directory" routerLinkActive="active-submenu">
+            <i class="bi bi-people"></i>
+            <span>Employee Directory</span>
+          </li>
+        </ul>
+      }
+
+      <!-- 9. Audit Log -->
+      <li routerLink="/audit" routerLinkActive="active-menu">
+        <i class="bi bi-shield-check"></i>
+        <span>Audit Log</span>
+      </li>
+
+      <!-- 10. Master Settings -->
+      <li class="menu-parent" [class.open]="masterMenuOpen" (click)="toggleMasterMenu()">
+        <div class="menu-parent-header">
+          <i class="bi bi-gear-fill"></i>
+          <span>Master</span>
+          <i class="bi bi-chevron-down submenu-arrow" [class.rotate]="masterMenuOpen"></i>
+        </div>
+      </li>
+      @if (masterMenuOpen) {
+        <ul class="submenu">
+          <li routerLink="/master/departments" routerLinkActive="active-submenu">
+            <i class="bi bi-diagram-3-fill"></i>
+            <span>Departments</span>
+          </li>
+          <li routerLink="/master/users" routerLinkActive="active-submenu">
+            <i class="bi bi-shield-lock-fill"></i>
+            <span>Users</span>
+          </li>
+          <li routerLink="/master/banks" routerLinkActive="active-submenu">
+            <i class="bi bi-bank"></i>
+            <span>Banks</span>
+          </li>
+          <li routerLink="/master/public-holidays" routerLinkActive="active-submenu">
+            <i class="bi bi-calendar2-check-fill"></i>
+            <span>Public Holidays</span>
+          </li>
+        </ul>
+      }
+    }
+
+    <!-- ══════════════════════════════════════════════════════
+         EMPLOYEE MENU — workflow order
+         ══════════════════════════════════════════════════════ -->
+    @if (!isAdmin) {
+
+      <!-- 1. Dashboard -->
+      <li routerLink="/self-service/dashboard" routerLinkActive="active-menu">
+        <i class="bi bi-speedometer2"></i>
+        <span>Dashboard</span>
+      </li>
+
+      <!-- 2. My Profile -->
+      <li routerLink="/self-service/my-profile" routerLinkActive="active-menu">
+        <i class="bi bi-person-badge-fill"></i>
+        <span>My Profile</span>
+      </li>
+
+      <!-- 3. My Attendance — submit timesheet -->
+      <li routerLink="/self-service/my-attendance" routerLinkActive="active-menu">
+        <i class="bi bi-calendar-check-fill"></i>
+        <span>My Attendance</span>
+      </li>
+
+      <!-- 4. My Leave — request leave -->
+      <li routerLink="/self-service/my-leave" routerLinkActive="active-menu">
+        <i class="bi bi-calendar-event-fill"></i>
+        <span>My Leave</span>
+      </li>
+
+      <!-- 5. My Payslips — view salary -->
+      <li routerLink="/self-service/my-payslips" routerLinkActive="active-menu">
+        <i class="bi bi-receipt"></i>
+        <span>My Payslips</span>
+      </li>
+
+    }
+
+  </ul>
+
+</div>

@@ -1,0 +1,13 @@
+<router-outlet></router-outlet>
+<app-loading-spinner></app-loading-spinner>
+
+<!-- Session Timeout Warning Modal -->
+<app-confirm-modal
+  [show]="showSessionWarning"
+  title="Session Timeout Warning"
+  message="Your session is about to expire after 5 minutes. Would you like to stay logged in?"
+  confirmText="Stay Logged In"
+  cancelText=""
+  variant="warning"
+  (confirmed)="onStayLoggedIn()">
+</app-confirm-modal>

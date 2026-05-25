@@ -1,0 +1,153 @@
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-dialog {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10000;
+}
+
+.modal-header {
+  padding: 24px 24px 20px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+
+  &.danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+    .modal-icon i { color: #dc2626; }
+  }
+
+  &.warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+    .modal-icon i { color: #f59e0b; }
+  }
+
+  &.info {
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    .modal-icon i { color: #2563eb; }
+  }
+}
+
+.modal-icon {
+  margin-bottom: 12px;
+
+  i {
+    font-size: 56px;
+  }
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.modal-body {
+  padding: 24px;
+  text-align: center;
+
+  p {
+    font-size: 15px;
+    color: #4b5563;
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+
+  &.single-button {
+    justify-content: center;
+  }
+}
+
+.btn {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10001;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.btn-cancel {
+  background: #e5e7eb;
+  color: #374151;
+
+  &:hover {
+    background: #d1d5db;
+  }
+}
+
+.btn-confirm {
+  color: white;
+
+  &.btn-danger {
+    background: #dc2626;
+    &:hover { background: #b91c1c; }
+  }
+
+  &.btn-warning {
+    background: #f59e0b;
+    &:hover { background: #d97706; }
+  }
+
+  &.btn-info {
+    background: #2563eb;
+    &:hover { background: #1d4ed8; }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

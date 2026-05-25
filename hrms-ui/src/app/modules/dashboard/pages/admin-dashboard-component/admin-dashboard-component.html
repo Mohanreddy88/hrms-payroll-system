@@ -1,0 +1,299 @@
+<div class="admin-dashboard">
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading admin dashboard...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error && !loading">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <h3>Unable to Load Dashboard</h3>
+    <p>{{ error }}</p>
+    <button class="btn btn-primary" (click)="loadDashboard()">
+      <i class="bi bi-arrow-clockwise"></i> Retry
+    </button>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div class="dashboard-content" *ngIf="dashboardData && !loading">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+      <div class="header-text">
+        <h1>Admin Dashboard</h1>
+        <p class="subtitle">{{ currentMonth }} • System Overview</p>
+      </div>
+      <div class="quick-actions">
+        <button class="action-btn primary" (click)="navigateTo('/leave/requests')">
+          <i class="bi bi-calendar-check"></i>
+          <span>Approve Leaves</span>
+          <span class="badge" *ngIf="dashboardData.pendingCounts.leaveRequests > 0">
+            {{ dashboardData.pendingCounts.leaveRequests }}
+          </span>
+        </button>
+        <button class="action-btn success" (click)="navigateTo('/attendance/approval')">
+          <i class="bi bi-clipboard-check"></i>
+          <span>Approve Attendance</span>
+          <span class="badge" *ngIf="dashboardData.pendingCounts.attendancePeriods > 0">
+            {{ dashboardData.pendingCounts.attendancePeriods }}
+          </span>
+        </button>
+        <button class="action-btn info" (click)="navigateTo('/payroll/generate')">
+          <i class="bi bi-calculator"></i>
+          <span>Generate Payroll</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card primary">
+        <div class="stat-icon">
+          <i class="bi bi-people-fill"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ dashboardData.stats.activeEmployees }}</h3>
+          <p>Active Employees</p>
+          <span class="stat-detail">{{ dashboardData.stats.totalEmployees }} total</span>
+        </div>
+      </div>
+
+      <div class="stat-card warning">
+        <div class="stat-icon">
+          <i class="bi bi-hourglass-split"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ dashboardData.pendingCounts.total }}</h3>
+          <p>Pending Approvals</p>
+          <span class="stat-detail">Requires attention</span>
+        </div>
+      </div>
+
+      <div class="stat-card success">
+        <div class="stat-icon">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="stat-content">
+          <h3>RM {{ dashboardData.stats.currentMonthPayrollAmount | number:'1.2-2' }}</h3>
+          <p>Current Month Payroll</p>
+          <span class="stat-detail">{{ dashboardData.stats.currentMonthPayrolls }} payslips</span>
+        </div>
+      </div>
+
+      <div class="stat-card info">
+        <div class="stat-icon">
+          <i class="bi bi-diagram-3"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ dashboardData.stats.totalDepartments }}</h3>
+          <p>Departments</p>
+          <span class="stat-detail">Active departments</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+      <!-- Pending Approvals Card -->
+      <div class="dashboard-card highlight" *ngIf="dashboardData.pendingCounts.total > 0">
+        <div class="card-header">
+          <h2><i class="bi bi-exclamation-circle-fill"></i> Pending Approvals</h2>
+        </div>
+        <div class="card-body">
+          <div class="pending-summary">
+            <div class="pending-item" *ngIf="dashboardData.pendingCounts.leaveRequests > 0" (click)="navigateTo('/leave/requests')">
+              <i class="bi bi-calendar-x"></i>
+              <div class="pending-info">
+                <h4>{{ dashboardData.pendingCounts.leaveRequests }}</h4>
+                <p>Leave Requests Pending</p>
+              </div>
+              <i class="bi bi-chevron-right"></i>
+            </div>
+            <div class="pending-item" *ngIf="dashboardData.pendingCounts.attendancePeriods > 0" (click)="navigateTo('/attendance/approval')">
+              <i class="bi bi-clock-history"></i>
+              <div class="pending-info">
+                <h4>{{ dashboardData.pendingCounts.attendancePeriods }}</h4>
+                <p>Attendance Periods Submitted</p>
+              </div>
+              <i class="bi bi-chevron-right"></i>
+            </div>
+            <div class="pending-item" *ngIf="dashboardData.pendingCounts.timesheets > 0" (click)="navigateTo('/timesheets')">
+              <i class="bi bi-file-earmark-text"></i>
+              <div class="pending-info">
+                <h4>{{ dashboardData.pendingCounts.timesheets }}</h4>
+                <p>Timesheets Submitted</p>
+              </div>
+              <i class="bi bi-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Leave Requests -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="bi bi-calendar-event"></i> Recent Leave Requests</h2>
+          <button class="btn-link" (click)="navigateTo('/leave/requests')">View All →</button>
+        </div>
+        <div class="card-body">
+          <div class="list-view" *ngIf="dashboardData.recentLeaveRequests.length > 0">
+            <div class="list-item" *ngFor="let leave of dashboardData.recentLeaveRequests">
+              <div class="item-icon" [style.background-color]="getLeaveTypeColor(leave.leaveTypeCode)">
+                {{ leave.leaveTypeCode }}
+              </div>
+              <div class="item-details">
+                <h4>{{ leave.employeeName }}</h4>
+                <p>{{ leave.leaveType }} • {{ formatDate(leave.startDate) }} - {{ formatDate(leave.endDate) }}</p>
+                <span class="item-meta">{{ leave.totalDays }} day(s) • {{ formatDate(leave.requestedOn) }}</span>
+              </div>
+              <span class="item-status" [ngClass]="getStatusClass(leave.status)">
+                {{ leave.status }}
+              </span>
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="dashboardData.recentLeaveRequests.length === 0">
+            <i class="bi bi-inbox"></i>
+            <p>No recent leave requests</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Attendance Submissions -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="bi bi-clipboard-check"></i> Recent Attendance</h2>
+          <button class="btn-link" (click)="navigateTo('/attendance/approval')">View All →</button>
+        </div>
+        <div class="card-body">
+          <div class="list-view" *ngIf="dashboardData.recentAttendance.length > 0">
+            <div class="list-item" *ngFor="let attendance of dashboardData.recentAttendance">
+              <div class="item-icon secondary">
+                <i class="bi bi-calendar-week"></i>
+              </div>
+              <div class="item-details">
+                <h4>{{ attendance.employeeName }}</h4>
+                <p>{{ attendance.periodLabel }}</p>
+                <span class="item-meta">{{ formatDateTime(attendance.submittedAt) }}</span>
+              </div>
+              <span class="item-status" [ngClass]="getStatusClass(attendance.status)">
+                {{ attendance.status }}
+              </span>
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="dashboardData.recentAttendance.length === 0">
+            <i class="bi bi-inbox"></i>
+            <p>No recent attendance submissions</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Department Statistics -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="bi bi-diagram-3-fill"></i> Department Breakdown</h2>
+          <button class="btn-link" (click)="navigateTo('/employees')">View All →</button>
+        </div>
+        <div class="card-body">
+          <div class="department-stats" *ngIf="dashboardData.departmentStats.length > 0">
+            <div class="dept-item" *ngFor="let dept of dashboardData.departmentStats">
+              <div class="dept-info">
+                <h4>{{ dept.departmentName }}</h4>
+                <span class="dept-count">{{ dept.employeeCount }} employees</span>
+              </div>
+              <div class="dept-bar">
+                <div 
+                  class="dept-bar-fill" 
+                  [style.width.%]="(dept.employeeCount / dashboardData.stats.activeEmployees) * 100">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="dashboardData.departmentStats.length === 0">
+            <i class="bi bi-inbox"></i>
+            <p>No department data available</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Usage Statistics -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="bi bi-bar-chart-fill"></i> Leave Usage {{ currentYear }}</h2>
+          <button class="btn-link" (click)="navigateTo('/leave/balance')">View All →</button>
+        </div>
+        <div class="card-body">
+          <div class="leave-usage-stats" *ngIf="dashboardData.leaveUsageStats.length > 0">
+            <div class="leave-usage-item" *ngFor="let leave of dashboardData.leaveUsageStats">
+              <div class="leave-usage-header">
+                <span class="leave-badge" [style.background-color]="getLeaveTypeColor(leave.leaveTypeCode)">
+                  {{ leave.leaveTypeCode }}
+                </span>
+                <span class="leave-name">{{ leave.leaveType }}</span>
+              </div>
+              <div class="leave-usage-stats-row">
+                <div class="stat-item">
+                  <span class="value">{{ leave.totalDays }}</span>
+                  <span class="label">Total Days</span>
+                </div>
+                <div class="stat-item">
+                  <span class="value">{{ leave.requestCount }}</span>
+                  <span class="label">Requests</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="dashboardData.leaveUsageStats.length === 0">
+            <i class="bi bi-inbox"></i>
+            <p>No leave usage data for this year</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activities -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="bi bi-activity"></i> Recent Activities</h2>
+        </div>
+        <div class="card-body">
+          <div class="activity-timeline" *ngIf="dashboardData.recentActivities.length > 0">
+            <div class="activity-item" *ngFor="let activity of dashboardData.recentActivities">
+              <div class="activity-icon">
+                <i class="bi bi-{{ activity.icon }}"></i>
+              </div>
+              <div class="activity-details">
+                <h4>{{ activity.employeeName }}</h4>
+                <p>{{ activity.description }}</p>
+                <span class="activity-time">{{ formatDateTime(activity.timestamp) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="dashboardData.recentActivities.length === 0">
+            <i class="bi bi-inbox"></i>
+            <p>No recent activities</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Month Payroll Summary -->
+      <div class="dashboard-card" *ngIf="dashboardData.currentMonthPayrolls.length > 0">
+        <div class="card-header">
+          <h2><i class="bi bi-receipt"></i> Payroll Summary</h2>
+          <button class="btn-link" (click)="navigateTo('/payroll/list')">View All →</button>
+        </div>
+        <div class="card-body">
+          <div class="payroll-summary">
+            <div class="payroll-item" *ngFor="let payroll of dashboardData.currentMonthPayrolls">
+              <div class="payroll-status" [ngClass]="getStatusClass(payroll.status)">
+                {{ payroll.status }}
+              </div>
+              <div class="payroll-stats">
+                <span class="count">{{ payroll.count }} payslips</span>
+                <span class="amount">RM {{ payroll.totalAmount | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

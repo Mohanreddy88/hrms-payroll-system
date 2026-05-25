@@ -1,0 +1,240 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">Analytics Dashboard</h1>
+    <p class="page-subtitle">Comprehensive HR Insights and Statistics</p>
+  </div>
+
+  @if (loading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading analytics data...</p>
+    </div>
+  } @else {
+    <div class="analytics-grid">
+
+      <!-- Employee Distribution Card -->
+      <div class="analytics-card">
+        <div class="card-header">
+          <i class="bi bi-people-fill"></i>
+          <h3>Employee Distribution</h3>
+        </div>
+        <div class="card-body">
+          <div class="stat-highlight">
+            <span class="stat-value">{{ getTotalEmployees() }}</span>
+            <span class="stat-label">Total Employees</span>
+          </div>
+          <div class="department-list">
+            @for (dept of employeeByDepartment; track dept.departmentId) {
+              <div class="department-item">
+                <span class="dept-name">{{ dept.departmentName || 'Unassigned' }}</span>
+                <span class="dept-count">{{ dept.employeeCount }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Salary Distribution Card -->
+      @if (salaryDistribution) {
+        <div class="analytics-card">
+          <div class="card-header">
+            <i class="bi bi-cash-stack"></i>
+            <h3>Salary Distribution</h3>
+          </div>
+          <div class="card-body">
+            <div class="salary-stats">
+              <div class="salary-stat">
+                <span class="label">Average Salary</span>
+                <span class="value">₹{{ salaryDistribution.averageSalary | number:'1.0-0' }}</span>
+              </div>
+              <div class="salary-stat">
+                <span class="label">Median Salary</span>
+                <span class="value">₹{{ salaryDistribution.medianSalary | number:'1.0-0' }}</span>
+              </div>
+            </div>
+            <div class="salary-ranges">
+              <div class="range-item">
+                <span class="range-label">Below ₹3,000</span>
+                <span class="range-count">{{ salaryDistribution.below3k }}</span>
+              </div>
+              <div class="range-item">
+                <span class="range-label">₹3,000 - ₹5,000</span>
+                <span class="range-count">{{ salaryDistribution.range3kTo5k }}</span>
+              </div>
+              <div class="range-item">
+                <span class="range-label">₹5,000 - ₹8,000</span>
+                <span class="range-count">{{ salaryDistribution.range5kTo8k }}</span>
+              </div>
+              <div class="range-item">
+                <span class="range-label">₹8,000 - ₹12,000</span>
+                <span class="range-count">{{ salaryDistribution.range8kTo12k }}</span>
+              </div>
+              <div class="range-item">
+                <span class="range-label">Above ₹12,000</span>
+                <span class="range-count">{{ salaryDistribution.above12k }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Attendance Overview Card - Full Width -->
+      <div class="analytics-card full-width attendance-card">
+        <div class="card-header">
+          <i class="bi bi-calendar-check-fill"></i>
+          <h3>Attendance Overview (Year {{ currentYear }})</h3>
+        </div>
+        <div class="card-body">
+          @if (attendanceStatistics && attendanceStatistics.totalRecords > 0) {
+            
+            <!-- Overall Summary Cards -->
+            <div class="attendance-overview">
+              <div class="overview-card overall">
+                <div class="overview-icon">
+                  <i class="bi bi-bar-chart-fill"></i>
+                </div>
+                <div class="overview-content">
+                  <span class="overview-value">{{ getAttendanceRate() | number:'1.1-1' }}%</span>
+                  <span class="overview-label">Overall Rate</span>
+                  <span class="overview-detail">{{ attendanceStatistics.totalRecords }} days</span>
+                </div>
+              </div>
+
+              <div class="overview-card present">
+                <div class="overview-icon">
+                  <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="overview-content">
+                  <span class="overview-value">{{ attendanceStatistics.presentCount }}</span>
+                  <span class="overview-label">Present</span>
+                  <span class="overview-detail">Full days</span>
+                </div>
+              </div>
+
+              <div class="overview-card halfday">
+                <div class="overview-icon">
+                  <i class="bi bi-clock-fill"></i>
+                </div>
+                <div class="overview-content">
+                  <span class="overview-value">{{ attendanceStatistics.halfDayCount }}</span>
+                  <span class="overview-label">Half Days</span>
+                  <span class="overview-detail">Partial</span>
+                </div>
+              </div>
+
+              <div class="overview-card absent">
+                <div class="overview-icon">
+                  <i class="bi bi-x-circle-fill"></i>
+                </div>
+                <div class="overview-content">
+                  <span class="overview-value">{{ attendanceStatistics.absentCount }}</span>
+                  <span class="overview-label">Absent</span>
+                  <span class="overview-detail">No attendance</span>
+                </div>
+              </div>
+
+              <div class="overview-card leave">
+                <div class="overview-icon">
+                  <i class="bi bi-calendar-event-fill"></i>
+                </div>
+                <div class="overview-content">
+                  <span class="overview-value">{{ attendanceStatistics.leaveCount }}</span>
+                  <span class="overview-label">Leave</span>
+                  <span class="overview-detail">Approved</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Department-wise Breakdown -->
+            @if (attendanceStatistics.byDepartment && attendanceStatistics.byDepartment.length > 0) {
+              <div class="section-divider"></div>
+              <div class="section-header">
+                <h4><i class="bi bi-building"></i> Department-wise Attendance</h4>
+              </div>
+              <div class="department-attendance-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Department</th>
+                      <th class="text-center">Employees</th>
+                      <th class="text-center">Total Days</th>
+                      <th class="text-center">Present Days</th>
+                      <th>Attendance Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (dept of attendanceStatistics.byDepartment; track dept.department) {
+                      <tr>
+                        <td class="dept-name">
+                          <i class="bi bi-briefcase-fill"></i>
+                          {{ dept.department }}
+                        </td>
+                        <td class="text-center employee-count">{{ dept.employeeCount }}</td>
+                        <td class="text-center">{{ dept.totalDays }}</td>
+                        <td class="text-center text-success-bold">{{ dept.presentDays }}</td>
+                        <td>
+                          <div class="progress-cell">
+                            <span class="percentage">{{ dept.attendanceRate | number:'1.1-1' }}%</span>
+                            <div class="progress-bar">
+                              <div class="progress-fill" [style.width.%]="dept.attendanceRate"></div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+          } @else {
+            <div class="no-data-message">
+              <i class="bi bi-calendar-x"></i>
+              <p>No attendance data available for year {{ currentYear }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Payroll Trends Card -->
+      <div class="analytics-card full-width">
+        <div class="card-header">
+          <i class="bi bi-graph-up"></i>
+          <h3>Payroll Trends (Last 6 Months)</h3>
+        </div>
+        <div class="card-body">
+          <div class="payroll-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Employees</th>
+                  <th>Total Gross</th>
+                  <th>Total Deductions</th>
+                  <th>Total Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (trend of payrollTrends; track trend.month) {
+                  <tr>
+                    <td>{{ trend.monthName }} {{ trend.year }}</td>
+                    <td>{{ trend.employeeCount }}</td>
+                    <td>₹{{ trend.totalGross | number:'1.2-2' }}</td>
+                    <td>₹{{ trend.totalDeductions | number:'1.2-2' }}</td>
+                    <td class="net-pay">₹{{ trend.totalNet | number:'1.2-2' }}</td>
+                  </tr>
+                }
+                @if (payrollTrends.length === 0) {
+                  <tr>
+                    <td colspan="5" class="no-data">No payroll data available</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  }
+</div>
