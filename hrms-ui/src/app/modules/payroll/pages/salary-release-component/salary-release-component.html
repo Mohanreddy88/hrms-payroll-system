@@ -140,9 +140,16 @@
               <button class="btn-icon btn-ytd" (click)="openYtd(p.employeeId, p.year)" title="Year-to-Date Summary">
                 <i class="bi bi-bar-chart-line"></i>
               </button>
-              <!-- EA Form -->
-              <button class="btn-icon btn-ea" (click)="openEaForm(p.employeeId, p.year)" title="EA Form">
+              <!-- EA Form view -->
+              <button class="btn-icon btn-ea" (click)="openEaForm(p.employeeId, p.year)" title="View EA Form">
                 <i class="bi bi-file-earmark-text"></i>
+              </button>
+              <!-- Email EA Form to employee -->
+              <button class="btn-icon btn-email-ea"
+                (click)="emailEaForm(p.employeeId, p.year, p.employeeName)"
+                [disabled]="isEmailingEa(p.employeeId)"
+                title="Email EA Form to Employee">
+                <i class="bi" [class.bi-file-earmark-arrow-up]="!isEmailingEa(p.employeeId)" [class.bi-hourglass-split]="isEmailingEa(p.employeeId)"></i>
               </button>
             </div>
           </td>

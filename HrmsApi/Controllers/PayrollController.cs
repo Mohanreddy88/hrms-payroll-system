@@ -857,6 +857,134 @@ public class PayrollController : ControllerBase
 
         return Ok(eaForm);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // EMAIL EA FORM TO EMPLOYEE
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// POST /api/payroll/email-ea-form/{employeeId}/{year}
+    /// Generates the EA Form summary and emails it to the employee.
+    /// </summary>
+    [HttpPost("email-ea-form/{employeeId:int}/{year:int}")]
+    public async Task<IActionResult> EmailEaForm(int employeeId, int year)
+    {
+        var employee = await _db.Employees
+            .Include(e => e.Department)
+            .FirstOrDefaultAsync(e => e.Id == employeeId);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee not found." });
+
+        if (string.IsNullOrWhiteSpace(employee.Email))
+            return BadRequest(new { message = "Employee does not have an email address configured." });
+
+        var payrolls = await _db.Payrolls
+            .Where(p => p.EmployeeId == employeeId
+                     && p.Year == year
+                     && (p.Status == "Approved" || p.Status == "Processed"))
+            .OrderBy(p => p.Month)
+            .ToListAsync();
+
+        if (!payrolls.Any())
+            return NotFound(new { message = $"No approved/processed payroll records found for {year}. EA Form cannot be generated." });
+
+        var totalGross       = payrolls.Sum(p => p.GrossIncome);
+        var totalBasicSalary = payrolls.Sum(p => p.BasicSalary);
+        var totalAllowances  = payrolls.Sum(p => p.Allowances);
+        var totalEpf         = payrolls.Sum(p => p.EpfAmount);
+        var totalSocso       = payrolls.Sum(p => p.SocsoAmount);
+        var totalTax         = payrolls.Sum(p => p.TaxAmount);
+        var totalDeductions  = payrolls.Sum(p => p.Deductions);
+        var totalNet         = payrolls.Sum(p => p.NetSalary);
+        var taxableIncome    = totalGross - totalEpf;
+
+        var subject = $"EA Form (Borang EA) — Year of Assessment {year}";
+
+        var body = $@"<!DOCTYPE html>
+<html><head><style>
+  body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a; background: #f4f4f4; margin: 0; padding: 0; }}
+  .wrap {{ max-width: 620px; margin: 30px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
+  .header {{ background: #1e40af; padding: 24px 30px; }}
+  .header h2 {{ margin: 0; color: white; font-size: 18px; font-weight: 600; }}
+  .header p {{ margin: 4px 0 0; color: #93c5fd; font-size: 13px; }}
+  .body {{ padding: 28px 30px; }}
+  .section-title {{ font-size: 13px; font-weight: 700; color: #1e40af; background: #f1f5f9; padding: 8px 12px; border-radius: 4px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }}
+  td {{ padding: 7px 12px; border-bottom: 1px solid #f1f5f9; }}
+  td:first-child {{ color: #64748b; width: 55%; }}
+  td:last-child {{ font-weight: 600; color: #1e293b; text-align: right; }}
+  .total-row td {{ background: #f0f9ff; font-weight: 700; color: #1e40af; border-top: 2px solid #bfdbfe; }}
+  .net-row td {{ background: #f0fdf4; font-weight: 700; color: #16a34a; font-size: 14px; }}
+  .notice {{ background: #fef9c3; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; font-size: 12px; color: #78350f; margin-top: 16px; }}
+  .footer {{ background: #f9fafb; padding: 16px 30px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #f1f5f9; }}
+</style></head>
+<body>
+  <div class=""wrap"">
+    <div class=""header"">
+      <h2>ESYNC SOFTWARE SERVICES SDN.BHD</h2>
+      <p>EA Form (Borang EA) — Year of Assessment {year}</p>
+    </div>
+    <div class=""body"">
+      <p>Dear <strong>{employee.Name}</strong>,</p>
+      <p>Please find your <strong>EA Form for the Year of Assessment {year}</strong> below. This document summarises your employment income and statutory deductions for income tax filing purposes.</p>
+
+      <div class=""section-title"">Part A — Employee Details</div>
+      <table>
+        <tr><td>Employee Name</td><td>{employee.Name}</td></tr>
+        <tr><td>Employee Code</td><td>{employee.EmployeeCode}</td></tr>
+        <tr><td>IC / Passport</td><td>{(string.IsNullOrEmpty(employee.IcPassport) ? "—" : employee.IcPassport)}</td></tr>
+        <tr><td>Tax No. (TIN)</td><td>{(string.IsNullOrEmpty(employee.TaxNumber) ? "—" : employee.TaxNumber)}</td></tr>
+        <tr><td>Designation</td><td>{employee.Designation}</td></tr>
+        <tr><td>Department</td><td>{employee.Department?.Name ?? "—"}</td></tr>
+        <tr><td>Months Covered</td><td>{payrolls.Count} month(s)</td></tr>
+      </table>
+
+      <div class=""section-title"">Part B — Employment Income</div>
+      <table>
+        <tr><td>B1. Gross Salary</td><td>RM {totalBasicSalary:F2}</td></tr>
+        <tr><td>B2. Allowances &amp; Benefits</td><td>RM {totalAllowances:F2}</td></tr>
+        <tr class=""total-row""><td>B. Total Gross Employment Income</td><td>RM {totalGross:F2}</td></tr>
+      </table>
+
+      <div class=""section-title"">Part C — Statutory Deductions</div>
+      <table>
+        <tr><td>C1. EPF (Employee Contribution)</td><td>RM {totalEpf:F2}</td></tr>
+        <tr><td>C2. SOCSO (Employee Contribution)</td><td>RM {totalSocso:F2}</td></tr>
+        <tr><td>C3. PCB / MTD (Tax Withheld)</td><td>RM {totalTax:F2}</td></tr>
+        <tr><td>C4. Other Deductions</td><td>RM {totalDeductions:F2}</td></tr>
+      </table>
+
+      <table>
+        <tr class=""total-row""><td>Taxable Income (Gross − EPF)</td><td>RM {taxableIncome:F2}</td></tr>
+        <tr class=""net-row""><td>Total Net Salary Paid</td><td>RM {totalNet:F2}</td></tr>
+      </table>
+
+      <div class=""notice"">
+        <strong>Note:</strong> Please use this EA Form when filing your annual income tax (Borang BE) with LHDN. 
+        If you have any queries, please contact HR.
+      </div>
+    </div>
+    <div class=""footer"">
+      This is an auto-generated email from the HRMS system. &copy; {DateTime.Now.Year} ESYNC SOFTWARE SERVICES SDN.BHD
+    </div>
+  </div>
+</body></html>";
+
+        try
+        {
+            await _emailService.SendEmailAsync(employee.Email, subject, body);
+            await _audit.LogAsync("EMAIL_EA_FORM", "Payroll",
+                employeeId.ToString(), $"EA Form for {year} emailed to {employee.Email}",
+                User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "system");
+
+            return Ok(new { message = $"EA Form for {year} successfully emailed to {employee.Email}." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to send EA Form email: {ex.Message}" });
+        }
+    }
 }
 
 // ── Request/Response DTOs ──────────────────────────────────

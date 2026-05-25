@@ -183,6 +183,25 @@ export class SalaryReleaseComponent implements OnInit {
     });
   }
 
+  // ── Email EA Form ─────────────────────────────────────────────────────────────
+  emailingEaIds: Set<number> = new Set(); // tracks which employeeId is being emailed
+
+  emailEaForm(employeeId: number, year: number, employeeName: string): void {
+    this.emailingEaIds.add(employeeId);
+    this.http.post(`${environment.apiUrl}/payroll/email-ea-form/${employeeId}/${year}`, {}).subscribe({
+      next: () => {
+        this.emailingEaIds.delete(employeeId);
+        this.toast.success('EA Form Sent', `EA Form for ${year} emailed to ${employeeName}.`);
+      },
+      error: (err) => {
+        this.emailingEaIds.delete(employeeId);
+        this.toast.error('Email Failed', err?.error?.message || 'Could not send EA Form email.');
+      }
+    });
+  }
+
+  isEmailingEa(employeeId: number): boolean { return this.emailingEaIds.has(employeeId); }
+
   // ── YTD ───────────────────────────────────────────────────────────────────────
   openYtd(employeeId: number, year: number): void {
     this.ytdYear = year; this.ytdData = null; this.showYtdModal = true; this.ytdLoading = true;

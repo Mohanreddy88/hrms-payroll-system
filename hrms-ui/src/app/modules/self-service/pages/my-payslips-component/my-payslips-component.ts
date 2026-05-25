@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { PayrollService } from '../../../../core/services/payroll.service';
-import { YtdSummary, EaForm } from '../../../../core/models/payroll.model';
+import { YtdSummary } from '../../../../core/models/payroll.model';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -40,11 +40,6 @@ export class MyPayslipsComponent implements OnInit {
   showYtdModal = false;
   ytdLoading = false;
   ytdData: YtdSummary | null = null;
-
-  // EA Form
-  showEaModal = false;
-  eaLoading = false;
-  eaData: EaForm | null = null;
 
   constructor(
     private http: HttpClient,
@@ -149,27 +144,6 @@ export class MyPayslipsComponent implements OnInit {
   }
 
   closeYtdModal(): void { this.showYtdModal = false; this.ytdData = null; }
-
-  // ── EA Form ───────────────────────────────────────────────────────────────────
-  openEaForm(year: number): void {
-    const empId = this.authService.getEmployeeId();
-    if (!empId) return;
-    this.eaData = null;
-    this.showEaModal = true;
-    this.eaLoading = true;
-    this.payrollService.getEaForm(empId, year).subscribe({
-      next: (data) => { this.eaData = data; this.eaLoading = false; },
-      error: (err) => {
-        this.eaLoading = false;
-        this.toast.error('EA Form Error', err?.error?.message || 'Could not load EA Form data.');
-        this.showEaModal = false;
-      }
-    });
-  }
-
-  closeEaModal(): void { this.showEaModal = false; this.eaData = null; }
-
-  printEaForm(): void { window.print(); }
 
   getMonthName(month: number): string {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
