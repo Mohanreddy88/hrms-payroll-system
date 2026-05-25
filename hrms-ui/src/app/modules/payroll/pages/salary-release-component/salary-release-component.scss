@@ -176,13 +176,15 @@
   z-index: 1050;
   align-items: center;
   justify-content: center;
+  background: rgba(15, 23, 42, 0.6);  // backdrop on the modal itself
   &.show { display: flex; }
 }
 .modal-backdrop {
-  position: fixed;
+  // kept in HTML for click-to-close but visually hidden — modal handles the dim
+  position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  z-index: 1051;
+  background: transparent;
+  z-index: 0;
 }
 .modal-dialog {
   position: relative;
@@ -194,7 +196,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  z-index: 1052;
+  z-index: 1;  // above the transparent backdrop inside the modal
   &.modal-lg { max-width: 860px; }
 }
 .modal-header {
