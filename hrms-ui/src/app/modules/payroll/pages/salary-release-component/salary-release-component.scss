@@ -172,41 +172,71 @@
 .modal {
   display: none;
   position: fixed;
-  inset: 0;
-  z-index: 1050;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15, 23, 42, 0.6);  // backdrop on the modal itself
-  &.show { display: flex; }
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1000;
+
+  &.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .modal-dialog {
+    position: relative;
+    z-index: 10;
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+
+    &.modal-lg { max-width: 880px; }
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+    h3 { margin: 0; font-size: 18px; font-weight: 600; color: #1e293b; i { margin-right: 8px; color: #6366f1; } }
+  }
+
+  .btn-close {
+    background: none; border: none; cursor: pointer;
+    color: #64748b; font-size: 16px; padding: 4px;
+    border-radius: 6px;
+    &:hover { background: #f1f5f9; }
+  }
+
+  .modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
 }
-.modal-backdrop {
-  // kept in HTML for click-to-close but visually hidden — modal handles the dim
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  z-index: 0;
-}
-.modal-dialog {
-  position: relative;
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 560px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  z-index: 1;  // above the transparent backdrop inside the modal
-  &.modal-lg { max-width: 860px; }
-}
-.modal-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
-  h3 { margin: 0; font-size: 18px; font-weight: 600; color: #1e293b; i { margin-right: 8px; color: #6366f1; } }
-}
-.btn-close { background: none; border: none; cursor: pointer; color: #64748b; font-size: 16px; padding: 4px; border-radius: 6px; &:hover { background: #f1f5f9; } }
-.modal-body   { padding: 20px 24px; overflow-y: auto; }
-.modal-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
 
 // ── YTD styles ────────────────────────────────────────────────────────────────
 .ytd-employee-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
