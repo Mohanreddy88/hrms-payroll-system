@@ -10,6 +10,7 @@ namespace HrmsApi.Services;
 public interface IPdfService
 {
     Task<byte[]> GeneratePayslipPdfAsync(int payrollId);
+    Task<byte[]> GenerateEaFormPdfAsync(int employeeId, int year);
 }
 
 public class PdfService : IPdfService
@@ -339,5 +340,332 @@ public class PdfService : IPdfService
         });
 
         return document.GeneratePdf();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CP8A — Borang EA (Malaysia Annual Income Statement)
+    // ─────────────────────────────────────────────────────────────────────────
+    public async Task<byte[]> GenerateEaFormPdfAsync(int employeeId, int year)
+    {
+        var employee = await _db.Employees
+            .Include(e => e.Department)
+            .FirstOrDefaultAsync(e => e.Id == employeeId)
+            ?? throw new KeyNotFoundException($"Employee {employeeId} not found");
+
+        var payrolls = await _db.Payrolls
+            .Where(p => p.EmployeeId == employeeId
+                     && p.Year       == year
+                     && (p.Status    == "Approved" || p.Status == "Processed"))
+            .OrderBy(p => p.Month)
+            .ToListAsync();
+
+        var totalGross      = payrolls.Sum(p => p.GrossIncome);
+        var totalBasic      = payrolls.Sum(p => p.BasicSalary);
+        var totalAllowances = payrolls.Sum(p => p.Allowances);
+        var totalEpf        = payrolls.Sum(p => p.EpfAmount);
+        var totalSocso      = payrolls.Sum(p => p.SocsoAmount);
+        var totalTax        = payrolls.Sum(p => p.TaxAmount);
+        var totalDeductions = payrolls.Sum(p => p.Deductions);
+
+        const string companyAddress = "CT-09-12 CORPORATE TOWER SUBANG SQUARE JALAN SS15/4G\n47500 SUBANG JAYA SELANGOR";
+        const string companyPhone   = "0356326915";
+        const string companyRegNo   = "E 9145397208";
+        const string officerName    = "HR DEPARTMENT";
+
+        string Amt(decimal v) => v == 0 ? "0.00" : v.ToString("N2");
+        string AZ(decimal v)  => v == 0 ? "" : v.ToString("N2");
+
+        var doc = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.MarginHorizontal(28);
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.DefaultTextStyle(x => x.FontSize(8).FontFamily("Arial"));
+
+                page.Content().Column(col =>
+                {
+                    // ── CP8A header bar ───────────────────────────────────
+                    col.Item().Row(r =>
+                    {
+                        r.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("(C.P.8A - Pin. 2025 )").FontSize(7);
+                            c.Item().PaddingTop(3).Text(t =>
+                            {
+                                t.Span("Serial No.").FontSize(7);
+                            });
+                            c.Item().PaddingTop(3).Text(t =>
+                            {
+                                t.Span("Employer No.  ").FontSize(7);
+                                t.Span(companyRegNo).FontSize(7).Bold();
+                            });
+                        });
+
+                        r.RelativeItem().AlignCenter().Column(c =>
+                        {
+                            c.Item().AlignCenter().Text("MALAYSIA").Bold().FontSize(10);
+                            c.Item().AlignCenter().Text("INCOME TAX").Bold().FontSize(10);
+                            c.Item().AlignCenter().Text("SALARY STATEMENT FROM EMPLOYMENT").Bold().FontSize(9);
+                            c.Item().AlignCenter().Text($"FOR THE YEAR ENDING 31 DECEMBER {year}").Bold().FontSize(9);
+                        });
+
+                        r.ConstantItem(100).Column(c =>
+                        {
+                            c.Item().Border(1).BorderColor(Colors.Black).Padding(4)
+                                .AlignCenter().Text("Private Employee Salary Statement")
+                                .FontSize(7).Bold().BackgroundColor(Colors.Black).FontColor(Colors.White);
+                            c.Item().PaddingTop(4).Text(t =>
+                            {
+                                t.Span("No. Employee Income Tax (TIN)  ").FontSize(7);
+                            });
+                            c.Item().PaddingTop(2).Text(t =>
+                            {
+                                t.Span("IG ").FontSize(7);
+                                t.Span(string.IsNullOrEmpty(employee.TaxNumber) ? "—" : employee.TaxNumber).FontSize(7).Bold();
+                            });
+                            c.Item().PaddingTop(2).Text("LHDNM Negeri SELANGOR").FontSize(7);
+                        });
+
+                        r.ConstantItem(30).AlignMiddle().AlignRight()
+                            .Text("EA").FontSize(30).Bold();
+                    });
+
+                    col.Item().PaddingTop(4)
+                        .Background(Colors.Black).Padding(5)
+                        .AlignCenter()
+                        .Text("THIS FORM EA NEEDS TO BE PREPARED TO BE SUBMITTED TO THE EMPLOYEE FOR INCOME TAX PURPOSES")
+                        .FontSize(8).Bold().FontColor(Colors.White);
+
+                    // ── Section A ─────────────────────────────────────────
+                    col.Item().PaddingTop(6).Border(1).BorderColor(Colors.Black).Column(section =>
+                    {
+                        section.Item().Background(Colors.Grey.Lighten2).Padding(4).Row(r =>
+                        {
+                            r.ConstantItem(16).AlignMiddle()
+                                .Border(1).BorderColor(Colors.Black).Background(Colors.Black)
+                                .AlignCenter().AlignMiddle().Text("A").Bold().FontColor(Colors.White);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle()
+                                .Text("EMPLOYEE DETAILS").Bold().FontSize(9);
+                        });
+
+                        section.Item().Padding(6).Table(grid =>
+                        {
+                            grid.ColumnsDefinition(c => { for (int i = 0; i < 12; i++) c.RelativeColumn(); });
+
+                            grid.Cell().ColumnSpan(1).Text("1.").Bold();
+                            grid.Cell().ColumnSpan(11).Text(t => { t.Span("Full Name of Employee / Retiree (Mr./Ms./Ms.)  ").Bold(); t.Span(employee.Name.ToUpper()).Bold(); });
+
+                            grid.Cell().ColumnSpan(1).Text("2.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("Position  ").Bold(); t.Span(employee.Designation ?? "—"); });
+                            grid.Cell().ColumnSpan(1).Text("3.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("No. Staff / No. Salary  ").Bold(); t.Span(employee.EmployeeCode); });
+
+                            grid.Cell().ColumnSpan(1).Text("4.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("New Identification No.  ").Bold(); t.Span(employee.IcPassport ?? "—"); });
+                            grid.Cell().ColumnSpan(1).Text("5.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("Passport No.  ").Bold(); t.Span(employee.IcPassport ?? "—"); });
+
+                            grid.Cell().ColumnSpan(1).Text("6.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("KWSP No.  ").Bold(); t.Span("0"); });
+                            grid.Cell().ColumnSpan(1).Text("7.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("PERKESO No.  ").Bold(); t.Span("0"); });
+
+                            grid.Cell().ColumnSpan(1).Text("8.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("The number of children eligible for tax relief  ").Bold(); t.Span("0"); });
+                            grid.Cell().ColumnSpan(1).Text("9.").Bold();
+                            grid.Cell().ColumnSpan(5).Text(t => { t.Span("If working for less than a year, state:").Bold(); });
+
+                            grid.Cell().ColumnSpan(6).Text("");
+                            grid.Cell().ColumnSpan(1).Text("");
+                            grid.Cell().ColumnSpan(5).Column(c =>
+                            {
+                                c.Item().Text(t => { t.Span("(a) Date of employment  ").Bold(); t.Span(employee.JoinDate.Year == year ? employee.JoinDate.ToString("dd/MM/yyyy") : ""); });
+                                c.Item().Text(t => { t.Span("(b) Date of termination of employment").Bold(); });
+                            });
+                        });
+                    });
+
+                    // ── Section B ─────────────────────────────────────────
+                    col.Item().PaddingTop(4).Border(1).BorderColor(Colors.Black).Column(section =>
+                    {
+                        section.Item().Background(Colors.Grey.Lighten2).Padding(4).Row(r =>
+                        {
+                            r.ConstantItem(16).Border(1).BorderColor(Colors.Black).Background(Colors.Black)
+                                .AlignCenter().AlignMiddle().Text("B").Bold().FontColor(Colors.White);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle()
+                                .Text("EMPLOYMENT INCOME, BENEFITS AND PLACE OF RESIDENCE").Bold().FontSize(9);
+                        });
+
+                        section.Item().PaddingHorizontal(6).PaddingTop(3)
+                            .Text("(Not Including Allowances / Perquisites / Grants / Tax Exempt Benefits)").Italic();
+
+                        section.Item().Padding(4).Table(t =>
+                        {
+                            t.ColumnsDefinition(c => { c.RelativeColumn(9); c.RelativeColumn(3); });
+
+                            void BRow(string num, string label, decimal val, bool bold = false)
+                            {
+                                var left = t.Cell().PaddingVertical(1).PaddingLeft(4);
+                                var right = t.Cell().PaddingVertical(1).AlignRight().PaddingRight(4);
+                                if (bold) { left.Text(t2 => { t2.Span(num).Bold(); t2.Span("  " + label).Bold(); }); right.Text("RM  " + Amt(val)).Bold(); }
+                                else      { left.Text(t2 => { t2.Span(num).Bold(); t2.Span("  " + label); }); right.Text(AZ(val) == "" ? "" : "RM  " + AZ(val)); }
+                            }
+
+                            BRow("1.", "(a) Gross pay, wages or holiday pay (including overtime pay)", totalBasic);
+                            BRow("",  "(b) Fees (including directors' fees), commissions or bonuses", totalAllowances);
+                            BRow("",  "(c) Gross tips, perquisites, acceptance of consolation or other allowances (Regarding payment:...)", 0);
+                            BRow("",  "(d) Income tax paid by the employer on behalf of the employee", 0);
+                            BRow("",  "(e) Employee Share Option Scheme (ESOS) Benefits", 0);
+                            BRow("",  "(f)  Reward for the period from ............... to...............", 0);
+                            BRow("2.", "Details of arrears and other payments for previous years in the current year", 0);
+                            BRow("",  "Income Tax  (a) ............    (b) ............", 0);
+                            BRow("3.", "Benefits in the form of Goods (Specify: ...)", 0);
+                            BRow("4.", "Residential value (Address:...)", 0);
+                            BRow("5.", "Refunds from unapproved Provident / Pension Funds", 0);
+                            BRow("6.", "Compensation for job loss", 0);
+
+                            t.Cell().ColumnSpan(1).PaddingVertical(2).PaddingLeft(4).Text("TOTAL").Bold();
+                            t.Cell().PaddingVertical(2).PaddingRight(4).AlignRight()
+                                .BorderTop(1).BorderColor(Colors.Black)
+                                .Text($"RM  {Amt(totalGross)}").Bold();
+                        });
+                    });
+
+                    // ── Section C ─────────────────────────────────────────
+                    col.Item().PaddingTop(4).Border(1).BorderColor(Colors.Black).Column(section =>
+                    {
+                        section.Item().Background(Colors.Grey.Lighten2).Padding(4).Row(r =>
+                        {
+                            r.ConstantItem(16).Border(1).BorderColor(Colors.Black).Background(Colors.Black)
+                                .AlignCenter().AlignMiddle().Text("C").Bold().FontColor(Colors.White);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle()
+                                .Text("PENSIONS AND OTHERS").Bold().FontSize(9);
+                        });
+
+                        section.Item().Padding(4).Table(t =>
+                        {
+                            t.ColumnsDefinition(c => { c.RelativeColumn(9); c.RelativeColumn(3); });
+                            void CRow(string num, string label, decimal val)
+                            {
+                                t.Cell().PaddingVertical(1).PaddingLeft(4).Text(t2 => { t2.Span(num).Bold(); t2.Span("  " + label); });
+                                t.Cell().PaddingVertical(1).AlignRight().PaddingRight(4).Text(AZ(val) == "" ? "" : "RM  " + AZ(val));
+                            }
+                            CRow("1.", "Pension", 0);
+                            CRow("2.", "Annuity or other periodic payments", 0);
+                            t.Cell().PaddingVertical(2).PaddingLeft(4).Text("TOTAL").Bold();
+                            t.Cell().PaddingVertical(2).PaddingRight(4).AlignRight()
+                                .BorderTop(1).BorderColor(Colors.Black)
+                                .Text($"RM  {Amt(totalGross)}").Bold();
+                        });
+                    });
+
+                    // ── Section D ─────────────────────────────────────────
+                    col.Item().PaddingTop(4).Border(1).BorderColor(Colors.Black).Column(section =>
+                    {
+                        section.Item().Background(Colors.Grey.Lighten2).Padding(4).Row(r =>
+                        {
+                            r.ConstantItem(16).Border(1).BorderColor(Colors.Black).Background(Colors.Black)
+                                .AlignCenter().AlignMiddle().Text("D").Bold().FontColor(Colors.White);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle()
+                                .Text("TOTAL DEDUCTION").Bold().FontSize(9);
+                        });
+
+                        section.Item().Padding(4).Table(t =>
+                        {
+                            t.ColumnsDefinition(c => { c.RelativeColumn(9); c.RelativeColumn(3); });
+                            void DRow(string num, string label, decimal val)
+                            {
+                                t.Cell().PaddingVertical(1).PaddingLeft(4).Text(t2 => { t2.Span(num).Bold(); t2.Span("  " + label); });
+                                t.Cell().PaddingVertical(1).AlignRight().PaddingRight(4).Text(AZ(val) == "" ? "" : "RM  " + AZ(val));
+                            }
+                            DRow("1.", "Monthly tax deduction (PCB) paid to IRBM", totalTax);
+                            DRow("2.", "CP38 deduction instructions paid to IRBM", 0);
+                            DRow("3.", "Zakat paid through salary deduction", 0);
+                            DRow("4.", "Approved donations/ gifts/ contributions paid through payroll deductions", 0);
+                            t.Cell().PaddingVertical(1).PaddingLeft(4).Text(t2 => { t2.Span("5.").Bold(); t2.Span("  Amount of deduction claimed by employees through TP1 Form related to:"); });
+                            t.Cell().PaddingVertical(1).AlignRight().PaddingRight(4).Text("");
+                            t.Cell().PaddingLeft(20).Text("a) Release  RM 0.00");
+                            t.Cell().Text("");
+                            t.Cell().PaddingLeft(20).Text("b) Zakat other than that paid through monthly salary deductions  RM 0.00");
+                            t.Cell().Text("");
+                            DRow("6.", "Amount of relief for eligible children", 0);
+                        });
+                    });
+
+                    // ── Section E ─────────────────────────────────────────
+                    col.Item().PaddingTop(4).Border(1).BorderColor(Colors.Black).Column(section =>
+                    {
+                        section.Item().Background(Colors.Grey.Lighten2).Padding(4).Row(r =>
+                        {
+                            r.ConstantItem(16).Border(1).BorderColor(Colors.Black).Background(Colors.Black)
+                                .AlignCenter().AlignMiddle().Text("E").Bold().FontColor(Colors.White);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle()
+                                .Text("CONTRIBUTIONS PAID BY EMPLOYEE TO APPROVED SAVINGS / PENSION FUNDS AND SOCSO").Bold().FontSize(9);
+                        });
+
+                        section.Item().Padding(4).Column(c =>
+                        {
+                            c.Item().PaddingBottom(2).Text(t =>
+                            {
+                                t.Span("1.  Fund Name ").Bold();
+                                t.Span("Employees' Provident Fund").Underline();
+                            });
+                            c.Item().PaddingLeft(12).PaddingBottom(2)
+                                .Text("Contribution amount that must be paid (specify the employee's share only)");
+                            c.Item().PaddingLeft(12).PaddingBottom(4).Text(t =>
+                            {
+                                t.Span("RM ").Bold();
+                                t.Span(Amt(totalEpf)).Bold();
+                            });
+                            c.Item().PaddingBottom(2).Text(t =>
+                            {
+                                t.Span("2.  SOCSO: ").Bold();
+                                t.Span("Contribution amount that must be paid (specify the employee's share only)");
+                            });
+                            c.Item().PaddingLeft(12).Text(t =>
+                            {
+                                t.Span("RM ").Bold();
+                                t.Span(Amt(totalSocso)).Bold();
+                            });
+                        });
+                    });
+
+                    // ── Section F ─────────────────────────────────────────
+                    col.Item().PaddingTop(4).Border(1).BorderColor(Colors.Black).Column(section =>
+                    {
+                        section.Item().Background(Colors.Grey.Lighten2).Padding(4).Row(r =>
+                        {
+                            r.ConstantItem(16).Border(1).BorderColor(Colors.Black).Background(Colors.Black)
+                                .AlignCenter().AlignMiddle().Text("F").Bold().FontColor(Colors.White);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle()
+                                .Text("AMOUNT OF TAX-EXEMPT ALLOWANCES / PERQUISITES / GRANTS / BENEFITS").Bold().FontSize(9);
+                        });
+
+                        section.Item().Padding(8).Border(1).BorderColor(Colors.Black).Padding(6).Column(c =>
+                        {
+                            void FRow(string label, string val)
+                            {
+                                c.Item().PaddingBottom(3).Row(r =>
+                                {
+                                    r.ConstantItem(140).Text(label).Bold();
+                                    r.RelativeItem().Text(val);
+                                });
+                            }
+                            FRow("Name of officer", officerName);
+                            FRow("Position", "HR");
+                            FRow("Employer Name/ Address", $"{CompanyName}\n{companyAddress}");
+                            FRow("Employer Phone No.", companyPhone);
+                        });
+                    });
+
+                    col.Item().PaddingTop(6).Text($"Date: {DateTime.Now:yyyy-MM-dd}").FontSize(8);
+                });
+            });
+        });
+
+        return doc.GeneratePdf();
     }
 }
