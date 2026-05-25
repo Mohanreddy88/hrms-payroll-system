@@ -75,6 +75,11 @@ public class PayrollCalculationResult
     public decimal TaxAmount { get; set; }
     public decimal TotalDeductions { get; set; }
     public decimal NetSalary { get; set; }
+    // Proration
+    public bool    IsProrated      { get; set; } = false;
+    public int     ProratedDays    { get; set; }
+    public int     TotalMonthDays  { get; set; }
+    public decimal ProratedSalary  { get; set; }
     public List<AttendancePeriodSummary> AttendancePeriods { get; set; } = new();
     public List<LeaveRequestSummary> LeaveRequests { get; set; } = new();
 }

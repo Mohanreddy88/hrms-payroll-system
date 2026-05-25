@@ -778,6 +778,20 @@ public class SelfServiceController : ControllerBase
         var startDate = DateTime.SpecifyKind(request.StartDate.Date, DateTimeKind.Utc);
         var endDate   = DateTime.SpecifyKind(request.EndDate.Date,   DateTimeKind.Utc);
 
+        // Validate: no day in this period may be before the employee's join date
+        if (employee.JoinDate != default)
+        {
+            var joinDateUtc = DateTime.SpecifyKind(employee.JoinDate.Date, DateTimeKind.Utc);
+            var invalidDays = request.Days
+                .Where(d => DateTime.SpecifyKind(d.Date.Date, DateTimeKind.Utc) < joinDateUtc && (d.Hours > 0 || !string.IsNullOrEmpty(d.Note)))
+                .ToList();
+            if (invalidDays.Any())
+            {
+                var earliest = invalidDays.Min(d => d.Date).ToString("dd MMM yyyy");
+                return BadRequest(new { message = $"Attendance cannot be entered before your join date ({employee.JoinDate:dd MMM yyyy}). Entry found for {earliest}." });
+            }
+        }
+
         AttendancePeriod period;
 
         if (request.Id.HasValue && request.Id.Value > 0)

@@ -106,7 +106,11 @@ public class PayrollController : ControllerBase
                 p.ProcessedBy,
                 processorName = p.Processor != null ? p.Processor.Username : null,
                 p.ProcessedOn,
-                p.Remarks
+                p.Remarks,
+                p.IsProrated,
+                p.ProratedDays,
+                p.TotalMonthDays,
+                p.ProratedSalary
             })
             .ToListAsync();
 
@@ -165,6 +169,10 @@ public class PayrollController : ControllerBase
             processorName = payroll.Processor?.Username,
             payroll.ProcessedOn,
             payroll.Remarks,
+            payroll.IsProrated,
+            payroll.ProratedDays,
+            payroll.TotalMonthDays,
+            payroll.ProratedSalary,
             attendancePeriods = payroll.AttendancePeriods.Select(ap => new
             {
                 ap.Id,
@@ -628,6 +636,227 @@ public class PayrollController : ControllerBase
     }
 
     // Legacy helper — superseded by the inline method at the top of the class
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // BANK EXPORT
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/payroll/bank-export?month=5&year=2026&status=Approved
+    /// Returns a CSV file ready for bulk bank payment upload.
+    /// Columns: EmployeeCode, EmployeeName, BankName, AccountNumber, NetSalary, PaymentReference
+    /// </summary>
+    [HttpGet("bank-export")]
+    public async Task<IActionResult> BankExport(
+        [FromQuery] int month,
+        [FromQuery] int year)
+    {
+        var monthName = new DateTime(year, month, 1).ToString("MMMM yyyy");
+
+        var payrolls = await _db.Payrolls
+            .Include(p => p.Employee)
+                .ThenInclude(e => e.Bank)
+            .Where(p => p.Month == month && p.Year == year && p.Status == "Processed")
+            .OrderBy(p => p.Employee.EmployeeCode)
+            .ToListAsync();
+
+        if (!payrolls.Any())
+        {
+            // Check if payrolls exist but are not yet Processed
+            var pendingStatuses = await _db.Payrolls
+                .Where(p => p.Month == month && p.Year == year)
+                .GroupBy(p => p.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var message = !pendingStatuses.Any()
+                ? $"No payroll records found for {monthName}. Please generate payroll first."
+                : $"No Processed payroll records found for {monthName}. " +
+                  $"Current status: {string.Join(", ", pendingStatuses.Select(s => $"{s.Count} {s.Status}"))}. " +
+                  $"Please approve and process the payroll before exporting for bank payment.";
+
+            return Ok(new { hasRecords = false, message });
+        }
+
+        var monthLabel = new DateTime(year, month, 1).ToString("MMMM_yyyy");
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("EmployeeCode,EmployeeName,BankName,AccountNumber,NetSalary,PaymentReference");
+
+        foreach (var p in payrolls)
+        {
+            var bankName   = p.Employee.Bank?.Name ?? "";
+            var accountNo  = p.Employee.AccountNumber ?? "";
+            var reference  = $"SAL-{p.Employee.EmployeeCode}-{monthLabel}";
+            // Escape any commas in name / bank name
+            var empName    = $"\"{p.Employee.Name.Replace("\"", "\"\"")}\"";
+            var bankEsc    = $"\"{bankName.Replace("\"", "\"\"")}\"";
+            sb.AppendLine($"{p.Employee.EmployeeCode},{empName},{bankEsc},{accountNo},{p.NetSalary:F2},{reference}");
+        }
+
+        var bytes    = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var fileName = $"BankPayment_{monthLabel}_Processed.csv";
+        return File(bytes, "text/csv", fileName);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // YEAR-TO-DATE (YTD) SUMMARY
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/payroll/ytd/{employeeId}/{year}
+    /// Returns cumulative payroll totals for the employee for the given year.
+    /// </summary>
+    [HttpGet("ytd/{employeeId:int}/{year:int}")]
+    public async Task<IActionResult> GetYtd(int employeeId, int year)
+    {
+        var employee = await _db.Employees
+            .Include(e => e.Department)
+            .FirstOrDefaultAsync(e => e.Id == employeeId);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee not found." });
+
+        var payrolls = await _db.Payrolls
+            .Where(p => p.EmployeeId == employeeId && p.Year == year)
+            .OrderBy(p => p.Month)
+            .ToListAsync();
+
+        var ytd = new
+        {
+            employeeId,
+            employeeName     = employee.Name,
+            employeeCode     = employee.EmployeeCode,
+            designation      = employee.Designation,
+            departmentName   = employee.Department?.Name ?? "",
+            year,
+            monthsProcessed  = payrolls.Count,
+            ytdGrossIncome   = payrolls.Sum(p => p.GrossIncome),
+            ytdBasicSalary   = payrolls.Sum(p => p.BasicSalary),
+            ytdAllowances    = payrolls.Sum(p => p.Allowances),
+            ytdDeductions    = payrolls.Sum(p => p.Deductions),
+            ytdEpf           = payrolls.Sum(p => p.EpfAmount),
+            ytdSocso         = payrolls.Sum(p => p.SocsoAmount),
+            ytdTax           = payrolls.Sum(p => p.TaxAmount),
+            ytdNetSalary     = payrolls.Sum(p => p.NetSalary),
+            ytdPaidLeaveDays = payrolls.Sum(p => p.PaidLeaveDays ?? 0),
+            ytdUnpaidLeaveDays = payrolls.Sum(p => p.UnpaidLeaveDays ?? 0),
+            monthlyBreakdown = payrolls.Select(p => new
+            {
+                p.Id,
+                p.Month,
+                monthName    = new DateTime(p.Year, p.Month, 1).ToString("MMMM"),
+                p.GrossIncome,
+                p.BasicSalary,
+                p.Allowances,
+                p.Deductions,
+                p.EpfAmount,
+                p.SocsoAmount,
+                p.TaxAmount,
+                p.NetSalary,
+                p.Status,
+                p.IsProrated,
+                p.ProratedDays,
+                p.TotalMonthDays
+            }).ToList()
+        };
+
+        return Ok(ytd);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // EA FORM / PCB II  (Malaysia Annual Income Statement)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/payroll/ea-form/{employeeId}/{year}
+    /// Returns the EA Form data (Borang EA) for the employee for the given tax year.
+    /// Covers: gross income, EPF, SOCSO, PCB, allowances, deductions, net taxable income.
+    /// </summary>
+    [HttpGet("ea-form/{employeeId:int}/{year:int}")]
+    public async Task<IActionResult> GetEaForm(int employeeId, int year)
+    {
+        var employee = await _db.Employees
+            .Include(e => e.Department)
+            .Include(e => e.Bank)
+            .FirstOrDefaultAsync(e => e.Id == employeeId);
+
+        if (employee == null)
+            return NotFound(new { message = "Employee not found." });
+
+        // Only include Approved or Processed payrolls for the EA form
+        var payrolls = await _db.Payrolls
+            .Where(p => p.EmployeeId == employeeId
+                     && p.Year == year
+                     && (p.Status == "Approved" || p.Status == "Processed"))
+            .OrderBy(p => p.Month)
+            .ToListAsync();
+
+        if (!payrolls.Any())
+            return NotFound(new { message = $"No approved/processed payroll records found for {year}." });
+
+        // EA Form Part B — Employment Income
+        var totalGross        = payrolls.Sum(p => p.GrossIncome);
+        var totalBasicSalary  = payrolls.Sum(p => p.BasicSalary);
+        var totalAllowances   = payrolls.Sum(p => p.Allowances);
+        var totalEpf          = payrolls.Sum(p => p.EpfAmount);
+        var totalSocso        = payrolls.Sum(p => p.SocsoAmount);
+        var totalTax          = payrolls.Sum(p => p.TaxAmount);       // PCB total
+        var totalDeductions   = payrolls.Sum(p => p.Deductions);
+        var totalNet          = payrolls.Sum(p => p.NetSalary);
+
+        // Taxable income = Gross - EPF (statutory relief already applied in PCB calc)
+        var taxableIncome = totalGross - totalEpf;
+
+        var eaForm = new
+        {
+            // Header
+            formTitle        = $"EA FORM (BORANG EA) — Year of Assessment {year}",
+            employerId       = "ESYNC SOFTWARE SERVICES SDN.BHD",
+            // Employee Details (Part A)
+            employeeId,
+            employeeName     = employee.Name,
+            employeeCode     = employee.EmployeeCode,
+            icPassport       = employee.IcPassport,
+            taxNumber        = employee.TaxNumber,
+            designation      = employee.Designation,
+            departmentName   = employee.Department?.Name ?? "",
+            joinDate         = employee.JoinDate.ToString("dd MMM yyyy"),
+            gender           = employee.Gender,
+            // Employment Income (Part B)
+            yearOfAssessment = year,
+            monthsCovered    = payrolls.Count,
+            totalBasicSalary,
+            totalAllowances,
+            totalGrossIncome = totalGross,
+            // Statutory Deductions (Part C)
+            totalEpfEmployee = totalEpf,
+            totalSocsoEmployee = totalSocso,
+            totalPcbMtd      = totalTax,       // PCB/MTD withheld
+            totalOtherDeductions = totalDeductions,
+            // Taxable Income
+            taxableIncome,
+            totalNetSalary   = totalNet,
+            // Monthly breakdown for verification
+            monthlyBreakdown = payrolls.Select(p => new
+            {
+                p.Month,
+                monthName   = new DateTime(p.Year, p.Month, 1).ToString("MMMM"),
+                p.BasicSalary,
+                p.Allowances,
+                p.GrossIncome,
+                p.EpfAmount,
+                p.SocsoAmount,
+                p.TaxAmount,
+                p.Deductions,
+                p.NetSalary,
+                p.Status,
+                p.IsProrated
+            }).ToList(),
+            generatedOn = DateTime.UtcNow.ToString("dd MMM yyyy HH:mm") + " UTC"
+        };
+
+        return Ok(eaForm);
+    }
 }
 
 // ── Request/Response DTOs ──────────────────────────────────

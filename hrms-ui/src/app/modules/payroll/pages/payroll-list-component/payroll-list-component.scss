@@ -135,6 +135,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      width: 100%;
 
       &:hover {
         background: #f8fafc;
@@ -918,3 +919,222 @@
   font-style: italic;
   padding: 8px 0;
 }
+
+// ── Bank Export ────────────────────────────────────────────────────────────────
+.bank-export-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 12px;
+  flex-wrap: wrap;
+
+  label { font-size: 13px; font-weight: 500; color: #64748b; white-space: nowrap; }
+
+  .export-status-select { width: auto; min-width: 130px; }
+
+  .export-hint { font-size: 11px; color: #94a3b8; }
+}
+
+.btn-export {
+  padding: 8px 16px;
+  background: #0f766e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+  white-space: nowrap;
+  &:hover:not(:disabled) { background: #0d6b63; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+// ── Prorated Badge ─────────────────────────────────────────────────────────────
+.prorated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.proration-notice {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  padding: 12px 16px;
+  border-radius: 6px;
+
+  .proration-detail {
+    font-size: 14px;
+    color: #78350f;
+    margin-top: 4px;
+  }
+}
+
+// ── YTD / EA Action Buttons ────────────────────────────────────────────────────
+.btn-ytd {
+  color: #0891b2;
+  &:hover { background: #e0f2fe; color: #0369a1; }
+}
+
+.btn-ea {
+  color: #7c3aed;
+  &:hover { background: #ede9fe; color: #5b21b6; }
+}
+
+.btn-outline-info {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid #0891b2;
+  color: #0891b2;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  &:hover { background: #e0f2fe; }
+}
+
+.btn-outline-secondary {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid #7c3aed;
+  color: #7c3aed;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  &:hover { background: #ede9fe; }
+}
+
+// ── YTD Modal ─────────────────────────────────────────────────────────────────
+.modal-lg { max-width: 860px; }
+
+.ytd-employee-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  h4 { margin: 0; font-size: 18px; }
+  p  { margin: 4px 0 0; font-size: 13px; color: #64748b; }
+}
+
+.ytd-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.ytd-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+
+  .ytd-label { font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .ytd-value { font-size: 16px; font-weight: 700; color: #1e293b; }
+
+  &.negative { background: #fff5f5; border-color: #fecaca; .ytd-value { color: #dc2626; } }
+  &.net      { background: #f0fdf4; border-color: #86efac; .ytd-value { color: #16a34a; } }
+}
+
+.ytd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+  tr:hover td { background: #f8fafc; }
+  td.net { font-weight: 700; color: #16a34a; }
+}
+
+// ── EA Form Modal ─────────────────────────────────────────────────────────────
+.ea-modal .modal-dialog { max-width: 780px; }
+
+.ea-header {
+  text-align: center;
+  padding: 16px;
+  background: #1e40af;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  .ea-title    { font-size: 16px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .ea-employer { font-size: 13px; color: #bfdbfe; }
+}
+
+.ea-section {
+  margin-bottom: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .ea-section-title {
+    background: #f1f5f9;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #1e40af;
+    border-bottom: 1px solid #e2e8f0;
+  }
+}
+
+.ea-grid { padding: 4px 0; }
+
+.ea-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid #f8fafc;
+  &:last-child { border-bottom: none; }
+  &.total {
+    background: #f0f9ff;
+    font-weight: 600;
+    border-top: 1px solid #e2e8f0;
+  }
+  &.net {
+    background: #f0fdf4;
+    font-weight: 700;
+  }
+}
+
+.ea-label { font-size: 13px; color: #475569; }
+.ea-value {
+  font-size: 13px;
+  color: #1e293b;
+  &.amount  { font-weight: 600; }
+  &.negative { color: #dc2626; }
+}
+
+.ea-summary {
+  .ea-section-title { background: #1e293b; color: white; }
+}
+
+.ea-generated {
+  text-align: right;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 12px;
+}
+
+.text-center { text-align: center; }
+.py-4 { padding: 24px 0; }

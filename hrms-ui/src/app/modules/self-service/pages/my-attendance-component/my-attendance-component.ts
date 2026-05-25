@@ -18,6 +18,7 @@ interface DayEntry {
   remarks: string;
   isPublicHoliday: boolean;
   isWeekend: boolean;
+  isBeforeJoinDate: boolean;
 }
 
 interface AttendancePeriod {
@@ -50,6 +51,7 @@ export class MyAttendanceComponent implements OnInit {
   // Employee info (will be loaded from API)
   employeeName: string = 'Loading...';
   employeeCode: string = '';
+  employeeJoinDate: Date | null = null;
   
   // Modal states
   showNoteModal: boolean = false;
@@ -109,6 +111,11 @@ export class MyAttendanceComponent implements OnInit {
         next: (employee: any) => {
           this.employeeName = employee.name.toUpperCase();  // Display in uppercase
           this.employeeCode = employee.employeeCode;
+          // Store join date so period generation can respect it
+          if (employee.joinDate) {
+            const jd = new Date(employee.joinDate);
+            this.employeeJoinDate = new Date(jd.getFullYear(), jd.getMonth(), jd.getDate());
+          }
         },
         error: (error) => {
           console.error('Load employee info error:', error);
@@ -153,16 +160,21 @@ export class MyAttendanceComponent implements OnInit {
               endDate: new Date(apiPeriod.endDate),
               status: apiPeriod.status as any,
               rejectionReason: apiPeriod.rejectionReason,
-              days: apiPeriod.days.map((d: any) => ({
-                date: new Date(d.date),
-                dayName: this.getDayName(new Date(d.date).getDay()),
-                dayNumber: new Date(d.date).getDate(),
-                hours: d.hours,
-                note: d.note || '',
-                remarks: d.remarks || '',
-                isPublicHoliday: d.isPublicHoliday,
-                isWeekend: d.isWeekend
-              }))
+              days: apiPeriod.days.map((d: any) => {
+                const dayDate = new Date(d.date);
+                const dayDateOnly = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+                return {
+                  date: dayDate,
+                  dayName: this.getDayName(dayDate.getDay()),
+                  dayNumber: dayDate.getDate(),
+                  hours: d.hours,
+                  note: d.note || '',
+                  remarks: d.remarks || '',
+                  isPublicHoliday: d.isPublicHoliday,
+                  isWeekend: d.isWeekend,
+                  isBeforeJoinDate: this.employeeJoinDate != null && dayDateOnly < this.employeeJoinDate
+                };
+              })
             };
           } else {
             // Use local template (not saved yet)
@@ -186,16 +198,21 @@ export class MyAttendanceComponent implements OnInit {
             endDate:   new Date(ap.endDate),
             status: ap.status as any,
             rejectionReason: ap.rejectionReason,
-            days: (ap.days || []).map((d: any) => ({
-              date: new Date(d.date),
-              dayName: this.getDayName(new Date(d.date).getDay()),
-              dayNumber: new Date(d.date).getDate(),
-              hours: d.hours,
-              note: d.note || '',
-              remarks: d.remarks || '',
-              isPublicHoliday: d.isPublicHoliday,
-              isWeekend: d.isWeekend
-            }))
+            days: (ap.days || []).map((d: any) => {
+              const dayDate = new Date(d.date);
+              const dayDateOnly = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+              return {
+                date: dayDate,
+                dayName: this.getDayName(dayDate.getDay()),
+                dayNumber: dayDate.getDate(),
+                hours: d.hours,
+                note: d.note || '',
+                remarks: d.remarks || '',
+                isPublicHoliday: d.isPublicHoliday,
+                isWeekend: d.isWeekend,
+                isBeforeJoinDate: this.employeeJoinDate != null && dayDateOnly < this.employeeJoinDate
+              };
+            })
           });
         });
         this.periods.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
@@ -222,10 +239,20 @@ export class MyAttendanceComponent implements OnInit {
     const periods: AttendancePeriod[] = [];
     const today = new Date();
     
-    // Generate periods from 6 months ago to current month only
-    // Previous button: goes back (Apr, Mar, Feb, Jan, Dec 2025, Nov 2025...)
-    // Next button: stops at current month end (Jun)
-    for (let monthOffset = -6; monthOffset <= 0; monthOffset++) {
+    // Determine the earliest month to generate, respecting join date
+    // Default: 6 months back. If join date is more recent, start from join month.
+    let startMonthOffset = -6;
+    if (this.employeeJoinDate) {
+      const joinYear = this.employeeJoinDate.getFullYear();
+      const joinMonth = this.employeeJoinDate.getMonth();
+      const todayYear = today.getFullYear();
+      const todayMonth = today.getMonth();
+      const monthDiff = (todayYear - joinYear) * 12 + (todayMonth - joinMonth);
+      // Use whichever is more recent: join month or 6 months back
+      startMonthOffset = Math.max(-6, -monthDiff);
+    }
+
+    for (let monthOffset = startMonthOffset; monthOffset <= 0; monthOffset++) {
       const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
       const year = targetDate.getFullYear();
       const month = targetDate.getMonth();
@@ -237,22 +264,27 @@ export class MyAttendanceComponent implements OnInit {
       // Cycle 2: 16th to end of month
       const cycle2Start = new Date(year, month, 16);
       const cycle2End = new Date(year, month + 1, 0); // Last day of month
-      
-      periods.push({
-        id: null,
-        startDate: cycle1Start,
-        endDate: cycle1End,
-        status: 'Draft', // Will be loaded from API
-        days: this.generateDaysForPeriod(cycle1Start, cycle1End)
-      });
-      
-      periods.push({
-        id: null,
-        startDate: cycle2Start,
-        endDate: cycle2End,
-        status: 'Draft', // Will be loaded from API
-        days: this.generateDaysForPeriod(cycle2Start, cycle2End)
-      });
+
+      // Only include a cycle if it doesn't end entirely before join date
+      if (!this.employeeJoinDate || cycle1End >= this.employeeJoinDate) {
+        periods.push({
+          id: null,
+          startDate: cycle1Start,
+          endDate: cycle1End,
+          status: 'Draft',
+          days: this.generateDaysForPeriod(cycle1Start, cycle1End)
+        });
+      }
+
+      if (!this.employeeJoinDate || cycle2End >= this.employeeJoinDate) {
+        periods.push({
+          id: null,
+          startDate: cycle2Start,
+          endDate: cycle2End,
+          status: 'Draft',
+          days: this.generateDaysForPeriod(cycle2Start, cycle2End)
+        });
+      }
     }
     
     // Sort by date (oldest first)
@@ -281,16 +313,20 @@ export class MyAttendanceComponent implements OnInit {
       const dateStr = this.formatDateToString(currentDate);
       const isPublicHoliday = this.publicHolidays.includes(dateStr);
       const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+      // Mark days that fall before the employee's join date as non-enterable
+      const isBeforeJoinDate = this.employeeJoinDate != null
+        && new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()) < this.employeeJoinDate;
       
       days.push({
         date: new Date(currentDate),
         dayName: this.getDayName(currentDate.getDay()),
         dayNumber: currentDate.getDate(),
-        hours: 0, // Empty by default - employee fills daily
+        hours: 0,
         note: '',
         remarks: '',
         isPublicHoliday: isPublicHoliday,
-        isWeekend: isWeekend
+        isWeekend: isWeekend,
+        isBeforeJoinDate: isBeforeJoinDate
       });
       
       currentDate.setDate(currentDate.getDate() + 1);
@@ -473,9 +509,9 @@ export class MyAttendanceComponent implements OnInit {
   }
 
   selectDayForNote(dayIndex: number): void {
-    // Only allow selection for editable days (not weekends, not holidays, and period is editable)
+    // Only allow selection for editable days (not weekends, not holidays, not before join date, and period is editable)
     const day = this.currentPeriodDays[dayIndex];
-    if (day.isPublicHoliday || this.isWeekend(day.date) || !this.isPeriodEditable()) {
+    if (day.isPublicHoliday || this.isWeekend(day.date) || day.isBeforeJoinDate || !this.isPeriodEditable()) {
       return;
     }
     

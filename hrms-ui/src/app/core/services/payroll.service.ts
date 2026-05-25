@@ -12,7 +12,9 @@ import {
   PayrollCalculation,
   PayrollAdjustmentRequest,
   PayrollApprovalRequest,
-  PayrollRejectionRequest
+  PayrollRejectionRequest,
+  YtdSummary,
+  EaForm
 } from '../models/payroll.model';
 import { environment } from '../../../environments/environment';
 
@@ -137,5 +139,29 @@ export class PayrollService {
    */
   downloadPayslipPdf(id: number): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/pdf/${id}`, { responseType: 'blob' });
+  }
+
+  /**
+   * Download bank payment export CSV for a given month/year
+   */
+  downloadBankExport(month: number, year: number): Observable<Blob> {
+    const params = new HttpParams()
+      .set('month', month.toString())
+      .set('year', year.toString());
+    return this.http.get(`${this.apiUrl}/bank-export`, { params, responseType: 'blob' });
+  }
+
+  /**
+   * Get Year-to-Date summary for an employee
+   */
+  getYtd(employeeId: number, year: number): Observable<YtdSummary> {
+    return this.http.get<YtdSummary>(`${this.apiUrl}/ytd/${employeeId}/${year}`);
+  }
+
+  /**
+   * Get EA Form data for an employee for a given tax year
+   */
+  getEaForm(employeeId: number, year: number): Observable<EaForm> {
+    return this.http.get<EaForm>(`${this.apiUrl}/ea-form/${employeeId}/${year}`);
   }
 }

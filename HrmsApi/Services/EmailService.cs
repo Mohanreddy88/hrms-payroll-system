@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 
@@ -42,50 +44,47 @@ public class EmailService : IEmailService
         _httpClientFactory = httpClientFactory;
     }
 
-    // ── Core sender — Brevo HTTP API ─────────────────────────────────────────
-    private async Task SendViaBrevoApiAsync(string toEmail, string subject, string htmlBody,
+    // ── Route: use Brevo only when API key is configured, otherwise SMTP ────────
+    private async Task SendCoreAsync(string toEmail, string subject, string htmlBody,
         byte[]? attachmentData = null, string? attachmentName = null)
     {
-        // Prefer BREVO_API_KEY (xkeysib-...) → fallback to SMTP_PASSWORD (xsmtpsib-...)
-        // Brevo HTTP API requires the API key from Settings → API Keys, NOT the SMTP key
-        var apiKey   = _config["Brevo:ApiKey"]
-                    ?? _config["Email:SmtpPassword"]
-                    ?? throw new InvalidOperationException("Brevo API key not configured. Set BREVO_API_KEY in Railway env vars.");
+        var brevoKey = _config["Brevo:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(brevoKey))
+        {
+            _logger.LogInformation("Email routing → Brevo API");
+            await SendViaBrevoApiAsync(toEmail, subject, htmlBody, brevoKey, attachmentData, attachmentName);
+        }
+        else
+        {
+            _logger.LogInformation("Email routing → SMTP (local/Gmail)");
+            await SendViaSmtpAsync(toEmail, subject, htmlBody, attachmentData, attachmentName);
+        }
+    }
 
-        var fromEmail = _config["Email:FromEmail"]
-                     ?? _config["SMTP_FROM"]
-                     ?? _config["Email:SmtpUser"]
-                     ?? "noreply@hrms.com";
+    // ── Brevo HTTP API sender (PROD) ─────────────────────────────────────────
+    private async Task SendViaBrevoApiAsync(string toEmail, string subject, string htmlBody,
+        string apiKey, byte[]? attachmentData = null, string? attachmentName = null)
+    {
+        var fromEmail = _config["Email:FromEmail"] ?? _config["SMTP_FROM"] ?? _config["Email:SmtpUser"] ?? "noreply@hrms.com";
+        var fromName  = _config["Email:FromName"] ?? CompanyName;
 
-        var fromName  = _config["Email:FromName"] ?? "HRMS Payroll System";
-
-        _logger.LogInformation("Brevo API send → to:{To} subject:{Subject} from:{From}", toEmail, subject, fromEmail);
+        _logger.LogInformation("Brevo API send → to:{To} subject:{Subject}", toEmail, subject);
 
         var payload = new Dictionary<string, object>
         {
-            ["sender"]   = new { name = fromName, email = fromEmail },
-            ["to"]       = new[] { new { email = toEmail } },
-            ["subject"]  = subject,
+            ["sender"]      = new { name = fromName, email = fromEmail },
+            ["to"]          = new[] { new { email = toEmail } },
+            ["subject"]     = subject,
             ["htmlContent"] = htmlBody
         };
 
-        // Add PDF attachment if provided
         if (attachmentData != null && attachmentData.Length > 0 && !string.IsNullOrEmpty(attachmentName))
         {
-            payload["attachment"] = new[]
-            {
-                new
-                {
-                    name    = attachmentName,
-                    content = Convert.ToBase64String(attachmentData)
-                }
-            };
+            payload["attachment"] = new[] { new { name = attachmentName, content = Convert.ToBase64String(attachmentData) } };
         }
 
-        var json    = JsonSerializer.Serialize(payload);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-        var client = _httpClientFactory.CreateClient("Brevo");
+        var content  = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        var client   = _httpClientFactory.CreateClient("Brevo");
         client.DefaultRequestHeaders.Clear();
         client.DefaultRequestHeaders.Add("api-key", apiKey);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -99,14 +98,52 @@ public class EmailService : IEmailService
             throw new InvalidOperationException($"Brevo API failed ({response.StatusCode}): {responseBody}");
         }
 
-        _logger.LogInformation("Email sent via Brevo API to {Email} | subject: {Subject}", toEmail, subject);
+        _logger.LogInformation("Email sent via Brevo to {Email}", toEmail);
+    }
+
+    // ── SMTP sender (LOCAL / Gmail) ──────────────────────────────────────────
+    private async Task SendViaSmtpAsync(string toEmail, string subject, string htmlBody,
+        byte[]? attachmentData = null, string? attachmentName = null)
+    {
+        var host      = _config["Email:SmtpHost"]     ?? "smtp.gmail.com";
+        var port      = int.Parse(_config["Email:SmtpPort"] ?? "587");
+        var user      = _config["Email:SmtpUser"]     ?? throw new InvalidOperationException("Email:SmtpUser not configured.");
+        var password  = _config["Email:SmtpPassword"] ?? throw new InvalidOperationException("Email:SmtpPassword not configured.");
+        var fromEmail = _config["Email:FromEmail"]    ?? user;
+        var fromName  = _config["Email:FromName"]     ?? CompanyName;
+
+        _logger.LogInformation("SMTP send → {Host}:{Port} to:{To} subject:{Subject}", host, port, toEmail, subject);
+
+        using var message = new MailMessage();
+        message.From       = new MailAddress(fromEmail, fromName);
+        message.To.Add(toEmail);
+        message.Subject    = subject;
+        message.Body       = htmlBody;
+        message.IsBodyHtml = true;
+
+        if (attachmentData != null && attachmentData.Length > 0 && !string.IsNullOrEmpty(attachmentName))
+        {
+            var stream     = new MemoryStream(attachmentData);
+            var attachment = new Attachment(stream, attachmentName, "application/pdf");
+            message.Attachments.Add(attachment);
+        }
+
+        using var smtp = new SmtpClient(host, port)
+        {
+            Credentials  = new NetworkCredential(user, password),
+            EnableSsl    = true,
+            DeliveryMethod = SmtpDeliveryMethod.Network
+        };
+
+        await smtp.SendMailAsync(message);
+        _logger.LogInformation("Email sent via SMTP to {Email}", toEmail);
     }
 
     // ── Public interface methods ──────────────────────────────────────────────
 
     public async Task SendEmailAsync(string toEmail, string subject, string body)
     {
-        try   { await SendViaBrevoApiAsync(toEmail, subject, body); }
+        try   { await SendCoreAsync(toEmail, subject, body); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send email to {Email}: {Message}", toEmail, ex.Message);
@@ -117,7 +154,7 @@ public class EmailService : IEmailService
     public async Task SendEmailWithAttachmentAsync(string toEmail, string subject, string body,
         byte[] attachmentData, string attachmentName)
     {
-        try   { await SendViaBrevoApiAsync(toEmail, subject, body, attachmentData, attachmentName); }
+        try   { await SendCoreAsync(toEmail, subject, body, attachmentData, attachmentName); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send email with attachment to {Email}", toEmail);

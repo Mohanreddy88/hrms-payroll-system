@@ -244,6 +244,15 @@
             font-weight: 500;
           }
         }
+
+        &.before-join-date {
+          background: #4b5563;
+
+          .day-name {
+            color: #6b7280;
+            font-weight: 500;
+          }
+        }
       }
 
       .total-header {
@@ -416,6 +425,20 @@
           .hours-input {
             background: #374151;
             color: white;
+          }
+        }
+
+        &.before-join-date {
+          background: white;
+
+          .hours-input {
+            background: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+
+            &::placeholder {
+              color: #94a3b8;
+            }
           }
         }
 

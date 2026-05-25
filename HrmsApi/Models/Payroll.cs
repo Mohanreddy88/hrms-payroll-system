@@ -31,6 +31,12 @@ public class Payroll
     public DateTime? ProcessedOn { get; set; }
     public string? Remarks { get; set; }
 
+    // Proration fields (populated when employee joins mid-month)
+    public bool    IsProrated     { get; set; } = false;
+    public int?    ProratedDays   { get; set; }        // actual paid days in the month
+    public int?    TotalMonthDays { get; set; }        // total calendar days in the month
+    public decimal? ProratedSalary { get; set; }       // basic salary after proration
+
     // Navigation properties
     public Employee Employee { get; set; } = null!;
     public User? Approver { get; set; }

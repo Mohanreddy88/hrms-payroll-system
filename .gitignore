@@ -1,48 +1,27 @@
-# Dependencies
-**/node_modules/
-**/package-lock.json
-
-# .NET Build
-**/bin/
-**/obj/
-**/.vs/
+# ── .NET ──────────────────────────────────────────────────────────────────────
+bin/
+obj/
 *.user
 *.suo
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Angular
-hrms-ui/dist/
-hrms-ui/.angular/
-
-# Test
-**/test-results/
-**/playwright-report/
-coverage/
-
-# Build artifacts
+.vs/
 *.dll
 *.exe
 *.pdb
 
-# Backup (keep it in git but exclude from builds)
-# backup/
+# ── Angular ───────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/
+
+# ── Backup & temp ─────────────────────────────────────────────────────────────
+backup/
+temp_clone/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+appsettings.Production.json
+appsettings.Railway.json
+*.env
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

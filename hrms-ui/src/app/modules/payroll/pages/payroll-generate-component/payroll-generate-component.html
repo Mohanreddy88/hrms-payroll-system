@@ -10,13 +10,13 @@
     <div class="period-selector">
       <div class="form-group">
         <label>Month</label>
-        <select [(ngModel)]="selectedMonth" class="form-control">
+        <select [(ngModel)]="selectedMonth" (ngModelChange)="onPeriodChange()" class="form-control">
           <option *ngFor="let m of months" [value]="m.value">{{ m.name }}</option>
         </select>
       </div>
       <div class="form-group">
         <label>Year</label>
-        <select [(ngModel)]="selectedYear" class="form-control">
+        <select [(ngModel)]="selectedYear" (ngModelChange)="onPeriodChange()" class="form-control">
           <option *ngFor="let y of years" [value]="y">{{ y }}</option>
         </select>
       </div>
@@ -41,14 +41,21 @@
         *ngFor="let emp of employees" 
         class="employee-card"
         [class.selected]="isSelected(emp.id)"
+        [class.already-generated]="hasExistingPayroll(emp.id)"
         (click)="toggleEmployeeSelection(emp.id)">
         <div class="employee-checkbox">
-          <i class="bi" [class.bi-check-circle-fill]="isSelected(emp.id)" [class.bi-circle]="!isSelected(emp.id)"></i>
+          <i class="bi"
+            [class.bi-check-circle-fill]="isSelected(emp.id)"
+            [class.bi-check-circle]="hasExistingPayroll(emp.id) && !isSelected(emp.id)"
+            [class.bi-circle]="!isSelected(emp.id) && !hasExistingPayroll(emp.id)"></i>
         </div>
         <div class="employee-info">
           <div class="employee-name">{{ emp.name }}</div>
           <div class="employee-code">{{ emp.employeeCode }}</div>
           <div class="employee-salary">RM {{ emp.salary | number:'1.2-2' }}</div>
+          <div class="already-generated-label" *ngIf="hasExistingPayroll(emp.id)">
+            <i class="bi bi-check-lg"></i> Payroll generated
+          </div>
         </div>
       </div>
     </div>

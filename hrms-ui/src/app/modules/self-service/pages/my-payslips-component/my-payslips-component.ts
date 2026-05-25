@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { PayrollService } from '../../../../core/services/payroll.service';
+import { YtdSummary, EaForm } from '../../../../core/models/payroll.model';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -34,10 +36,21 @@ export class MyPayslipsComponent implements OnInit {
 
   years: number[] = [];
 
+  // YTD
+  showYtdModal = false;
+  ytdLoading = false;
+  ytdData: YtdSummary | null = null;
+
+  // EA Form
+  showEaModal = false;
+  eaLoading = false;
+  eaData: EaForm | null = null;
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private toast: ToastService
+    private toast: ToastService,
+    private payrollService: PayrollService
   ) {
     const currentYear = new Date().getFullYear();
     for (let year = currentYear - 5; year <= currentYear; year++) {
@@ -117,6 +130,46 @@ export class MyPayslipsComponent implements OnInit {
       error: () => this.toast.error('Error', 'Failed to email payslip')
     });
   }
+
+  // ── YTD ───────────────────────────────────────────────────────────────────────
+  openYtd(year: number): void {
+    const empId = this.authService.getEmployeeId();
+    if (!empId) return;
+    this.ytdData = null;
+    this.showYtdModal = true;
+    this.ytdLoading = true;
+    this.payrollService.getYtd(empId, year).subscribe({
+      next: (data) => { this.ytdData = data; this.ytdLoading = false; },
+      error: (err) => {
+        this.ytdLoading = false;
+        this.toast.error('YTD Error', err?.error?.message || 'Could not load YTD data.');
+        this.showYtdModal = false;
+      }
+    });
+  }
+
+  closeYtdModal(): void { this.showYtdModal = false; this.ytdData = null; }
+
+  // ── EA Form ───────────────────────────────────────────────────────────────────
+  openEaForm(year: number): void {
+    const empId = this.authService.getEmployeeId();
+    if (!empId) return;
+    this.eaData = null;
+    this.showEaModal = true;
+    this.eaLoading = true;
+    this.payrollService.getEaForm(empId, year).subscribe({
+      next: (data) => { this.eaData = data; this.eaLoading = false; },
+      error: (err) => {
+        this.eaLoading = false;
+        this.toast.error('EA Form Error', err?.error?.message || 'Could not load EA Form data.');
+        this.showEaModal = false;
+      }
+    });
+  }
+
+  closeEaModal(): void { this.showEaModal = false; this.eaData = null; }
+
+  printEaForm(): void { window.print(); }
 
   getMonthName(month: number): string {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

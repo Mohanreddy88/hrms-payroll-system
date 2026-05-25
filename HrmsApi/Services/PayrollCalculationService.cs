@@ -160,6 +160,34 @@ public class PayrollCalculationService : IPayrollCalculationService
         // Total calendar days in the month — used as divisor for daily rate
         var totalCalendarDays = DateTime.DaysInMonth(year, month);
 
+        // ── Proration for new joiners ─────────────────────────────────────────────
+        // If the employee's join date falls within this payroll month, salary is
+        // prorated: ProratedSalary = FullSalary × (paidDays / totalCalendarDays)
+        // "paidDays" = calendar days from join date to end of month (inclusive).
+        var monthStart = new DateTime(year, month, 1);
+        var monthEnd   = new DateTime(year, month, totalCalendarDays);
+        result.TotalMonthDays = totalCalendarDays;
+
+        if (employee.JoinDate.Year == year
+            && employee.JoinDate.Month == month
+            && employee.JoinDate.Day > 1)
+        {
+            var joinDay     = employee.JoinDate.Day;
+            var paidDays    = totalCalendarDays - joinDay + 1;   // join day is inclusive
+            var prorated    = Math.Round(employee.Salary * paidDays / totalCalendarDays, 2);
+
+            result.IsProrated     = true;
+            result.ProratedDays   = paidDays;
+            result.ProratedSalary = prorated;
+            result.BasicSalary    = prorated;   // downstream calculations use prorated salary
+        }
+        else
+        {
+            result.IsProrated     = false;
+            result.ProratedDays   = totalCalendarDays;
+            result.ProratedSalary = employee.Salary;
+        }
+
         // Fetch public holidays for this month (national + any state)
         var publicHolidayDates = await _db.PublicHolidays
             .Where(h => h.Year == year && h.Date.Month == month)
@@ -330,6 +358,10 @@ public class PayrollCalculationService : IPayrollCalculationService
         var calculation = await CalculatePayrollAsync(employeeId, month, year);
 
         // Create payroll record
+        var proratedNote = calculation.IsProrated
+            ? $" | PRORATED: paid {calculation.ProratedDays}/{calculation.TotalMonthDays} days (RM {calculation.ProratedSalary:F2})"
+            : string.Empty;
+
         var payroll = new Payroll
         {
             EmployeeId = employeeId,
@@ -348,8 +380,12 @@ public class PayrollCalculationService : IPayrollCalculationService
             ExpectedHours = calculation.ExpectedHours,
             PaidLeaveDays = calculation.PaidLeaveDays,
             UnpaidLeaveDays = calculation.UnpaidLeaveDays,
+            IsProrated = calculation.IsProrated,
+            ProratedDays = calculation.IsProrated ? calculation.ProratedDays : null,
+            TotalMonthDays = calculation.TotalMonthDays,
+            ProratedSalary = calculation.IsProrated ? calculation.ProratedSalary : null,
             GeneratedOn = DateTime.UtcNow,
-            Remarks = $"Auto-generated from {calculation.AttendancePeriods.Count} attendance period(s) and {calculation.LeaveRequests.Count} leave request(s)"
+            Remarks = $"Auto-generated from {calculation.AttendancePeriods.Count} attendance period(s) and {calculation.LeaveRequests.Count} leave request(s){proratedNote}"
         };
 
         // If a payroll already exists for this month, remove it before inserting the new one

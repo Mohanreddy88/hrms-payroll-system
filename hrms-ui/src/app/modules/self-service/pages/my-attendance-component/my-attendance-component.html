@@ -36,6 +36,7 @@
         </div>
         <div class="day-header" *ngFor="let day of currentPeriodDays" 
              [class.weekend]="isWeekend(day.date)"
+             [class.before-join-date]="day.isBeforeJoinDate"
              [style.display]="isWeekend(day.date) && !showWeekend ? 'none' : 'block'">
           <div class="day-name">{{ day.dayName }} {{ day.dayNumber }}</div>
         </div>
@@ -77,7 +78,8 @@
         <div class="day-cell" *ngFor="let day of currentPeriodDays; let i = index" 
              [class.weekend]="isWeekend(day.date)"
              [class.public-holiday]="day.isPublicHoliday"
-             [class.leave-day]="day.hours === 0 && day.note && !day.isPublicHoliday && !isWeekend(day.date)"
+             [class.before-join-date]="day.isBeforeJoinDate"
+             [class.leave-day]="day.hours === 0 && day.note && !day.isPublicHoliday && !isWeekend(day.date) && !day.isBeforeJoinDate"
              [style.display]="isWeekend(day.date) && !showWeekend ? 'none' : 'flex'">
           <div class="cell-content">
             <input 
@@ -87,7 +89,7 @@
               (focus)="onInputFocus(i)"
               (input)="onHoursInput($event, i)"
               (blur)="onHoursBlur(i)"
-              [disabled]="day.isPublicHoliday || isWeekend(day.date) || !isPeriodEditable()"
+              [disabled]="day.isPublicHoliday || isWeekend(day.date) || day.isBeforeJoinDate || !isPeriodEditable()"
               placeholder="0">
           </div>
         </div>

@@ -1,0 +1,217 @@
+.page-container { padding: 24px; max-width: 1600px; margin: 0 auto; }
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.page-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+  h2 { font-size: 24px; font-weight: 600; color: #1e293b; margin: 0 0 6px 0; i { color: #10b981; margin-right: 8px; } }
+  p  { margin: 0; font-size: 14px; color: #64748b; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+}
+
+.btn { padding: 10px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s; }
+.btn-primary   { background: #6366f1; color: white; &:hover { background: #4f46e5; } }
+.btn-secondary { background: #e2e8f0; color: #475569; &:hover { background: #cbd5e1; } }
+
+.btn-email-bulk {
+  background: #0891b2; color: white;
+  &:hover:not(:disabled) { background: #0e7490; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-export {
+  background: #0f766e; color: white;
+  &:hover:not(:disabled) { background: #0d6b63; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+// ── Summary strip ─────────────────────────────────────────────────────────────
+.summary-strip {
+  display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+}
+
+.summary-card {
+  display: flex; align-items: center; gap: 14px;
+  background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 16px 20px; flex: 1; min-width: 180px;
+
+  .summary-icon { font-size: 24px; color: #94a3b8; }
+  .summary-value { font-size: 20px; font-weight: 700; color: #1e293b; }
+  .summary-label { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  &.green { border-color: #86efac; .summary-icon { color: #16a34a; } .summary-value { color: #15803d; } }
+  &.blue  { border-color: #93c5fd; .summary-icon { color: #2563eb; } .summary-value { color: #1d4ed8; } }
+}
+
+// ── Filter card ───────────────────────────────────────────────────────────────
+.filter-card {
+  background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 20px; margin-bottom: 20px;
+  h5 { font-size: 15px; font-weight: 600; color: #1e293b; margin: 0 0 16px 0; }
+}
+
+.filter-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+
+.form-group {
+  display: flex; flex-direction: column; gap: 4px; min-width: 140px;
+  label { font-size: 12px; font-weight: 500; color: #64748b; }
+}
+
+.form-control {
+  padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+  font-size: 13px; color: #1e293b; background: white;
+  &:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+}
+
+.clear-btn { height: 38px; align-self: flex-end; }
+
+.export-hint { font-size: 12px; color: #64748b; display: block; }
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+.release-table-card {
+  background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;
+}
+
+.release-table {
+  width: 100%; border-collapse: collapse;
+
+  thead tr { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+  th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+
+  tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
+    &:hover { background: #f8fafc; }
+    &.selected-row { background: #f0f9ff; border-left: 3px solid #0891b2; }
+  }
+  td { padding: 14px 16px; font-size: 13px; color: #1e293b; vertical-align: middle; }
+
+  tfoot .total-row {
+    background: #f0fdf4; border-top: 2px solid #86efac;
+    .total-label { font-size: 13px; font-weight: 600; color: #15803d; text-align: right; }
+    .total-value { font-size: 16px; font-weight: 700; color: #15803d; }
+  }
+}
+
+.col-check { width: 40px; }
+
+// ── Employee cell ─────────────────────────────────────────────────────────────
+.employee-cell { display: flex; align-items: center; gap: 10px; }
+.employee-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.employee-avatar.large { width: 44px; height: 44px; font-size: 18px; }
+.employee-name  { font-weight: 600; color: #1e293b; font-size: 13px; }
+.employee-code  { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+// ── Badges ────────────────────────────────────────────────────────────────────
+.period-badge {
+  display: inline-block; padding: 3px 10px; background: #e0f2fe; color: #0369a1;
+  border-radius: 10px; font-size: 11px; font-weight: 600;
+}
+
+.prorated-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 600;
+  padding: 2px 7px; border-radius: 10px; margin-left: 6px;
+}
+
+.status-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  font-size: 11px; font-weight: 600;
+  &.processed { background: #d1fae5; color: #065f46; }
+}
+
+// ── Amount cells ──────────────────────────────────────────────────────────────
+.amount          { font-weight: 500; white-space: nowrap; }
+.amount.negative { color: #dc2626; }
+.amount.net      { color: #16a34a; font-weight: 700; }
+
+.bank-cell, .account-cell { font-size: 12px; color: #475569; }
+
+// ── Action buttons ────────────────────────────────────────────────────────────
+.action-buttons { display: flex; gap: 4px; align-items: center; }
+.btn-icon {
+  width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  background: transparent; color: #64748b; transition: all 0.15s;
+  &:hover { background: #f1f5f9; }
+}
+.btn-email { color: #0891b2; &:hover { background: #e0f2fe; color: #0369a1; } }
+.btn-ytd   { color: #0891b2; &:hover { background: #e0f2fe; color: #0369a1; } }
+.btn-ea    { color: #7c3aed; &:hover { background: #ede9fe; color: #5b21b6; } }
+
+// ── Loading / Empty ───────────────────────────────────────────────────────────
+.loading-state { text-align: center; padding: 60px; color: #94a3b8; }
+.spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state {
+  padding: 60px; text-align: center; color: #94a3b8;
+  i { font-size: 48px; display: block; margin-bottom: 12px; }
+  p { font-size: 16px; margin-bottom: 6px; }
+  small { font-size: 13px; a { color: #6366f1; cursor: pointer; text-decoration: underline; } }
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+.modal {
+  display: none; position: fixed; inset: 0; z-index: 1050; align-items: center; justify-content: center;
+  &.show { display: flex; }
+}
+.modal-backdrop { position: absolute; inset: 0; background: rgba(15,23,42,0.5); }
+.modal-dialog {
+  position: relative; background: white; border-radius: 16px; width: 90%; max-width: 560px;
+  max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  &.modal-lg { max-width: 860px; }
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+  h3 { margin: 0; font-size: 18px; font-weight: 600; color: #1e293b; i { margin-right: 8px; color: #6366f1; } }
+}
+.btn-close { background: none; border: none; cursor: pointer; color: #64748b; font-size: 16px; padding: 4px; border-radius: 6px; &:hover { background: #f1f5f9; } }
+.modal-body   { padding: 20px 24px; overflow-y: auto; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
+
+// ── YTD styles ────────────────────────────────────────────────────────────────
+.ytd-employee-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+  h4 { margin: 0; font-size: 17px; } p { margin: 4px 0 0; font-size: 13px; color: #64748b; } }
+
+.ytd-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.ytd-card {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;
+  .ytd-label { font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 4px; text-transform: uppercase; }
+  .ytd-value { font-size: 15px; font-weight: 700; color: #1e293b; }
+  &.negative { background: #fff5f5; border-color: #fecaca; .ytd-value { color: #dc2626; } }
+  &.net      { background: #f0fdf4; border-color: #86efac; .ytd-value { color: #16a34a; } }
+}
+
+.ytd-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+  td.net { font-weight: 700; color: #16a34a; }
+}
+
+// ── EA Form styles ────────────────────────────────────────────────────────────
+.ea-header { text-align: center; padding: 14px; background: #1e40af; border-radius: 8px; margin-bottom: 16px;
+  .ea-title { font-size: 15px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .ea-employer { font-size: 12px; color: #bfdbfe; } }
+
+.ea-section { margin-bottom: 14px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+  .ea-section-title { background: #f1f5f9; padding: 7px 14px; font-weight: 600; font-size: 12px; color: #1e40af; border-bottom: 1px solid #e2e8f0; }
+  &.ea-summary .ea-section-title { background: #1e293b; color: white; } }
+
+.ea-grid { padding: 2px 0; }
+.ea-row { display: flex; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid #f8fafc;
+  &:last-child { border-bottom: none; }
+  &.total { background: #f0f9ff; font-weight: 600; border-top: 1px solid #e2e8f0; }
+  &.net   { background: #f0fdf4; font-weight: 700; } }
+
+.ea-label { font-size: 12px; color: #475569; }
+.ea-value { font-size: 12px; color: #1e293b; &.amount { font-weight: 600; } &.negative { color: #dc2626; } }
+.ea-generated { text-align: right; font-size: 11px; color: #94a3b8; margin-top: 10px; }
+
+.text-center { text-align: center; }
+.text-muted  { color: #94a3b8; }
+.py-4        { padding: 24px 0; }

@@ -175,7 +175,10 @@ public class AuthController : ControllerBase
             smtpPassword    = Mask(_config["Email:SmtpPassword"]),
             fromEmail       = _config["Email:FromEmail"],
             fromName        = _config["Email:FromName"],
-            envSmtpPassword = Mask(Environment.GetEnvironmentVariable("SMTP_PASSWORD"))
+            brevoApiKey     = Mask(_config["Brevo:ApiKey"]),
+            envBrevoApiKey  = Mask(Environment.GetEnvironmentVariable("BREVO_API_KEY")),
+            envSmtpPassword = Mask(Environment.GetEnvironmentVariable("SMTP_PASSWORD")),
+            willUseKey      = Mask(_config["Brevo:ApiKey"] ?? _config["Email:SmtpPassword"])
         });
     }
 }

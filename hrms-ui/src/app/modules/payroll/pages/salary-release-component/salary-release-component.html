@@ -1,0 +1,273 @@
+<div class="page-container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h2><i class="bi bi-send-check-fill"></i> Salary Release</h2>
+      <p>Email payslips, download bank payment file and view year-end reports for processed payrolls</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-email-bulk"
+              (click)="emailSelected()"
+              [disabled]="selectedIds.size === 0 || bulkEmailing">
+        <i class="bi bi-envelope-check"></i>
+        {{ bulkEmailing ? 'Sending...' : 'Email Selected (' + selectedIds.size + ')' }}
+      </button>
+      <button class="btn btn-export" (click)="downloadBankExport()" [disabled]="exportingBank || !filterMonth || !filterYear">
+        <i class="bi bi-bank"></i>
+        {{ exportingBank ? 'Exporting...' : 'Download Bank CSV' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-strip" *ngIf="!loading && filteredPayrolls.length > 0">
+    <div class="summary-card">
+      <div class="summary-icon"><i class="bi bi-people-fill"></i></div>
+      <div class="summary-info">
+        <div class="summary-value">{{ totalEmployees }}</div>
+        <div class="summary-label">Processed Employees</div>
+      </div>
+    </div>
+    <div class="summary-card green">
+      <div class="summary-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="summary-info">
+        <div class="summary-value">RM {{ totalNetSalary | number:'1.2-2' }}</div>
+        <div class="summary-label">Total Net Payout</div>
+      </div>
+    </div>
+    <div class="summary-card blue">
+      <div class="summary-icon"><i class="bi bi-calendar3"></i></div>
+      <div class="summary-info">
+        <div class="summary-value">{{ getMonthName(filterMonth ?? 0) }} {{ filterYear }}</div>
+        <div class="summary-label">Selected Period</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-card">
+    <h5><i class="bi bi-funnel"></i> Filters &nbsp;<small class="text-muted">(Processed payrolls only)</small></h5>
+    <div class="filter-row">
+      <div class="form-group">
+        <label>Employee</label>
+        <select [(ngModel)]="filterEmployeeId" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Employees</option>
+          <option *ngFor="let emp of employees" [ngValue]="emp.id">{{ emp.employeeCode }} - {{ emp.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Month</label>
+        <select [(ngModel)]="filterMonth" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Months</option>
+          <option *ngFor="let m of months" [ngValue]="m.value">{{ m.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Year</label>
+        <select [(ngModel)]="filterYear" (ngModelChange)="onFilterChange()" class="form-control">
+          <option [ngValue]="null">All Years</option>
+          <option *ngFor="let y of years" [ngValue]="y">{{ y }}</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary clear-btn" (click)="clearFilters()">
+        <i class="bi bi-x-circle"></i> Clear
+      </button>
+    </div>
+    <small class="export-hint">
+      <i class="bi bi-info-circle"></i>
+      Select Month + Year then click <strong>Download Bank CSV</strong> to get the payment file.
+    </small>
+  </div>
+
+  <!-- Table -->
+  <div class="release-table-card" *ngIf="!loading">
+
+    <div class="empty-state" *ngIf="filteredPayrolls.length === 0">
+      <i class="bi bi-inbox"></i>
+      <p>No processed payroll records found.</p>
+      <small>Go to <a (click)="router.navigate(['/payroll/list'])">Payroll Processing</a> to approve and process payrolls first.</small>
+    </div>
+
+    <table class="release-table" *ngIf="filteredPayrolls.length > 0">
+      <thead>
+        <tr>
+          <th class="col-check">
+            <input type="checkbox" [checked]="allSelected" (change)="toggleSelectAll()" title="Select all">
+          </th>
+          <th>Employee</th>
+          <th>Period</th>
+          <th>Bank</th>
+          <th>Account No.</th>
+          <th>Gross</th>
+          <th>Deductions</th>
+          <th>Net Salary</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of filteredPayrolls" [class.selected-row]="isSelected(p.id)">
+          <td class="col-check">
+            <input type="checkbox" [checked]="isSelected(p.id)" (change)="toggleSelect(p.id)">
+          </td>
+          <td>
+            <div class="employee-cell">
+              <div class="employee-avatar">{{ p.employeeName.charAt(0) }}</div>
+              <div class="employee-info">
+                <div class="employee-name">{{ p.employeeName }}</div>
+                <div class="employee-code">{{ p.employeeCode }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="period-badge">{{ getMonthName(p.month) }} {{ p.year }}</span>
+            <span class="prorated-badge" *ngIf="p.isProrated" title="Prorated salary">
+              <i class="bi bi-scissors"></i> {{ p.proratedDays }}/{{ p.totalMonthDays }}d
+            </span>
+          </td>
+          <td class="bank-cell">{{ p.bankName || '—' }}</td>
+          <td class="account-cell">{{ p.accountNumber || '—' }}</td>
+          <td class="amount">RM {{ p.grossIncome | number:'1.2-2' }}</td>
+          <td class="amount negative">-RM {{ p.epfAmount + p.socsoAmount + p.taxAmount + p.deductions | number:'1.2-2' }}</td>
+          <td class="amount net">RM {{ p.netSalary | number:'1.2-2' }}</td>
+          <td>
+            <div class="action-buttons">
+              <!-- Email -->
+              <button class="btn-icon btn-email" (click)="emailPayslip(p.id)" title="Email Payslip">
+                <i class="bi bi-envelope"></i>
+              </button>
+              <!-- YTD -->
+              <button class="btn-icon btn-ytd" (click)="openYtd(p.employeeId, p.year)" title="Year-to-Date Summary">
+                <i class="bi bi-bar-chart-line"></i>
+              </button>
+              <!-- EA Form -->
+              <button class="btn-icon btn-ea" (click)="openEaForm(p.employeeId, p.year)" title="EA Form">
+                <i class="bi bi-file-earmark-text"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+      <!-- Total row -->
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="7" class="total-label">Total Payout ({{ totalEmployees }} employees)</td>
+          <td class="amount net total-value">RM {{ totalNetSalary | number:'1.2-2' }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading processed payrolls...</p>
+  </div>
+</div>
+
+<!-- YTD Modal -->
+<div class="modal" [class.show]="showYtdModal" *ngIf="showYtdModal">
+  <div class="modal-backdrop" (click)="closeYtdModal()"></div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-header">
+      <h3><i class="bi bi-bar-chart-line"></i> Year-to-Date Summary {{ ytdYear }}</h3>
+      <button class="btn-close" (click)="closeYtdModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="ytdLoading" class="text-center py-4"><div class="spinner"></div><p>Loading...</p></div>
+      <ng-container *ngIf="!ytdLoading && ytdData">
+        <div class="ytd-employee-header">
+          <div class="employee-avatar large">{{ ytdData.employeeName.charAt(0) }}</div>
+          <div>
+            <h4>{{ ytdData.employeeName }}</h4>
+            <p>{{ ytdData.employeeCode }} &bull; {{ ytdData.designation }} &bull; {{ ytdData.departmentName }}</p>
+          </div>
+        </div>
+        <div class="ytd-summary-grid">
+          <div class="ytd-card"><div class="ytd-label">YTD Gross</div><div class="ytd-value">RM {{ ytdData.ytdGrossIncome | number:'1.2-2' }}</div></div>
+          <div class="ytd-card"><div class="ytd-label">YTD Basic</div><div class="ytd-value">RM {{ ytdData.ytdBasicSalary | number:'1.2-2' }}</div></div>
+          <div class="ytd-card"><div class="ytd-label">YTD Allowances</div><div class="ytd-value">RM {{ ytdData.ytdAllowances | number:'1.2-2' }}</div></div>
+          <div class="ytd-card negative"><div class="ytd-label">YTD EPF</div><div class="ytd-value">-RM {{ ytdData.ytdEpf | number:'1.2-2' }}</div></div>
+          <div class="ytd-card negative"><div class="ytd-label">YTD SOCSO</div><div class="ytd-value">-RM {{ ytdData.ytdSocso | number:'1.2-2' }}</div></div>
+          <div class="ytd-card negative"><div class="ytd-label">YTD PCB</div><div class="ytd-value">-RM {{ ytdData.ytdTax | number:'1.2-2' }}</div></div>
+          <div class="ytd-card negative"><div class="ytd-label">YTD Deductions</div><div class="ytd-value">-RM {{ ytdData.ytdDeductions | number:'1.2-2' }}</div></div>
+          <div class="ytd-card net"><div class="ytd-label">YTD Net Salary</div><div class="ytd-value">RM {{ ytdData.ytdNetSalary | number:'1.2-2' }}</div></div>
+        </div>
+        <table class="ytd-table">
+          <thead><tr><th>Month</th><th>Gross</th><th>EPF</th><th>SOCSO</th><th>PCB</th><th>Net</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let m of ytdData.monthlyBreakdown">
+              <td>{{ m.monthName }}<span class="prorated-badge" *ngIf="m.isProrated">&nbsp;<i class="bi bi-scissors"></i></span></td>
+              <td>RM {{ m.grossIncome | number:'1.2-2' }}</td>
+              <td>-RM {{ m.epfAmount | number:'1.2-2' }}</td>
+              <td>-RM {{ m.socsoAmount | number:'1.2-2' }}</td>
+              <td>-RM {{ m.taxAmount | number:'1.2-2' }}</td>
+              <td class="net">RM {{ m.netSalary | number:'1.2-2' }}</td>
+              <td><span class="status-badge processed">{{ m.status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </ng-container>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" (click)="closeYtdModal()">Close</button></div>
+  </div>
+</div>
+
+<!-- EA Form Modal -->
+<div class="modal" [class.show]="showEaModal" *ngIf="showEaModal">
+  <div class="modal-backdrop" (click)="closeEaModal()"></div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-header">
+      <h3><i class="bi bi-file-earmark-text"></i> EA Form &mdash; {{ eaYear }}</h3>
+      <button class="btn-close" (click)="closeEaModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="eaLoading" class="text-center py-4"><div class="spinner"></div><p>Loading EA Form...</p></div>
+      <ng-container *ngIf="!eaLoading && eaData">
+        <div class="ea-header">
+          <div class="ea-title">{{ eaData.formTitle }}</div>
+          <div class="ea-employer">Employer: <strong>{{ eaData.employerId }}</strong></div>
+        </div>
+        <div class="ea-section">
+          <div class="ea-section-title">Part A &mdash; Employee Details</div>
+          <div class="ea-grid">
+            <div class="ea-row"><span class="ea-label">Name</span><span class="ea-value">{{ eaData.employeeName }}</span></div>
+            <div class="ea-row"><span class="ea-label">Employee Code</span><span class="ea-value">{{ eaData.employeeCode }}</span></div>
+            <div class="ea-row"><span class="ea-label">IC / Passport</span><span class="ea-value">{{ eaData.icPassport || '&mdash;' }}</span></div>
+            <div class="ea-row"><span class="ea-label">Tax No. (TIN)</span><span class="ea-value">{{ eaData.taxNumber || '&mdash;' }}</span></div>
+            <div class="ea-row"><span class="ea-label">Designation</span><span class="ea-value">{{ eaData.designation }}</span></div>
+            <div class="ea-row"><span class="ea-label">Department</span><span class="ea-value">{{ eaData.departmentName }}</span></div>
+            <div class="ea-row"><span class="ea-label">Gender</span><span class="ea-value">{{ eaData.gender }}</span></div>
+            <div class="ea-row"><span class="ea-label">Join Date</span><span class="ea-value">{{ eaData.joinDate }}</span></div>
+          </div>
+        </div>
+        <div class="ea-section">
+          <div class="ea-section-title">Part B &mdash; Employment Income ({{ eaData.monthsCovered }} months)</div>
+          <div class="ea-grid">
+            <div class="ea-row"><span class="ea-label">B1. Gross Salary</span><span class="ea-value amount">RM {{ eaData.totalBasicSalary | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">B2. Allowances &amp; Benefits</span><span class="ea-value amount">RM {{ eaData.totalAllowances | number:'1.2-2' }}</span></div>
+            <div class="ea-row total"><span class="ea-label">B. Total Gross Income</span><span class="ea-value amount">RM {{ eaData.totalGrossIncome | number:'1.2-2' }}</span></div>
+          </div>
+        </div>
+        <div class="ea-section">
+          <div class="ea-section-title">Part C &mdash; Statutory Deductions</div>
+          <div class="ea-grid">
+            <div class="ea-row"><span class="ea-label">C1. EPF (Employee)</span><span class="ea-value amount negative">RM {{ eaData.totalEpfEmployee | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">C2. SOCSO (Employee)</span><span class="ea-value amount negative">RM {{ eaData.totalSocsoEmployee | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">C3. PCB / MTD</span><span class="ea-value amount negative">RM {{ eaData.totalPcbMtd | number:'1.2-2' }}</span></div>
+            <div class="ea-row"><span class="ea-label">C4. Other Deductions</span><span class="ea-value amount negative">RM {{ eaData.totalOtherDeductions | number:'1.2-2' }}</span></div>
+          </div>
+        </div>
+        <div class="ea-section ea-summary">
+          <div class="ea-row total"><span class="ea-label">Taxable Income (Gross &minus; EPF)</span><span class="ea-value amount">RM {{ eaData.taxableIncome | number:'1.2-2' }}</span></div>
+          <div class="ea-row net"><span class="ea-label">Total Net Salary Paid</span><span class="ea-value amount">RM {{ eaData.totalNetSalary | number:'1.2-2' }}</span></div>
+        </div>
+        <div class="ea-generated">Generated: {{ eaData.generatedOn }}</div>
+      </ng-container>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeEaModal()">Close</button>
+      <button class="btn btn-primary" (click)="printEaForm()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+  </div>
+</div>

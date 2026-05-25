@@ -64,6 +64,9 @@ export class PayrollGenerateComponent implements OnInit {
   generating = false;
   bulkGenerationResult: any = null;
 
+  // Track employees who already have payroll for selected month/year
+  existingPayrollEmployeeIds: Set<number> = new Set();
+
   constructor(
     private http: HttpClient,
     private payrollService: PayrollService,
@@ -79,6 +82,31 @@ export class PayrollGenerateComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEmployees();
+    this.loadExistingPayrolls();
+  }
+
+  loadExistingPayrolls(): void {
+    this.http.get<any[]>(`${environment.apiUrl}/payroll?month=${this.selectedMonth}&year=${this.selectedYear}`).subscribe({
+      next: (data) => {
+        this.existingPayrollEmployeeIds = new Set(data.map(p => p.employeeId));
+        // Deselect any already-generated employees
+        this.selectedEmployeeIds = this.selectedEmployeeIds.filter(id => !this.existingPayrollEmployeeIds.has(id));
+        this.updateAllSelectedState();
+      },
+      error: () => { this.existingPayrollEmployeeIds = new Set(); }
+    });
+  }
+
+  hasExistingPayroll(employeeId: number): boolean {
+    return this.existingPayrollEmployeeIds.has(employeeId);
+  }
+
+  onPeriodChange(): void {
+    this.selectedEmployeeIds = [];
+    this.allSelected = false;
+    this.eligibilityResults.clear();
+    this.showEligibilityPanel = false;
+    this.loadExistingPayrolls();
   }
 
   loadEmployees(): void {
@@ -105,6 +133,7 @@ export class PayrollGenerateComponent implements OnInit {
   }
 
   toggleEmployeeSelection(employeeId: number): void {
+    if (this.hasExistingPayroll(employeeId)) return; // block already-generated
     const index = this.selectedEmployeeIds.indexOf(employeeId);
     if (index > -1) {
       this.selectedEmployeeIds.splice(index, 1);
@@ -115,16 +144,19 @@ export class PayrollGenerateComponent implements OnInit {
   }
 
   toggleSelectAll(): void {
+    // Only include employees without existing payroll
+    const eligible = this.employees.filter(e => !this.hasExistingPayroll(e.id)).map(e => e.id);
     if (this.allSelected) {
       this.selectedEmployeeIds = [];
     } else {
-      this.selectedEmployeeIds = this.employees.map(e => e.id);
+      this.selectedEmployeeIds = eligible;
     }
     this.allSelected = !this.allSelected;
   }
 
   updateAllSelectedState(): void {
-    this.allSelected = this.employees.length > 0 && this.selectedEmployeeIds.length === this.employees.length;
+    const eligible = this.employees.filter(e => !this.hasExistingPayroll(e.id));
+    this.allSelected = eligible.length > 0 && eligible.every(e => this.selectedEmployeeIds.includes(e.id));
   }
 
   isSelected(employeeId: number): boolean {

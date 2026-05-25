@@ -27,6 +27,75 @@ export interface Payroll {
   processorName?: string;
   processedOn?: string;
   remarks?: string;
+  // Proration
+  isProrated?: boolean;
+  proratedDays?: number;
+  totalMonthDays?: number;
+  proratedSalary?: number;
+}
+
+export interface YtdSummary {
+  employeeId: number;
+  employeeName: string;
+  employeeCode: string;
+  designation: string;
+  departmentName: string;
+  year: number;
+  monthsProcessed: number;
+  ytdGrossIncome: number;
+  ytdBasicSalary: number;
+  ytdAllowances: number;
+  ytdDeductions: number;
+  ytdEpf: number;
+  ytdSocso: number;
+  ytdTax: number;
+  ytdNetSalary: number;
+  ytdPaidLeaveDays: number;
+  ytdUnpaidLeaveDays: number;
+  monthlyBreakdown: {
+    id: number;
+    month: number;
+    monthName: string;
+    grossIncome: number;
+    basicSalary: number;
+    allowances: number;
+    deductions: number;
+    epfAmount: number;
+    socsoAmount: number;
+    taxAmount: number;
+    netSalary: number;
+    status: string;
+    isProrated: boolean;
+    proratedDays?: number;
+    totalMonthDays?: number;
+  }[];
+}
+
+export interface EaForm {
+  formTitle: string;
+  employerId: string;
+  employeeId: number;
+  employeeName: string;
+  employeeCode: string;
+  icPassport: string;
+  taxNumber: string;
+  designation: string;
+  departmentName: string;
+  joinDate: string;
+  gender: string;
+  yearOfAssessment: number;
+  monthsCovered: number;
+  totalBasicSalary: number;
+  totalAllowances: number;
+  totalGrossIncome: number;
+  totalEpfEmployee: number;
+  totalSocsoEmployee: number;
+  totalPcbMtd: number;
+  totalOtherDeductions: number;
+  taxableIncome: number;
+  totalNetSalary: number;
+  monthlyBreakdown: any[];
+  generatedOn: string;
 }
 
 export interface PayrollDetails extends Payroll {
