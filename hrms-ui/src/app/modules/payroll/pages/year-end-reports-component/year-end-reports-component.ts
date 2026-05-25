@@ -24,6 +24,8 @@ interface YearEndEmployee {
   ytdTax: number;
   ytdNet: number;
   isEaReady: boolean;
+  notReadyReason: string | null;
+  isCurrentYear: boolean;
   hasEmail: boolean;
 }
 
@@ -38,9 +40,10 @@ export class YearEndReportsComponent implements OnInit {
   selectedYear = new Date().getFullYear() - 1; // default to previous year (EA is for last year)
   years: number[] = [];
 
-  loading     = false;
-  hasRecords  = false;
-  message     = '';
+  loading       = false;
+  hasRecords    = false;
+  isCurrentYear = false;
+  message       = '';
   employees: YearEndEmployee[] = [];
 
   // Bulk email
@@ -74,10 +77,11 @@ export class YearEndReportsComponent implements OnInit {
     this.sentIds.clear();
     this.http.get<any>(`${environment.apiUrl}/payroll/year-end-summary/${this.selectedYear}`).subscribe({
       next: (data) => {
-        this.loading    = false;
-        this.hasRecords = data.hasRecords;
-        this.message    = data.message ?? '';
-        this.employees  = data.employees ?? [];
+        this.loading       = false;
+        this.hasRecords    = data.hasRecords;
+        this.isCurrentYear = data.isCurrentYear ?? false;
+        this.message       = data.message ?? '';
+        this.employees     = data.employees ?? [];
       },
       error: () => { this.loading = false; this.toast.error('Error', 'Failed to load year-end summary.'); }
     });

@@ -28,6 +28,14 @@
     </div>
   </div>
 
+  <!-- Current year warning -->
+  <div class="current-year-warning" *ngIf="isCurrentYear && hasRecords">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>{{ selectedYear }} is the current year.</strong>
+    EA Forms can only be sent once all <strong>12 months</strong> are processed for each employee.
+    Switch to a past year to send with partial months.
+  </div>
+
   <!-- Summary strip -->
   <div class="summary-strip" *ngIf="hasRecords && !loading">
     <div class="summary-card">
@@ -128,7 +136,10 @@
                 [class.btn-sent]="isSent(emp.employeeId)"
                 (click)="sendEaEmail(emp)"
                 [disabled]="!emp.isEaReady || !emp.hasEmail || isSending(emp.employeeId) || isSent(emp.employeeId)"
-                [title]="isSent(emp.employeeId) ? 'EA Form already sent' : !emp.hasEmail ? 'No email configured' : 'Send EA Form Email'">
+                [title]="isSent(emp.employeeId) ? 'EA Form already sent this session'
+                  : !emp.hasEmail ? 'No email address configured'
+                  : !emp.isEaReady ? (emp.notReadyReason || 'Not ready')
+                  : 'Send EA Form Email'">
                 <i class="bi"
                   [class.bi-envelope-arrow-up]="!isSending(emp.employeeId) && !isSent(emp.employeeId)"
                   [class.bi-hourglass-split]="isSending(emp.employeeId)"

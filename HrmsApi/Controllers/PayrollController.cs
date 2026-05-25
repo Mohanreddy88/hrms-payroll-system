@@ -878,15 +878,29 @@ public class PayrollController : ControllerBase
         if (!records.Any())
             return Ok(new { hasRecords = false, message = $"No payroll records found for {year}.", employees = new List<object>() });
 
+        var currentYear   = DateTime.Now.Year;
+        var isCurrentYear = year == currentYear;
+
         var grouped = records
             .GroupBy(p => p.EmployeeId)
             .Select(g =>
             {
-                var emp         = g.First().Employee;
-                var allMonths   = g.OrderBy(p => p.Month).ToList();
-                var processed   = allMonths.Where(p => p.Status == "Processed" || p.Status == "Approved").ToList();
-                var monthsDone  = processed.Count;
-                var isEaReady   = monthsDone > 0;
+                var emp        = g.First().Employee;
+                var allMonths  = g.OrderBy(p => p.Month).ToList();
+                var processed  = allMonths.Where(p => p.Status == "Processed" || p.Status == "Approved").ToList();
+                var monthsDone = processed.Count;
+
+                // EA ready rules:
+                // Past year  → any processed months qualify (salary may not be needed every month)
+                // Current year → all 12 months must be processed (year not yet finished)
+                var isEaReady = isCurrentYear ? monthsDone == 12 : monthsDone > 0;
+
+                // Reason shown in UI when not ready
+                string? notReadyReason = null;
+                if (!isEaReady)
+                    notReadyReason = isCurrentYear
+                        ? $"Current year: all 12 months must be processed ({monthsDone}/12 done)"
+                        : "No processed payroll records found for this employee";
 
                 return new
                 {
@@ -906,13 +920,15 @@ public class PayrollController : ControllerBase
                     ytdTax          = processed.Sum(p => p.TaxAmount),
                     ytdNet          = processed.Sum(p => p.NetSalary),
                     isEaReady,
+                    notReadyReason,
+                    isCurrentYear,
                     hasEmail        = !string.IsNullOrWhiteSpace(emp.Email)
                 };
             })
             .OrderBy(e => e.employeeCode)
             .ToList();
 
-        return Ok(new { hasRecords = true, year, employees = grouped });
+        return Ok(new { hasRecords = true, year, isCurrentYear, employees = grouped });
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
