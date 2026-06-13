@@ -143,17 +143,20 @@ export class DepartmentListComponent implements OnInit {
       next: () => {
         this.toast.success('Deleted', `${this.pendingDeleteDepartment!.name} has been removed.`);
         this.pendingDeleteDepartment = null;
+        this.showConfirmModal = false;
         this.loadDepartments();
       },
       error: (err: any) => {
         this.toast.error('Delete Failed', err?.error?.message ?? 'Failed to delete department.');
         this.pendingDeleteDepartment = null;
+        this.showConfirmModal = false;
       }
     });
   }
 
   onCancelDelete(): void {
     this.pendingDeleteDepartment = null;
+    this.showConfirmModal = false;
   }
 
   backToHome(): void {
