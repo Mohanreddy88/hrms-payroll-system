@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Malaysia Statutory Deductions — EPF, SOCSO &amp; PCB 2026</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f8;
+      color: #1e293b;
+      padding: 32px 20px;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ── Cover ── */
+    .cover {
+      background: linear-gradient(135deg, #1e40af 0%, #0891b2 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 48px 40px;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    .cover .logo { font-size: 48px; margin-bottom: 12px; }
+    .cover h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+    .cover p { font-size: 1rem; opacity: 0.85; margin-bottom: 4px; }
+    .cover .badge {
+      display: inline-block;
+      margin-top: 16px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 20px;
+      padding: 4px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* ── Section card ── */
+    .section {
+      background: white;
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .section-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .icon-blue   { background: #dbeafe; }
+    .icon-green  { background: #dcfce7; }
+    .icon-purple { background: #ede9fe; }
+    .icon-orange { background: #ffedd5; }
+
+    .section-header h2 { font-size: 1.25rem; font-weight: 700; color: #1e293b; }
+    .section-header p  { font-size: 0.85rem; color: #64748b; margin-top: 2px; }
+
+    /* ── Info box ── */
+    .info-box {
+      background: #f8fafc;
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+      color: #334155;
+      line-height: 1.6;
+    }
+    .info-box.green  { border-color: #10b981; background: #f0fdf4; }
+    .info-box.purple { border-color: #8b5cf6; background: #faf5ff; }
+    .info-box.orange { border-color: #f59e0b; background: #fffbeb; }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+    }
+    thead tr { background: #1e40af; color: white; }
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    thead th.right { text-align: right; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr:hover { background: #eff6ff; }
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    tbody td.right { text-align: right; font-family: 'Courier New', monospace; }
+    tbody td.bold  { font-weight: 700; color: #1e293b; }
+    tbody td.highlight { background: #fef9c3; font-weight: 700; color: #92400e; }
+    tfoot td {
+      padding: 10px 14px;
+      background: #1e293b;
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    tfoot td.right { text-align: right; font-family: 'Courier New', monospace; }
+
+    /* ── Formula box ── */
+    .formula {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+    .formula .comment { color: #64748b; }
+    .formula .keyword { color: #93c5fd; }
+    .formula .value   { color: #86efac; }
+    .formula .result  { color: #fbbf24; font-weight: 700; }
+
+    /* ── Example card ── */
+    .example-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .example-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .example-card h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .example-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 0.85rem;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .example-row:last-child { border-bottom: none; }
+    .example-row .label { color: #64748b; }
+    .example-row .val   { font-weight: 600; color: #1e293b; font-family: 'Courier New', monospace; }
+    .example-row .deduct { color: #dc2626; }
+    .example-row .net    { color: #16a34a; font-size: 0.95rem; }
+    .example-row.total { background: #dbeafe; border-radius: 6px; padding: 6px 8px; margin-top: 4px; }
+
+    /* ── PCB bracket highlight ── */
+    .bracket-active { background: #fef9c3 !important; }
+
+    /* ── Tag ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+    .tag-green  { background: #dcfce7; color: #15803d; }
+    .tag-red    { background: #fee2e2; color: #b91c1c; }
+    .tag-gray   { background: #f1f5f9; color: #475569; }
+
+    /* ── Summary comparison table ── */
+    .comparison { margin-top: 8px; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      padding: 20px 0 8px;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .section { box-shadow: none; border: 1px solid #e2e8f0; page-break-inside: avoid; }
+      .cover { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="logo">🇲🇾</div>
+    <h1>Malaysia Statutory Deductions</h1>
+    <p>EPF (KWSP) &nbsp;·&nbsp; SOCSO (PERKESO) &nbsp;·&nbsp; PCB / MTD Income Tax</p>
+    <p>Payroll Calculation Reference Guide</p>
+    <span class="badge">Effective Year 2026 &nbsp;|&nbsp; HRMS Payroll System</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 1 — EPF
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-blue">💰</div>
+      <div>
+        <h2>EPF — Employees Provident Fund (KWSP)</h2>
+        <p>Kumpulan Wang Simpanan Pekerja &nbsp;·&nbsp; Retirement savings scheme</p>
+      </div>
+    </div>
+
+    <div class="info-box">
+      EPF is a <strong>mandatory retirement savings</strong> contribution deducted from every employee's monthly salary.
+      Both the employee and employer make contributions into the employee's EPF account.
+      Managed by <strong>KWSP (Kumpulan Wang Simpanan Pekerja)</strong>.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Employee Category</th>
+          <th>Employee Rate</th>
+          <th>Employer Rate</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="bold">Age below 60 (Standard)</td>
+          <td><span class="tag tag-blue">11%</span></td>
+          <td><span class="tag tag-green">13% / 12%</span></td>
+          <td>Employer: 13% if salary ≤ RM5,000 &nbsp;|&nbsp; 12% if salary > RM5,000</td>
+        </tr>
+        <tr>
+          <td class="bold">Age below 60 (Opted lower)</td>
+          <td><span class="tag tag-gray">9%</span></td>
+          <td><span class="tag tag-green">13% / 12%</span></td>
+          <td>Employee can opt for 9% voluntarily</td>
+        </tr>
+        <tr>
+          <td class="bold">Age 60–75</td>
+          <td><span class="tag tag-gray">5.5%</span></td>
+          <td><span class="tag tag-gray">6.5%</span></td>
+          <td>Reduced rates for near-retirement age</td>
+        </tr>
+        <tr>
+          <td class="bold">Age above 75</td>
+          <td><span class="tag tag-gray">5.5%</span></td>
+          <td><span class="tag tag-gray">6%</span></td>
+          <td>Lowest rates for senior employees</td>
+        </tr>
+        <tr class="highlight">
+          <td class="bold">Our System (Current)</td>
+          <td><span class="tag tag-red">2%</span></td>
+          <td>—</td>
+          <td>Simplified rate used by many companies</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box orange">
+      <strong>⚠️ Our System Note:</strong> The system currently calculates EPF at <strong>2% of basic salary</strong>
+      (employee share only). This is a simplified rate used by many companies as a conservative
+      baseline. The standard statutory rate is 11%. This can be adjusted in system settings.
+    </div>
+
+    <div class="formula">
+      <span class="comment">// EPF Calculation (current system)</span><br>
+      <span class="keyword">Monthly EPF</span> = <span class="value">Basic Salary</span> × <span class="value">2%</span><br><br>
+      <span class="comment">// Example: RM 5,000 salary</span><br>
+      <span class="keyword">Monthly EPF</span> = <span class="value">5,000</span> × <span class="value">0.02</span> = <span class="result">RM 100.00</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 2 — SOCSO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-green">🛡️</div>
+      <div>
+        <h2>SOCSO — Social Security Organisation (PERKESO)</h2>
+        <p>Pertubuhan Keselamatan Sosial &nbsp;·&nbsp; Employment injury &amp; invalidity protection</p>
+      </div>
+    </div>
+
+    <div class="info-box green">
+      SOCSO provides <strong>employment injury insurance</strong> and <strong>invalidity pension</strong> for employees.
+      Contributions are based on a <strong>fixed amount lookup table</strong> (not a percentage),
+      with the salary ceiling at <strong>RM 5,000</strong>. Employees earning above RM 5,000 pay the same
+      fixed ceiling amount.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Monthly Salary Range</th>
+          <th class="right">Employee Contribution</th>
+          <th class="right">Employer Contribution</th>
+          <th class="right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Up to RM 30</td>              <td class="right">RM 0.10</td>  <td class="right">RM 0.40</td>  <td class="right bold">RM 0.50</td></tr>
+        <tr><td>RM 30.01 – RM 50</td>         <td class="right">RM 0.20</td>  <td class="right">RM 0.50</td>  <td class="right bold">RM 0.70</td></tr>
+        <tr><td>RM 50.01 – RM 70</td>         <td class="right">RM 0.25</td>  <td class="right">RM 0.75</td>  <td class="right bold">RM 1.00</td></tr>
+        <tr><td>RM 70.01 – RM 100</td>        <td class="right">RM 0.35</td>  <td class="right">RM 1.10</td>  <td class="right bold">RM 1.45</td></tr>
+        <tr><td>RM 100.01 – RM 150</td>       <td class="right">RM 0.50</td>  <td class="right">RM 1.65</td>  <td class="right bold">RM 2.15</td></tr>
+        <tr><td>RM 150.01 – RM 200</td>       <td class="right">RM 0.65</td>  <td class="right">RM 2.20</td>  <td class="right bold">RM 2.85</td></tr>
+        <tr><td>RM 200.01 – RM 300</td>       <td class="right">RM 1.00</td>  <td class="right">RM 3.35</td>  <td class="right bold">RM 4.35</td></tr>
+        <tr><td>RM 300.01 – RM 400</td>       <td class="right">RM 1.35</td>  <td class="right">RM 4.45</td>  <td class="right bold">RM 5.80</td></tr>
+        <tr><td>RM 400.01 – RM 500</td>       <td class="right">RM 1.70</td>  <td class="right">RM 5.55</td>  <td class="right bold">RM 7.25</td></tr>
+        <tr><td>RM 500.01 – RM 600</td>       <td class="right">RM 2.05</td>  <td class="right">RM 6.70</td>  <td class="right bold">RM 8.75</td></tr>
+        <tr><td>RM 600.01 – RM 700</td>       <td class="right">RM 2.40</td>  <td class="right">RM 7.80</td>  <td class="right bold">RM 10.20</td></tr>
+        <tr><td>RM 700.01 – RM 800</td>       <td class="right">RM 2.75</td>  <td class="right">RM 8.90</td>  <td class="right bold">RM 11.65</td></tr>
+        <tr><td>RM 800.01 – RM 900</td>       <td class="right">RM 3.10</td>  <td class="right">RM 10.00</td> <td class="right bold">RM 13.10</td></tr>
+        <tr><td>RM 900.01 – RM 1,000</td>     <td class="right">RM 3.45</td>  <td class="right">RM 11.10</td> <td class="right bold">RM 14.55</td></tr>
+        <tr><td>RM 1,000.01 – RM 1,100</td>   <td class="right">RM 3.80</td>  <td class="right">RM 12.20</td> <td class="right bold">RM 16.00</td></tr>
+        <tr><td>RM 1,100.01 – RM 1,200</td>   <td class="right">RM 4.15</td>  <td class="right">RM 13.30</td> <td class="right bold">RM 17.45</td></tr>
+        <tr><td>RM 1,200.01 – RM 1,300</td>   <td class="right">RM 4.50</td>  <td class="right">RM 14.40</td> <td class="right bold">RM 18.90</td></tr>
+        <tr><td>RM 1,300.01 – RM 1,400</td>   <td class="right">RM 4.85</td>  <td class="right">RM 15.50</td> <td class="right bold">RM 20.35</td></tr>
+        <tr><td>RM 1,400.01 – RM 1,500</td>   <td class="right">RM 5.20</td>  <td class="right">RM 16.60</td> <td class="right bold">RM 21.80</td></tr>
+        <tr><td>RM 1,500.01 – RM 1,600</td>   <td class="right">RM 5.55</td>  <td class="right">RM 17.70</td> <td class="right bold">RM 23.25</td></tr>
+        <tr><td>RM 1,600.01 – RM 1,700</td>   <td class="right">RM 5.90</td>  <td class="right">RM 18.80</td> <td class="right bold">RM 24.70</td></tr>
+        <tr><td>RM 1,700.01 – RM 1,800</td>   <td class="right">RM 6.25</td>  <td class="right">RM 19.90</td> <td class="right bold">RM 26.15</td></tr>
+        <tr><td>RM 1,800.01 – RM 1,900</td>   <td class="right">RM 6.60</td>  <td class="right">RM 21.00</td> <td class="right bold">RM 27.60</td></tr>
+        <tr><td>RM 1,900.01 – RM 2,000</td>   <td class="right">RM 6.95</td>  <td class="right">RM 22.15</td> <td class="right bold">RM 29.10</td></tr>
+        <tr><td>RM 2,000.01 – RM 2,500</td>   <td class="right">RM 8.70</td>  <td class="right">RM 27.80</td> <td class="right bold">RM 36.50</td></tr>
+        <tr><td>RM 2,500.01 – RM 3,000</td>   <td class="right">RM 10.45</td> <td class="right">RM 33.45</td> <td class="right bold">RM 43.90</td></tr>
+        <tr><td>RM 3,000.01 – RM 3,500</td>   <td class="right">RM 12.20</td> <td class="right">RM 38.95</td> <td class="right bold">RM 51.15</td></tr>
+        <tr><td>RM 3,500.01 – RM 4,000</td>   <td class="right">RM 13.95</td> <td class="right">RM 44.55</td> <td class="right bold">RM 58.50</td></tr>
+        <tr><td>RM 4,000.01 – RM 4,500</td>   <td class="right">RM 14.75</td> <td class="right">RM 47.05</td> <td class="right bold">RM 61.80</td></tr>
+        <tr><td>RM 4,500.01 – RM 5,000</td>   <td class="right">RM 16.60</td> <td class="right">RM 52.95</td> <td class="right bold">RM 69.55</td></tr>
+        <tr class="highlight">
+          <td class="bold">Above RM 5,000 (Ceiling)</td>
+          <td class="right bold">RM 19.75</td>
+          <td class="right bold">RM 63.00</td>
+          <td class="right bold">RM 82.75</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box green">
+      <strong>Key Rules:</strong><br>
+      • Contributions are <strong>fixed amounts</strong> — NOT percentages<br>
+      • <strong>Salary ceiling: RM 5,000</strong> — contributions do not increase above this<br>
+      • Covers <strong>Employment Injury Scheme</strong> (EIS) + <strong>Invalidity Pension Scheme</strong> (IPS)<br>
+      • Employees earning &gt; RM 5,000: fixed at RM 19.75 (employee) + RM 63.00 (employer)
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 3 — PCB / MTD
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-purple">📊</div>
+      <div>
+        <h2>PCB / MTD — Monthly Tax Deduction</h2>
+        <p>Potongan Cukai Bulanan &nbsp;·&nbsp; Lembaga Hasil Dalam Negeri (LHDN) &nbsp;·&nbsp; Income tax</p>
+      </div>
+    </div>
+
+    <div class="info-box purple">
+      PCB (Potongan Cukai Bulanan) is <strong>monthly income tax withheld</strong> by the employer on behalf of LHDN.
+      It uses <strong>progressive tax brackets</strong> applied to the <em>annual chargeable income</em>, then divided by 12
+      to get the monthly amount. Chargeable income = Annual gross − EPF annual − Personal relief (RM 9,000).
+    </div>
+
+    <h3 style="font-size:1rem; margin-bottom:12px; color:#5b21b6;">Step 1 — Calculate Annual Chargeable Income</h3>
+    <div class="formula">
+      <span class="keyword">Annual Gross</span>          = <span class="value">Monthly Salary</span> × <span class="value">12</span><br>
+      <span class="keyword">Annual EPF Deduction</span>  = <span class="value">Monthly EPF</span> × <span class="value">12</span><br>
+      <span class="keyword">Personal Relief</span>       = <span class="value">RM 9,000</span> <span class="comment">(standard individual relief)</span><br>
+      <span class="keyword">Chargeable Income</span>     = <span class="value">Annual Gross</span> − <span class="value">Annual EPF</span> − <span class="value">RM 9,000</span>
+    </div>
+
+    <h3 style="font-size:1rem; margin-bottom:12px; color:#5b21b6;">Step 2 — Apply Progressive Tax Brackets</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Chargeable Income (Annual)</th>
+          <th class="right">Tax Rate</th>
+          <th class="right">Tax on Band</th>
+          <th class="right">Cumulative Tax</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>First RM 5,000</td>                      <td class="right"><span class="tag tag-green">0%</span></td>   <td class="right">RM 0</td>         <td class="right bold">RM 0</td></tr>
+        <tr><td>RM 5,001 – RM 20,000</td>                <td class="right"><span class="tag tag-green">1%</span></td>   <td class="right">RM 150</td>       <td class="right bold">RM 150</td></tr>
+        <tr><td>RM 20,001 – RM 35,000</td>               <td class="right"><span class="tag tag-blue">3%</span></td>    <td class="right">RM 450</td>       <td class="right bold">RM 600</td></tr>
+        <tr><td>RM 35,001 – RM 50,000</td>               <td class="right"><span class="tag tag-blue">8%</span></td>    <td class="right">RM 1,200</td>     <td class="right bold">RM 1,800</td></tr>
+        <tr><td>RM 50,001 – RM 70,000</td>               <td class="right"><span class="tag tag-blue">13%</span></td>   <td class="right">RM 2,600</td>     <td class="right bold">RM 4,400</td></tr>
+        <tr><td>RM 70,001 – RM 100,000</td>              <td class="right"><span class="tag tag-red">21%</span></td>    <td class="right">RM 6,300</td>     <td class="right bold">RM 10,700</td></tr>
+        <tr><td>RM 100,001 – RM 400,000</td>             <td class="right"><span class="tag tag-red">24%</span></td>    <td class="right">RM 72,000</td>    <td class="right bold">RM 82,700</td></tr>
+        <tr><td>RM 400,001 – RM 600,000</td>             <td class="right"><span class="tag tag-red">24.5%</span></td>  <td class="right">RM 49,000</td>    <td class="right bold">RM 131,700</td></tr>
+        <tr><td>RM 600,001 – RM 2,000,000</td>           <td class="right"><span class="tag tag-red">25%</span></td>    <td class="right">RM 350,000</td>   <td class="right bold">RM 481,700</td></tr>
+        <tr><td>Above RM 2,000,000</td>                  <td class="right"><span class="tag tag-red">26%</span></td>    <td class="right">On excess</td>     <td class="right bold">RM 481,700+</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="font-size:1rem; margin-bottom:12px; color:#5b21b6;">Step 3 — Monthly PCB</h3>
+    <div class="formula">
+      <span class="keyword">Monthly PCB</span> = <span class="value">Annual Tax</span> ÷ <span class="value">12</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 4 — Worked Examples
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🧮</div>
+      <div>
+        <h2>Worked Examples — Monthly Payslip Calculation</h2>
+        <p>See how EPF, SOCSO and PCB are calculated for different salary levels</p>
+      </div>
+    </div>
+
+    <div class="example-grid">
+
+      <!-- Example 1: RM 2,000 -->
+      <div class="example-card">
+        <h4>Employee A — RM 2,000 / month</h4>
+        <div class="example-row"><span class="label">Basic Salary</span>          <span class="val">RM 2,000.00</span></div>
+        <div class="example-row"><span class="label">EPF (2%)</span>              <span class="val deduct">− RM 40.00</span></div>
+        <div class="example-row"><span class="label">SOCSO (table)</span>         <span class="val deduct">− RM 6.95</span></div>
+        <div class="example-row"><span class="label">PCB/MTD</span>               <span class="val deduct">− RM 0.00</span></div>
+        <div class="example-row"><span class="label">Total Deductions</span>      <span class="val deduct">− RM 46.95</span></div>
+        <div class="example-row total"><span class="label bold">Net Salary</span> <span class="val net">RM 1,953.05</span></div>
+        <div style="margin-top:10px; font-size:0.78rem; color:#64748b;">
+          Chargeable: (2,000×12)−(40×12)−9,000 = RM 14,520 → 0% bracket → PCB = RM 0
+        </div>
+      </div>
+
+      <!-- Example 2: RM 3,500 -->
+      <div class="example-card">
+        <h4>Employee B — RM 3,500 / month</h4>
+        <div class="example-row"><span class="label">Basic Salary</span>          <span class="val">RM 3,500.00</span></div>
+        <div class="example-row"><span class="label">EPF (2%)</span>              <span class="val deduct">− RM 70.00</span></div>
+        <div class="example-row"><span class="label">SOCSO (table)</span>         <span class="val deduct">− RM 12.20</span></div>
+        <div class="example-row"><span class="label">PCB/MTD</span>               <span class="val deduct">− RM 22.92</span></div>
+        <div class="example-row"><span class="label">Total Deductions</span>      <span class="val deduct">− RM 105.12</span></div>
+        <div class="example-row total"><span class="label bold">Net Salary</span> <span class="val net">RM 3,394.88</span></div>
+        <div style="margin-top:10px; font-size:0.78rem; color:#64748b;">
+          Chargeable: (3,500×12)−(70×12)−9,000 = RM 32,160 → 3% bracket → PCB ≈ RM 22.92/mo
+        </div>
+      </div>
+
+      <!-- Example 3: RM 5,000 -->
+      <div class="example-card">
+        <h4>Employee C — RM 5,000 / month</h4>
+        <div class="example-row"><span class="label">Basic Salary</span>          <span class="val">RM 5,000.00</span></div>
+        <div class="example-row"><span class="label">EPF (2%)</span>              <span class="val deduct">− RM 100.00</span></div>
+        <div class="example-row"><span class="label">SOCSO (table)</span>         <span class="val deduct">− RM 16.60</span></div>
+        <div class="example-row"><span class="label">PCB/MTD</span>               <span class="val deduct">− RM 151.83</span></div>
+        <div class="example-row"><span class="label">Total Deductions</span>      <span class="val deduct">− RM 268.43</span></div>
+        <div class="example-row total"><span class="label bold">Net Salary</span> <span class="val net">RM 4,731.57</span></div>
+        <div style="margin-top:10px; font-size:0.78rem; color:#64748b;">
+          Chargeable: (5,000×12)−(100×12)−9,000 = RM 44,400 → 8% bracket → PCB ≈ RM 151.83/mo
+        </div>
+      </div>
+
+      <!-- Example 4: RM 8,000 -->
+      <div class="example-card">
+        <h4>Employee D — RM 8,000 / month</h4>
+        <div class="example-row"><span class="label">Basic Salary</span>          <span class="val">RM 8,000.00</span></div>
+        <div class="example-row"><span class="label">EPF (2%)</span>              <span class="val deduct">− RM 160.00</span></div>
+        <div class="example-row"><span class="label">SOCSO (ceiling)</span>       <span class="val deduct">− RM 19.75</span></div>
+        <div class="example-row"><span class="label">PCB/MTD</span>               <span class="val deduct">− RM 617.67</span></div>
+        <div class="example-row"><span class="label">Total Deductions</span>      <span class="val deduct">− RM 797.42</span></div>
+        <div class="example-row total"><span class="label bold">Net Salary</span> <span class="val net">RM 7,202.58</span></div>
+        <div style="margin-top:10px; font-size:0.78rem; color:#64748b;">
+          Chargeable: (8,000×12)−(160×12)−9,000 = RM 79,080 → 21% bracket → PCB ≈ RM 617.67/mo
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SECTION 5 — Quick Reference
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-blue">📋</div>
+      <div>
+        <h2>Quick Reference Summary</h2>
+        <p>At-a-glance comparison across common salary levels</p>
+      </div>
+    </div>
+
+    <table class="comparison">
+      <thead>
+        <tr>
+          <th>Monthly Salary</th>
+          <th class="right">EPF (2%)</th>
+          <th class="right">SOCSO</th>
+          <th class="right">PCB/MTD</th>
+          <th class="right">Total Deductions</th>
+          <th class="right">Net Take-Home</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>RM 1,500</td> <td class="right">RM 30.00</td>  <td class="right">RM 5.20</td>  <td class="right">RM 0.00</td>   <td class="right bold">RM 35.20</td>   <td class="right bold" style="color:#16a34a">RM 1,464.80</td></tr>
+        <tr><td>RM 2,000</td> <td class="right">RM 40.00</td>  <td class="right">RM 6.95</td>  <td class="right">RM 0.00</td>   <td class="right bold">RM 46.95</td>   <td class="right bold" style="color:#16a34a">RM 1,953.05</td></tr>
+        <tr><td>RM 2,500</td> <td class="right">RM 50.00</td>  <td class="right">RM 8.70</td>  <td class="right">RM 0.00</td>   <td class="right bold">RM 58.70</td>   <td class="right bold" style="color:#16a34a">RM 2,441.30</td></tr>
+        <tr><td>RM 3,000</td> <td class="right">RM 60.00</td>  <td class="right">RM 10.45</td> <td class="right">RM 8.50</td>   <td class="right bold">RM 78.95</td>   <td class="right bold" style="color:#16a34a">RM 2,921.05</td></tr>
+        <tr><td>RM 3,500</td> <td class="right">RM 70.00</td>  <td class="right">RM 12.20</td> <td class="right">RM 22.92</td>  <td class="right bold">RM 105.12</td>  <td class="right bold" style="color:#16a34a">RM 3,394.88</td></tr>
+        <tr><td>RM 4,000</td> <td class="right">RM 80.00</td>  <td class="right">RM 13.95</td> <td class="right">RM 55.33</td>  <td class="right bold">RM 149.28</td>  <td class="right bold" style="color:#16a34a">RM 3,850.72</td></tr>
+        <tr><td>RM 5,000</td> <td class="right">RM 100.00</td> <td class="right">RM 16.60</td> <td class="right">RM 151.83</td> <td class="right bold">RM 268.43</td>  <td class="right bold" style="color:#16a34a">RM 4,731.57</td></tr>
+        <tr><td>RM 6,000</td> <td class="right">RM 120.00</td> <td class="right">RM 19.75</td> <td class="right">RM 285.08</td> <td class="right bold">RM 424.83</td>  <td class="right bold" style="color:#16a34a">RM 5,575.17</td></tr>
+        <tr><td>RM 8,000</td> <td class="right">RM 160.00</td> <td class="right">RM 19.75</td> <td class="right">RM 617.67</td> <td class="right bold">RM 797.42</td>  <td class="right bold" style="color:#16a34a">RM 7,202.58</td></tr>
+        <tr><td>RM 10,000</td><td class="right">RM 200.00</td> <td class="right">RM 19.75</td> <td class="right">RM 950.25</td> <td class="right bold">RM 1,170.00</td><td class="right bold" style="color:#16a34a">RM 8,830.00</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">Note: EPF = 2% (system rate) &nbsp;|&nbsp; SOCSO capped at RM 5,000 salary</td>
+          <td colspan="3" class="right">PCB based on LHDN 2026 progressive brackets + RM 9,000 personal relief</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="footer">
+    Generated by HRMS Payroll System &nbsp;·&nbsp; Malaysia Statutory Deductions Reference 2026 &nbsp;·&nbsp;
+    Source: KWSP, PERKESO, LHDN
+  </div>
+
+</div>
+</body>
+</html>
